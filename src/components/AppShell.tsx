@@ -27,7 +27,7 @@ export function AppShell() {
   }, [pathname, search])
 
   return (
-    <Flex direction="column" maxW="640px" mx="auto" minH="100dvh">
+    <Flex direction="column" maxW="640px" mx="auto" minH="100vh">
       {!online && (
         <Box bg="orange.500" color="white" fontSize="sm" textAlign="center" py={1} pt="calc(4px + env(safe-area-inset-top))">
           Offline. Showing the last data we saved.
@@ -45,7 +45,7 @@ export function AppShell() {
         zIndex="sticky"
         bg="bg.panel"
         borderTopWidth="1px"
-        pb="env(safe-area-inset-bottom)"
+        pb="min(env(safe-area-inset-bottom), 8px)"
       >
         <Flex w="full">
           {TABS.map(({ to, label, icon: Icon, match }) => {

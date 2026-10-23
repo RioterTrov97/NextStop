@@ -2,11 +2,12 @@ import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
 const config = defineConfig({
   globalCss: {
-    'html, body, #root': { minHeight: '100dvh' },
+    'html, body, #root': { height: '100vh' },
+    // iOS applies the rubber-band to the root element, so it must be disabled there too.
+    'html, body': { overscrollBehavior: 'none' },
     body: {
       bg: 'bg',
       color: 'fg',
-      overscrollBehaviorY: 'none',
       WebkitTapHighlightColor: 'transparent',
     },
   },

@@ -142,7 +142,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
-          <Drawer.Content borderTopRadius="3xl" maxH="92dvh" pb="env(safe-area-inset-bottom)">
+          <Drawer.Content borderTopRadius="3xl" maxH="92vh" pb="env(safe-area-inset-bottom)">
             <Drawer.Header pr={12}>
               <Flex align="center" gap={2} w="full">
                 <Drawer.Title flex={1}>Trip details</Drawer.Title>

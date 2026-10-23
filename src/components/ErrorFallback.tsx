@@ -30,7 +30,7 @@ export function ErrorFallback() {
       : String(error)
 
   return (
-    <Flex minH="100dvh" align="center" justify="center" p={6} bg="bg">
+    <Flex minH="100vh" align="center" justify="center" p={6} bg="bg">
       <Flex direction="column" align="center" textAlign="center" maxW="sm" gap={4}>
         <Flex
           align="center"

@@ -135,7 +135,7 @@ export function StopSearch({ label, value, onChange }: Props) {
           color="fg"
           borderRadius="xl"
           shadow="lg"
-          maxH="50dvh"
+          maxH="50vh"
           overflowY="auto"
           onMouseDown={(e) => e.preventDefault()}
         >
