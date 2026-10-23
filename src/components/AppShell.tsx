@@ -27,34 +27,34 @@ export function AppShell() {
   }, [pathname, search])
 
   return (
-    <Box maxW="640px" mx="auto" minH="100dvh" pb="calc(76px + env(safe-area-inset-bottom))">
+    <Flex direction="column" maxW="640px" mx="auto" minH="100dvh">
       {!online && (
         <Box bg="orange.500" color="white" fontSize="sm" textAlign="center" py={1} pt="calc(4px + env(safe-area-inset-top))">
           Offline. Showing the last data we saved.
         </Box>
       )}
-      <Outlet />
+      <Box flex="1">
+        <Outlet />
+      </Box>
+      {/* Sticky rather than fixed: iOS Safari leaves a gap under fixed bottom bars until the first scroll. */}
       <Flex
         as="nav"
         aria-label="Main"
-        position="fixed"
+        position="sticky"
         bottom={0}
-        left={0}
-        right={0}
         zIndex="sticky"
         bg="bg.panel"
         borderTopWidth="1px"
         pb="env(safe-area-inset-bottom)"
-        justify="center"
       >
-        <Flex w="full" maxW="640px">
+        <Flex w="full">
           {TABS.map(({ to, label, icon: Icon, match }) => {
             const isActive = match(pathname)
             // Tapping the active Trips tab goes home; from another tab it returns to the last trips page.
             const target = to === '/' ? (isActive ? '/' : lastTrips) : to
             return (
               <Link key={to} to={target} style={{ flex: 1 }} aria-current={isActive ? 'page' : undefined}>
-                <Flex direction="column" align="center" gap="2px" py={2} color={isActive ? 'teal.500' : 'fg.muted'}>
+                <Flex direction="column" align="center" gap="2px" py={4} color={isActive ? 'teal.500' : 'fg.muted'}>
                   <Icon size={22} />
                   <Text fontSize="xs" fontWeight={isActive ? 'semibold' : 'normal'}>
                     {label}
@@ -65,6 +65,6 @@ export function AppShell() {
           })}
         </Flex>
       </Flex>
-    </Box>
+    </Flex>
   )
 }
