@@ -29,15 +29,15 @@ This starts Vite and runs the Worker proxy locally in the same process via `@clo
 
 If you see "Server is missing TFNSW_API_KEY", `.dev.vars` is missing. If you see "Upstream rejected the API key", the key is wrong or lacks access to the datasets above.
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | App and proxy with hot reload |
-| `npm test` | Unit tests (Vitest) |
-| `npm run typecheck` | Type-check app, worker and config |
-| `npm run build` | Production build (app, Worker, service worker) |
-| `npm run preview` | Serve the production build locally with the Worker |
-| `npm run icons` | Regenerate PWA icons from `public/logo.svg` |
-| `npm run deploy` | Build and deploy to Cloudflare |
+| Command             | Purpose                                            |
+| ------------------- | -------------------------------------------------- |
+| `npm run dev`       | App and proxy with hot reload                      |
+| `npm test`          | Unit tests (Vitest)                                |
+| `npm run typecheck` | Type-check app, worker and config                  |
+| `npm run build`     | Production build (app, Worker, service worker)     |
+| `npm run preview`   | Serve the production build locally with the Worker |
+| `npm run icons`     | Regenerate PWA icons from `public/logo.svg`        |
+| `npm run deploy`    | Build and deploy to Cloudflare                     |
 
 ## Deploy
 

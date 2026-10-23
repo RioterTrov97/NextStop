@@ -51,9 +51,7 @@ export const savedTrips = {
   reverse(id: string) {
     write(
       read().map((t) =>
-        t.id === id
-          ? { ...t, id: tripId(t.toId, t.fromId), fromId: t.toId, fromName: t.toName, toId: t.fromId, toName: t.fromName }
-          : t,
+        t.id === id ? { ...t, id: tripId(t.toId, t.fromId), fromId: t.toId, fromName: t.toName, toId: t.fromId, toName: t.fromName } : t,
       ),
     )
   },

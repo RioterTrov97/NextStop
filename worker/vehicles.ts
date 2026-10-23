@@ -39,7 +39,7 @@ function decodeVehicle(buf: Uint8Array): VehicleInfo {
       }
     } else if (f.wire === 2 && f.field === CONSIST_EXTENSION) v.carriages.push(decodeCarriage(f.value as Uint8Array))
   }
-  v.carriages.sort((a, b) => a.position - b.position)
+  v.carriages = v.carriages.filter((c) => c.position > 0).sort((a, b) => a.position - b.position)
   return v
 }
 

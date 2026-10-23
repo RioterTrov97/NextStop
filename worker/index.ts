@@ -1,4 +1,4 @@
-import type { VehicleMode } from '../shared/vehicles'
+import type { VehicleInfo, VehicleMode } from '../shared/vehicles'
 import { decodeVehiclePositions } from './vehicles'
 
 interface Env {
@@ -13,7 +13,8 @@ const TP_ENDPOINTS: Record<string, { ttl: number; params: RegExp }> = {
   stop_finder: { ttl: 86400, params: /^(type_sf|name_sf|TfNSWSF|anyObjFilter_sf|anyMaxSizeHitList)$/ },
   trip: {
     ttl: 20,
-    params: /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|wheelchair)$/,
+    params:
+      /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|wheelchair)$/,
   },
   departure_mon: {
     ttl: 20,
@@ -83,21 +84,26 @@ async function handleVehicles(url: URL, request: Request, env: Env, ctx: Executi
   if (!feeds) return json({ error: 'Unknown mode' }, 400)
   const trips = (url.searchParams.get('trips') ?? '').split(',').filter(Boolean).slice(0, 50)
   const wanted = trips.length ? new Set(trips) : undefined
+  // Rail feeds are small enough to cache whole, so every trip combination shares one upstream fetch.
+  const rail = mode === 'train' || mode === 'metro'
 
-  const cacheReq = new Request(`${url.origin}/api/vehicles?mode=${mode}&trips=${[...trips].sort().join(',')}`, request)
-  return cached(cacheReq, ctx, 10, async () => {
+  const cacheReq = new Request(`${url.origin}/api/vehicles?mode=${mode}&trips=${rail ? '' : [...trips].sort().join(',')}`, request)
+  const res = await cached(cacheReq, ctx, rail ? 15 : 10, async () => {
     const results = await Promise.all(
       feeds.map(async (path) => {
         const res = await fetch(API + path, {
           headers: { Authorization: `apikey ${env.TFNSW_API_KEY}`, Accept: 'application/x-google-protobuf' },
         })
         if (!res.ok) throw res.status
-        return decodeVehiclePositions(new Uint8Array(await res.arrayBuffer()), wanted)
+        return decodeVehiclePositions(new Uint8Array(await res.arrayBuffer()), rail ? undefined : wanted)
       }),
     ).catch((status: unknown) => (typeof status === 'number' ? status : 500))
     if (typeof results === 'number') return upstreamError(results)
     return json({ vehicles: results.flat() })
   })
+  if (!rail || !wanted || !res.ok) return res
+  const { vehicles } = (await res.json()) as { vehicles: VehicleInfo[] }
+  return json({ vehicles: vehicles.filter((v) => wanted.has(v.tripId)) })
 }
 
 export default {

@@ -31,6 +31,20 @@ const TRAIN_LINES: Record<string, string> = {
   T9: '#D11F2F',
 }
 
+/** Compact line label for tiles: "T2 Inner West & Leppington Line" -> "T2". */
+export function shortLineName(number?: string): string {
+  const raw = number?.trim()
+  if (!raw) return '·'
+  const code = raw.match(/^[A-Z]{1,3}\d{1,2}\b/i)?.[0]
+  if (code) return code.toUpperCase()
+  const words = raw.split(/\s+/).filter((w) => w.toLowerCase() !== 'line')
+  if (words[0].length <= 4) return words[0]
+  return words
+    .slice(0, 3)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
 const LIGHT_RAIL: Record<string, string> = { L1: '#BE1622', L2: '#DD1E25', L3: '#781140', L4: '#E4022D' }
 
 export function lineColor(number: string | undefined, cls?: number): string {

@@ -20,12 +20,11 @@ export function PageHeader({ title, subtitle, back, action, children }: Props) {
       zIndex="docked"
       bgGradient="to-br"
       gradientFrom="teal.600"
-      gradientTo="blue.600"
+      gradientTo="teal.700"
       color="white"
       px={4}
       pb={4}
       pt="calc(16px + env(safe-area-inset-top))"
-      borderBottomRadius="2xl"
       shadow="md"
     >
       <Flex align="center" gap={2}>

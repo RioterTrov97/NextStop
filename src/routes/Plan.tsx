@@ -32,9 +32,7 @@ export default function Plan() {
       extra.m = when
       extra.w = new Date(at).toISOString()
     }
-    navigate(
-      tripPath({ fromId: from.id, toId: to.id, fromName: from.name, toName: to.name, modes }, extra),
-    )
+    navigate(tripPath({ fromId: from.id, toId: to.id, fromName: from.name, toName: to.name, modes }, extra))
   }
 
   return (
@@ -52,7 +50,9 @@ export default function Plan() {
         </Flex>
 
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>Transport</Text>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>
+            Transport
+          </Text>
           <HStack wrap="wrap" gap={2}>
             {MODES.map((m) => {
               const on = modes.includes(m.key)
@@ -71,14 +71,31 @@ export default function Plan() {
               )
             })}
           </HStack>
-          <Text fontSize="xs" color="fg.muted" mt={1}>{modes.length ? 'Only the selected modes.' : 'All modes.'}</Text>
+          <Text fontSize="xs" color="fg.muted" mt={1}>
+            {modes.length ? 'Only the selected modes.' : 'All modes.'}
+          </Text>
         </Box>
 
         <Box>
-          <Text fontSize="sm" fontWeight="semibold" mb={2}>When</Text>
+          <Text fontSize="sm" fontWeight="semibold" mb={2}>
+            When
+          </Text>
           <HStack gap={2}>
-            {([['now', 'Leave now'], ['dep', 'Depart at'], ['arr', 'Arrive by']] as const).map(([k, label]) => (
-              <Button key={k} size="sm" borderRadius="full" variant={when === k ? 'solid' : 'outline'} colorPalette="teal" onClick={() => setWhen(k)}>
+            {(
+              [
+                ['now', 'Leave now'],
+                ['dep', 'Depart at'],
+                ['arr', 'Arrive by'],
+              ] as const
+            ).map(([k, label]) => (
+              <Button
+                key={k}
+                size="sm"
+                borderRadius="full"
+                variant={when === k ? 'solid' : 'outline'}
+                colorPalette="teal"
+                onClick={() => setWhen(k)}
+              >
                 {label}
               </Button>
             ))}
@@ -86,7 +103,7 @@ export default function Plan() {
           {when !== 'now' && <Input mt={2} type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />}
         </Box>
 
-        <Button size="lg" colorPalette="teal" borderRadius="xl" disabled={!from || !to} onClick={go}>
+        <Button mt="2" size="lg" colorPalette="teal" borderRadius="xl" disabled={!from || !to} onClick={go}>
           Show trips
         </Button>
       </Stack>

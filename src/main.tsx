@@ -1,5 +1,6 @@
 import { ChakraProvider } from '@chakra-ui/react'
 import { QueryClient } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { PersistQueryClientProvider, type Persister } from '@tanstack/react-query-persist-client'
 import { del, get, set } from 'idb-keyval'
 import { ThemeProvider } from 'next-themes'
@@ -34,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
           }}
         >
           <RouterProvider router={router} />
+          <ReactQueryDevtools buttonPosition="relative" />
         </PersistQueryClientProvider>
       </ChakraProvider>
     </ThemeProvider>

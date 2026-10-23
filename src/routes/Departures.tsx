@@ -23,10 +23,22 @@ export default function Departures() {
         <StopSearch label="Search a station or stop" onChange={(p?: Place) => p && open(p.id, p.name)} />
         {recent.size > 0 && (
           <Box>
-            <Text fontSize="sm" fontWeight="semibold" mb={2}>From your saved trips</Text>
+            <Text fontSize="sm" fontWeight="semibold" mb={2}>
+              From your saved trips
+            </Text>
             <Stack gap={2}>
               {[...recent].map(([id, name]) => (
-                <Box key={id} as="button" textAlign="start" bg="bg.panel" borderWidth="1px" borderRadius="xl" px={4} py={3} onClick={() => open(id, name)}>
+                <Box
+                  key={id}
+                  as="button"
+                  textAlign="start"
+                  bg="bg.panel"
+                  borderWidth="1px"
+                  borderRadius="xl"
+                  px={4}
+                  py={3}
+                  onClick={() => open(id, name)}
+                >
                   {name}
                 </Box>
               ))}

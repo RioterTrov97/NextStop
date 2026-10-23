@@ -14,7 +14,7 @@ export default defineConfig({
         name: 'NextStop',
         short_name: 'NextStop',
         description: 'Live Sydney train, metro, bus, ferry and light rail trips.',
-        theme_color: '#0f766e',
+        theme_color: '#C2410C',
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',

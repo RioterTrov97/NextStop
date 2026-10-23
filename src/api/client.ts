@@ -19,7 +19,12 @@ export async function searchStops(query: string, signal?: AbortSignal): Promise<
     { type_sf: 'any', name_sf: query, TfNSWSF: 'true', anyObjFilter_sf: '2' },
     signal,
   )
-  return (data.locations ?? []).filter((l) => l.type === 'stop' || l.type === 'platform' || l.type === 'poi' || !l.type)
+  const places = (data.locations ?? []).filter((l) => l.type === 'stop' || l.type === 'platform' || l.type === 'poi' || !l.type)
+  // Stable sort: train/metro stations first, API relevance order kept within each group.
+  return places
+    .map((p, i) => ({ p, i, rank: p.modes?.some((m) => m === 1 || m === 2) ? 0 : 1 }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map((x) => x.p)
 }
 
 export interface TripQuery {

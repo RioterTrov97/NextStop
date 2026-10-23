@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countdown, delayMinutes, formatDuration, toItd } from './time'
+import { countdown, delayMinutes, formatDuration, formatTime, toItd } from './time'
 
 describe('time helpers', () => {
   it('converts UTC instants to Sydney local itd params (AEDT)', () => {
@@ -8,6 +8,12 @@ describe('time helpers', () => {
 
   it('converts UTC instants to Sydney local itd params (AEST)', () => {
     expect(toItd(new Date('2026-07-15T13:30:00Z'))).toEqual({ itdDate: '20260715', itdTime: '2330' })
+  })
+
+  it('formats times with a full am/pm suffix', () => {
+    expect(formatTime('2026-07-15T22:05:00Z')).toBe('8:05 am')
+    expect(formatTime('2026-07-15T08:30:00Z')).toBe('6:30 pm')
+    expect(formatTime(undefined)).toBe('--')
   })
 
   it('computes delay only when an estimate exists', () => {

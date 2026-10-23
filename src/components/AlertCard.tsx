@@ -32,15 +32,33 @@ export function AlertCard({ title, html, priority, url, urlText }: Props) {
   return (
     <Box borderWidth="1px" borderLeftWidth="4px" borderLeftColor={severe ? 'red.500' : 'blue.500'} bg="bg.panel" borderRadius="lg" p={3}>
       <Flex as="button" w="full" textAlign="start" gap={2} align="start" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <Box color={severe ? 'red.500' : 'blue.500'} mt={0.5}><Icon /></Box>
-        <Text flex={1} fontSize="sm" fontWeight="semibold">{title ?? 'Service information'}</Text>
-        {body && <Box transform={open ? 'rotate(180deg)' : undefined}><LuChevronDown /></Box>}
+        <Box color={severe ? 'red.500' : 'blue.500'} mt={0.5}>
+          <Icon />
+        </Box>
+        <Text flex={1} fontSize="sm" fontWeight="semibold">
+          {title ?? 'Service information'}
+        </Text>
+        {body && (
+          <Box transform={open ? 'rotate(180deg)' : undefined}>
+            <LuChevronDown />
+          </Box>
+        )}
       </Flex>
       {open && (
-        <Box mt={2} fontSize="sm" color="fg.muted" css={{ '& a': { textDecoration: 'underline' }, '& ul': { paddingInlineStart: '1.2em' } }}>
+        <Box
+          mt={2}
+          fontSize="sm"
+          color="fg.muted"
+          css={{ '& a': { textDecoration: 'underline' }, '& ul': { paddingInlineStart: '1.2em' } }}
+        >
           <div dangerouslySetInnerHTML={{ __html: body }} />
           {url && (
-            <a href={url} target="_blank" rel="noreferrer noopener" style={{ textDecoration: 'underline', display: 'inline-block', marginTop: 6 }}>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer noopener"
+              style={{ textDecoration: 'underline', display: 'inline-block', marginTop: 6 }}
+            >
               {urlText ?? 'More information'}
             </a>
           )}

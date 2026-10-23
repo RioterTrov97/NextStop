@@ -14,8 +14,7 @@ export default function Alerts() {
   const [all, setAll] = useState(false)
 
   const stations = trips.flatMap((t) => [t.fromName, t.toName]).map((n) => n.split(',')[0].toLowerCase())
-  const relevant = (a: Alert) =>
-    (a.affected?.stops ?? []).some((s) => stations.some((n) => s.name?.toLowerCase().includes(n)))
+  const relevant = (a: Alert) => (a.affected?.stops ?? []).some((s) => stations.some((n) => s.name?.toLowerCase().includes(n)))
 
   const list = [...(data ?? [])]
     .filter((a) => all || !trips.length || relevant(a))
@@ -28,13 +27,21 @@ export default function Alerts() {
       <Stack gap={3} p={4}>
         {trips.length > 0 && (
           <HStack gap={2}>
-            <Button size="sm" borderRadius="full" colorPalette="teal" variant={!all ? 'solid' : 'outline'} onClick={() => setAll(false)}>My trips</Button>
-            <Button size="sm" borderRadius="full" colorPalette="teal" variant={all ? 'solid' : 'outline'} onClick={() => setAll(true)}>Everything</Button>
+            <Button size="sm" borderRadius="full" colorPalette="teal" variant={!all ? 'solid' : 'outline'} onClick={() => setAll(false)}>
+              My trips
+            </Button>
+            <Button size="sm" borderRadius="full" colorPalette="teal" variant={all ? 'solid' : 'outline'} onClick={() => setAll(true)}>
+              Everything
+            </Button>
           </HStack>
         )}
         {isLoading && [0, 1, 2].map((i) => <Skeleton key={i} h="64px" borderRadius="lg" />)}
         {error && !data && <Text color="red.500">{(error as Error).message}</Text>}
-        {data && list.length === 0 && <Text color="fg.muted" textAlign="center" py={8}>No alerts affecting your trips right now.</Text>}
+        {data && list.length === 0 && (
+          <Text color="fg.muted" textAlign="center" py={8}>
+            No alerts affecting your trips right now.
+          </Text>
+        )}
         {list.map((a) => (
           <AlertCard key={a.id} title={a.subtitle} html={a.content} priority={a.priority} url={a.url} urlText={a.urlText} />
         ))}

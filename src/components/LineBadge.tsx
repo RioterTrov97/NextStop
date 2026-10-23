@@ -1,5 +1,5 @@
 import { Box } from '@chakra-ui/react'
-import { lineColor } from '../lib/lines'
+import { lineColor, shortLineName } from '../lib/lines'
 
 interface Props {
   number?: string
@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function LineBadge({ number, cls, size = 'md' }: Props) {
-  const label = number ?? '·'
+  const label = shortLineName(number)
   return (
     <Box
       as="span"

@@ -1,36 +1,48 @@
-import { Box, CloseButton, Drawer, Flex, HStack, Portal, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, CloseButton, Drawer, Flex, HStack, IconButton, Portal, Stack, Text } from '@chakra-ui/react'
 import { Suspense, lazy, useState } from 'react'
-import { LuFootprints } from 'react-icons/lu'
+import { LuFootprints, LuInfo, LuPin, LuPinOff } from 'react-icons/lu'
+import type { VehicleInfo } from '../../shared/vehicles'
 import { useVehicles } from '../api/hooks'
-import type { Journey, Leg } from '../api/types'
-import { journeyAlerts, isTransit, platformOf, vehicleModeForLeg } from '../lib/journey'
+import type { InfoLink, Journey, Leg } from '../api/types'
+import { journeyAlerts, isTransit, legOccupancy, platformOf, vehicleModeForLeg } from '../lib/journey'
 import { lineColor } from '../lib/lines'
-import { occupancyFromName } from '../lib/occupancy'
 import { formatDuration, formatTime } from '../lib/time'
 import { AlertCard, toAlertProps } from './AlertCard'
 import { CarriageStrip } from './CarriageStrip'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
+import { VehicleLoad } from './VehicleLoad'
 
 const LiveMap = lazy(() => import('./LiveMap'))
 
-function TransitLeg({ leg }: { leg: Leg }) {
+interface LegProps {
+  leg: Leg
+  vehicles?: Map<string, VehicleInfo>
+  vehiclesLoading?: boolean
+}
+
+function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
   const [showStops, setShowStops] = useState(false)
   const t = leg.transportation
   const tripId = t?.properties?.RealtimeTripId
   const mode = vehicleModeForLeg(leg)
-  const { data, isLoading } = useVehicles(mode, tripId ? [tripId] : [])
-  const vehicle = data?.[0]
+  const hasConsist = mode === 'train' || mode === 'metro'
+  // Rail loads come from the list's shared batched query; other modes only need a position for the map.
+  const shared = tripId ? vehicles?.get(tripId) : undefined
+  const own = useVehicles(mode, tripId ? [tripId] : [], !shared && !(hasConsist && vehicles))
+  const vehicle = shared ?? own.data?.[0]
+  const isLoading = hasConsist && vehicles ? !!vehiclesLoading : own.isLoading
   const platform = platformOf(leg)
   const stops = leg.stopSequence ?? []
   const color = lineColor(t?.number, t?.product?.class)
-  const hasConsist = mode === 'train' || mode === 'metro'
 
   return (
     <Box borderLeftWidth="4px" pl={3} style={{ borderColor: color }}>
       <Flex align="center" gap={2} wrap="wrap">
         <LineBadge number={t?.number ?? t?.disassembledName} cls={t?.product?.class} />
-        <Text fontWeight="semibold" flex={1} minW={0}>{t?.destination?.name ? `to ${t.destination.name}` : t?.description}</Text>
+        <Text fontWeight="semibold" flex={1} minW={0}>
+          {t?.destination?.name ? `to ${t.destination.name}` : t?.description}
+        </Text>
         <DelayBadge
           planned={leg.origin.departureTimePlanned}
           estimated={leg.origin.departureTimeEstimated}
@@ -38,21 +50,32 @@ function TransitLeg({ leg }: { leg: Leg }) {
         />
       </Flex>
       <Text fontSize="sm" mt={1}>
-        <b>{formatTime(leg.origin.departureTimeEstimated ?? leg.origin.departureTimePlanned)}</b> {leg.origin.disassembledName ?? leg.origin.name}
-        {platform && <Text as="span" color="fg.muted"> · Platform {platform.replace(/^[A-Z]+/, '')}</Text>}
+        <b>{formatTime(leg.origin.departureTimeEstimated ?? leg.origin.departureTimePlanned)}</b>{' '}
+        {leg.origin.disassembledName ?? leg.origin.name}
+        {platform && (
+          <Text as="span" color="fg.muted">
+            {' '}
+            · Platform {platform}
+          </Text>
+        )}
       </Text>
       <Text fontSize="sm">
-        <b>{formatTime(leg.destination.arrivalTimeEstimated ?? leg.destination.arrivalTimePlanned)}</b> {leg.destination.disassembledName ?? leg.destination.name}
+        <b>{formatTime(leg.destination.arrivalTimeEstimated ?? leg.destination.arrivalTimePlanned)}</b>{' '}
+        {leg.destination.disassembledName ?? leg.destination.name}
       </Text>
-      <Text fontSize="xs" color="fg.muted">{formatDuration(leg.duration ?? 0)} · {Math.max(0, stops.length - 1)} stops</Text>
+      <Text fontSize="xs" color="fg.muted">
+        {formatDuration(leg.duration ?? 0)} · {Math.max(0, stops.length - 1)} stops
+      </Text>
 
       {hasConsist && (
         <Box mt={2}>
-          <CarriageStrip
-            vehicle={vehicle}
-            loading={isLoading}
-            fallback={occupancyFromName(typeof leg.properties?.occupancy === 'string' ? leg.properties.occupancy : leg.origin.properties?.occupancy)}
-          />
+          <CarriageStrip vehicle={vehicle} loading={isLoading} fallback={legOccupancy(leg)} />
+        </Box>
+      )}
+
+      {(mode === 'bus' || mode === 'lightrail') && (
+        <Box mt={2} bg="bg.muted" borderRadius="xl" p={3}>
+          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} size="md" />
         </Box>
       )}
 
@@ -91,37 +114,100 @@ function WalkLeg({ leg }: { leg: Leg }) {
   return (
     <HStack borderLeftWidth="4px" borderStyle="dotted" pl={3} color="fg.muted" fontSize="sm">
       <LuFootprints />
-      <Text>Walk {formatDuration(leg.duration ?? 0)} to {leg.destination.disassembledName ?? leg.destination.name}</Text>
+      <Text>
+        Walk {formatDuration(leg.duration ?? 0)} to {leg.destination.disassembledName ?? leg.destination.name}
+      </Text>
     </HStack>
   )
 }
 
 interface Props {
   journey?: Journey
+  vehicles?: Map<string, VehicleInfo>
+  vehiclesLoading?: boolean
+  isCurrent?: boolean
+  onToggleCurrent?: () => void
   onClose: () => void
 }
 
-export function JourneySheet({ journey, onClose }: Props) {
+const isImportant = (a: InfoLink) => a.priority === 'high' || a.priority === 'veryHigh'
+
+export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, onToggleCurrent, onClose }: Props) {
+  const [showInfo, setShowInfo] = useState(false)
   const alerts = journey ? journeyAlerts(journey) : []
+  const important = alerts.filter(isImportant)
+  const minor = alerts.filter((a) => !isImportant(a))
   return (
     <Drawer.Root open={!!journey} placement="bottom" onOpenChange={(e) => !e.open && onClose()}>
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
           <Drawer.Content borderTopRadius="3xl" maxH="92dvh" pb="env(safe-area-inset-bottom)">
-            <Drawer.Header>
-              <Drawer.Title>Trip details</Drawer.Title>
+            <Drawer.Header pr={12}>
+              <Flex align="center" gap={2} w="full">
+                <Drawer.Title flex={1}>Trip details</Drawer.Title>
+                {minor.length > 0 && (
+                  <Box position="relative">
+                    <IconButton
+                      aria-label={showInfo ? 'Hide service information' : 'Show service information'}
+                      aria-pressed={showInfo}
+                      size="sm"
+                      variant={showInfo ? 'subtle' : 'ghost'}
+                      onClick={() => setShowInfo((s) => !s)}
+                    >
+                      <LuInfo />
+                    </IconButton>
+                    <Box
+                      position="absolute"
+                      top="-2px"
+                      right="-2px"
+                      minW="16px"
+                      h="16px"
+                      px="4px"
+                      borderRadius="full"
+                      bg="blue.500"
+                      color="white"
+                      fontSize="10px"
+                      fontWeight="bold"
+                      textAlign="center"
+                      lineHeight="16px"
+                      pointerEvents="none"
+                    >
+                      {minor.length}
+                    </Box>
+                  </Box>
+                )}
+                {onToggleCurrent && (
+                  <Button
+                    size="sm"
+                    borderRadius="full"
+                    colorPalette="teal"
+                    variant={isCurrent ? 'solid' : 'outline'}
+                    onClick={onToggleCurrent}
+                  >
+                    {isCurrent ? <LuPinOff /> : <LuPin />}
+                    {isCurrent ? 'Following' : 'Follow'}
+                  </Button>
+                )}
+              </Flex>
             </Drawer.Header>
             <Drawer.Body>
               <Stack gap={4} pb={4}>
-                {alerts.length > 0 && (
+                {(important.length > 0 || (showInfo && minor.length > 0)) && (
                   <Stack gap={2}>
-                    {alerts.map((a, i) => (
-                      <AlertCard key={i} {...toAlertProps(a)} />
+                    {important.map((a, i) => (
+                      <AlertCard key={`i${i}`} {...toAlertProps(a)} />
                     ))}
+                    {showInfo && minor.map((a, i) => <AlertCard key={`m${i}`} {...toAlertProps(a)} />)}
                   </Stack>
                 )}
-                {journey?.legs.map((l, i) => (isTransit(l) ? <TransitLeg key={i} leg={l} /> : <WalkLeg key={i} leg={l} />))}
+                {journey?.legs.map((l, i) =>
+                  isTransit(l) ? (
+                    <TransitLeg key={i} leg={l} vehicles={vehicles} vehiclesLoading={vehiclesLoading} />
+                  ) : (
+                    <WalkLeg key={i} leg={l} />
+                  ),
+                )}
               </Stack>
             </Drawer.Body>
             <Drawer.CloseTrigger asChild>

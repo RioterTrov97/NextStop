@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { ErrorFallback } from './components/ErrorFallback'
 import { Home } from './routes/Home'
 
 const Plan = lazy(() => import('./routes/Plan'))
@@ -15,6 +16,7 @@ const wrap = (el: React.ReactNode) => <Suspense fallback={null}>{el}</Suspense>
 export const router = createBrowserRouter([
   {
     element: <AppShell />,
+    errorElement: <ErrorFallback />,
     children: [
       { path: '/', element: <Home /> },
       { path: '/plan', element: wrap(<Plan />) },

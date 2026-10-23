@@ -27,11 +27,24 @@ export default function StationBoard() {
       <Stack gap={3} p={4}>
         {platforms.length > 1 && (
           <HStack wrap="wrap" gap={2}>
-            <Button size="xs" borderRadius="full" variant={!platform ? 'solid' : 'outline'} colorPalette="teal" onClick={() => setPlatform(undefined)}>
+            <Button
+              size="xs"
+              borderRadius="full"
+              variant={!platform ? 'solid' : 'outline'}
+              colorPalette="teal"
+              onClick={() => setPlatform(undefined)}
+            >
               All platforms
             </Button>
             {platforms.map((p) => (
-              <Button key={p} size="xs" borderRadius="full" variant={platform === p ? 'solid' : 'outline'} colorPalette="teal" onClick={() => setPlatform(p)}>
+              <Button
+                key={p}
+                size="xs"
+                borderRadius="full"
+                variant={platform === p ? 'solid' : 'outline'}
+                colorPalette="teal"
+                onClick={() => setPlatform(p)}
+              >
                 Platform {p}
               </Button>
             ))}
@@ -39,7 +52,11 @@ export default function StationBoard() {
         )}
         {isLoading && [0, 1, 2, 3].map((i) => <Skeleton key={i} h="68px" borderRadius="xl" />)}
         {error && !data && <Text color="red.500">{(error as Error).message}</Text>}
-        {data && shown.length === 0 && <Text color="fg.muted" textAlign="center" py={8}>No departures found.</Text>}
+        {data && shown.length === 0 && (
+          <Text color="fg.muted" textAlign="center" py={8}>
+            No departures found.
+          </Text>
+        )}
         {shown.map((e, i) => {
           const t = e.transportation
           const dep = e.departureTimeEstimated ?? e.departureTimePlanned
@@ -48,14 +65,18 @@ export default function StationBoard() {
             <Flex key={i} bg="bg.panel" borderWidth="1px" borderRadius="xl" p={3} align="center" gap={3}>
               <LineBadge number={t?.number ?? t?.disassembledName} cls={t?.product?.class} />
               <Box flex={1} minW={0}>
-                <Text fontWeight="semibold" truncate>{t?.destination?.name ?? t?.description}</Text>
+                <Text fontWeight="semibold" truncate>
+                  {t?.destination?.name ?? t?.description}
+                </Text>
                 <HStack gap={2} fontSize="sm" color="fg.muted">
                   <span>{formatTime(dep)}</span>
                   {p && <span>Platform {p}</span>}
                   <DelayBadge planned={e.departureTimePlanned} estimated={e.departureTimeEstimated} realtime={e.isRealtimeControlled} />
                 </HStack>
               </Box>
-              <Text fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums">{countdown(dep, now)}</Text>
+              <Text fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums">
+                {countdown(dep, now)}
+              </Text>
             </Flex>
           )
         })}

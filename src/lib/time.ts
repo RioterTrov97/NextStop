@@ -20,7 +20,8 @@ export function toItd(d: Date): { itdDate: string; itdTime: string } {
 
 export function formatTime(iso?: string): string {
   if (!iso) return '--'
-  return timeFmt.format(new Date(iso)).replace(/\s?([ap])m/i, (_, x: string) => x.toLowerCase())
+  // ICU may emit a narrow no-break space before am/pm.
+  return timeFmt.format(new Date(iso)).replace(/\s/g, ' ').toLowerCase()
 }
 
 export const minutesBetween = (a: string | number | Date, b: string | number | Date) =>

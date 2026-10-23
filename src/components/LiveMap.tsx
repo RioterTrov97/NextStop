@@ -38,7 +38,7 @@ export default function LiveMap({ legs, vehicles, height = 220 }: Props) {
     <MapContainer center={[-33.8688, 151.2093]} zoom={12} style={{ height, borderRadius: 12, zIndex: 0 }} attributionControl>
       <TileLayer
         url={`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
       />
       <FitBounds points={all} />
       {lines.map((l, i) => (
@@ -53,7 +53,12 @@ export default function LiveMap({ legs, vehicles, height = 220 }: Props) {
         />
       ))}
       {stops.map((s, i) => (
-        <CircleMarker key={i} center={s.coord!} radius={5} pathOptions={{ color: '#fff', fillColor: '#0f172a', fillOpacity: 1, weight: 2 }} />
+        <CircleMarker
+          key={i}
+          center={s.coord!}
+          radius={5}
+          pathOptions={{ color: '#fff', fillColor: '#0f172a', fillOpacity: 1, weight: 2 }}
+        />
       ))}
       {vehicles
         .filter((v) => v.lat !== undefined && v.lon !== undefined)

@@ -14,7 +14,9 @@ const TABS = [
 export function AppShell() {
   const online = useOnline()
   const { pathname } = useLocation()
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
 
   return (
     <Box maxW="640px" mx="auto" minH="100dvh" pb="calc(76px + env(safe-area-inset-bottom))">
