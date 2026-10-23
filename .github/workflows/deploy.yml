@@ -26,13 +26,16 @@ jobs:
       # Builds the frontend (tsc + vite) into dist/, which the Worker serves as static assets.
       - run: npm run build
 
-      # Deploys the Worker (API) and the frontend assets together, and syncs the TfNSW key as a Worker secret.
+      # Deploys the Worker (API) and the frontend assets together.
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --domain ${{ vars.CUSTOM_DOMAIN }}
-          secrets: |
-            TFNSW_API_KEY
+          command: deploy --domain ${{ secrets.CUSTOM_DOMAIN }}
+
+      # Must run after deploy: the secrets API fails while the Worker doesn't exist yet.
+      - run: printf '%s' "$TFNSW_API_KEY" | npx wrangler secret put TFNSW_API_KEY
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TFNSW_API_KEY: ${{ secrets.TFNSW_API_KEY }}
