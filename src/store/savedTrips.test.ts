@@ -22,4 +22,15 @@ describe('savedTrips', () => {
     store.remove('B>A')
     expect(stored()).toEqual([])
   })
+
+  it('reorders by moving one trip to another position', async () => {
+    const { savedTrips: store } = await import('./savedTrips')
+    for (const id of ['A', 'B', 'C']) store.add({ fromId: id, fromName: id, toId: 'Z', toName: 'Z', modes: [] })
+
+    store.reorder('A>Z', 'C>Z')
+    expect(stored().map((t: { id: string }) => t.id)).toEqual(['B>Z', 'C>Z', 'A>Z'])
+
+    store.reorder('A>Z', 'B>Z')
+    expect(stored().map((t: { id: string }) => t.id)).toEqual(['A>Z', 'B>Z', 'C>Z'])
+  })
 })

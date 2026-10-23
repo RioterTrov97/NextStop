@@ -62,4 +62,4 @@ Open the deployed URL on a phone and use Add to Home Screen (iOS Safari) or Inst
 
 - API times are UTC; request dates and times are sent as Sydney local time.
 - Carriage loads exist only for Sydney Trains and Metro services that are running. The field numbers for the TfNSW carriage extension are in `worker/vehicles.ts` and should be checked against a live service.
-- Data: Transport for NSW Open Data, CC BY. Map tiles: OpenStreetMap contributors and CARTO.
+- Data: Transport for NSW Open Data, CC BY. Map tiles: MapTiler and OpenStreetMap contributors.

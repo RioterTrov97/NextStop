@@ -1,6 +1,9 @@
 import { Box, Button, Flex, HStack, IconButton, Image, Skeleton, Stack, Text, VStack } from '@chakra-ui/react'
-import { useState } from 'react'
-import { LuArrowLeftRight, LuPlus, LuTrash2 } from 'react-icons/lu'
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useState, type ReactNode } from 'react'
+import { LuGripVertical, LuPlus, LuTrash2 } from 'react-icons/lu'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTrips } from '../api/hooks'
 import { DelayBadge } from '../components/DelayBadge'
@@ -11,16 +14,17 @@ import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
 import { summarize, journeyComparator } from '../lib/journey'
-import { exclusionParams } from '../lib/lines'
+import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatTime } from '../lib/time'
 import { useCurrentTrip } from '../store/currentTrip'
 import { savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
+import { useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   const navigate = useNavigate()
   // Same query key as the trip results page, so opening a trip reuses this data.
-  const { data, isLoading, error } = useTrips({
+  const { data, isLoading, error, fetchStatus } = useTrips({
     from: trip.fromId,
     to: trip.toId,
     mode: 'dep',
@@ -36,6 +40,11 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   return (
     <Stack gap={0} px={2} pb={2}>
       {isLoading && <Skeleton h="44px" m={2} borderRadius="lg" />}
+      {!data && fetchStatus === 'paused' && (
+        <Text px={2} py={2} fontSize="sm" color="fg.muted">
+          Offline. Not saved on this device yet.
+        </Text>
+      )}
       {error && !data && (
         <Text px={2} py={2} fontSize="sm" color="red.500">
           {(error as Error).message}
@@ -79,13 +88,14 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   )
 }
 
-/** With more than two saved trips the card is just the route; live departures only load for one or two. */
-function SavedTripCard({ trip, now, compact }: { trip: SavedTrip; now: number; compact: boolean }) {
+/** Beyond the user's limit the card is just the route, so a long list doesn't fire a live request per trip. */
+function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: number; compact: boolean; handle?: ReactNode }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
 
   return (
     <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" overflow="hidden">
       <Flex align="center" p={4} pb={compact ? 4 : 2} gap={2}>
+        {handle}
         <Box asChild flex={1} minW={0}>
           <Link to={tripPath(trip)}>
             <Text fontWeight="bold" truncate>
@@ -93,12 +103,13 @@ function SavedTripCard({ trip, now, compact }: { trip: SavedTrip; now: number; c
             </Text>
             <Text fontSize="sm" color="fg.muted" truncate>
               to {trip.toName.split(',')[0]}
+              {trip.modes.length > 0 &&
+                ` · ${MODES.filter((m) => trip.modes.includes(m.key))
+                  .map((m) => m.label)
+                  .join(', ')}`}
             </Text>
           </Link>
         </Box>
-        <IconButton aria-label="Reverse trip" variant="ghost" size="sm" onClick={() => savedTrips.reverse(trip.id)}>
-          <LuArrowLeftRight />
-        </IconButton>
         <IconButton aria-label="Remove saved trip" variant="ghost" size="sm" colorPalette="red" onClick={() => setConfirmRemove(true)}>
           <LuTrash2 />
         </IconButton>
@@ -117,10 +128,58 @@ function SavedTripCard({ trip, now, compact }: { trip: SavedTrip; now: number; c
   )
 }
 
+function SortableTrip({ trip, now, compact, sortable }: { trip: SavedTrip; now: number; compact: boolean; sortable: boolean }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: trip.id })
+  return (
+    <Box
+      ref={setNodeRef}
+      position="relative"
+      zIndex={isDragging ? 1 : undefined}
+      opacity={isDragging ? 0.9 : 1}
+      shadow={isDragging ? 'lg' : undefined}
+      borderRadius="2xl"
+      style={{ transform: CSS.Transform.toString(transform && { ...transform, x: 0 }), transition }}
+    >
+      <SavedTripCard
+        trip={trip}
+        now={now}
+        compact={compact}
+        handle={
+          sortable && (
+            <IconButton
+              ref={setActivatorNodeRef}
+              aria-label="Drag to reorder"
+              variant="ghost"
+              size="sm"
+              ms={-2}
+              color="fg.muted"
+              cursor="grab"
+              touchAction="none"
+              {...attributes}
+              {...listeners}
+            >
+              <LuGripVertical />
+            </IconButton>
+          )
+        }
+      />
+    </Box>
+  )
+}
+
 export function Home() {
   const trips = useSavedTrips()
   const current = useCurrentTrip()
   const now = useNow(1000)
+  const { expandUpTo } = useSettings()
+  // The grip handle starts a drag after a small move, so taps and page scrolling elsewhere are unaffected.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id) savedTrips.reorder(String(active.id), String(over.id))
+  }
 
   return (
     <>
@@ -152,9 +211,27 @@ export function Home() {
           </Stack>
         ) : (
           <>
-            {trips.map((t) => (
-              <SavedTripCard key={t.id} trip={t} now={now} compact={trips.length > 2} />
-            ))}
+            <Box>
+              <Text fontSize="lg" fontWeight="bold">
+                Saved trips
+              </Text>
+              <Text fontSize="sm" color="fg.muted">
+                Tap a trip for live times{trips.length > 1 ? '. Drag the handle to reorder.' : '.'}
+              </Text>
+            </Box>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={trips.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                {trips.map((t) => (
+                  <SortableTrip
+                    key={t.id}
+                    trip={t}
+                    now={now}
+                    compact={!!current || trips.length > expandUpTo}
+                    sortable={trips.length > 1}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
             <HStack justify="center" pt={2}>
               <Button asChild variant="subtle" colorPalette="teal" borderRadius="xl">
                 <Link to="/plan">

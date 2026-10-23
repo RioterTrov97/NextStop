@@ -25,6 +25,8 @@ jobs:
 
       # Builds the frontend (tsc + vite) into dist/, which the Worker serves as static assets.
       - run: npm run build
+        env:
+          VITE_MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
 
       # Deploys the Worker (API) and the frontend assets together.
       - uses: cloudflare/wrangler-action@v3

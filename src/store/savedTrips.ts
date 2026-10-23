@@ -55,6 +55,17 @@ export const savedTrips = {
       ),
     )
   },
+  setModes(id: string, modes: string[]) {
+    write(read().map((t) => (t.id === id ? { ...t, modes } : t)))
+  },
+  reorder(activeId: string, overId: string) {
+    const list = [...read()]
+    const from = list.findIndex((t) => t.id === activeId)
+    const to = list.findIndex((t) => t.id === overId)
+    if (from < 0 || to < 0 || from === to) return
+    list.splice(to, 0, ...list.splice(from, 1))
+    write(list)
+  },
   move(id: string, dir: -1 | 1) {
     const list = [...read()]
     const i = list.findIndex((t) => t.id === id)

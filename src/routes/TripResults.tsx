@@ -5,6 +5,8 @@ import { useNavigate, useLocation, useParams, useSearchParams } from 'react-rout
 import { useJourneyVehicles, useTrips } from '../api/hooks'
 import { JourneyRow } from '../components/JourneyRow'
 import { JourneySheet } from '../components/JourneySheet'
+import { ModePicker } from '../components/ModePicker'
+import { NoConnection } from '../components/NoConnection'
 import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
@@ -41,7 +43,7 @@ export default function TripResults() {
   }
   const [selected, setSelected] = useState<number>()
 
-  const { data, isLoading, error, isFetching, isPlaceholderData, refetch } = useTrips({
+  const { data, isLoading, error, isFetching, isPlaceholderData, fetchStatus, refetch } = useTrips({
     from,
     to,
     mode,
@@ -61,6 +63,17 @@ export default function TripResults() {
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(visible)
 
   const swap = () => navigate(tripPath({ fromId: to, toId: from, fromName: toName, toName: fromName, modes }), { replace: true })
+
+  // Applies to this view and, for a saved trip, to the saved trip itself.
+  const changeModes = (next: string[]) => {
+    const extra: Record<string, string> = {}
+    for (const k of ['m', 'w']) {
+      const v = sp.get(k)
+      if (v) extra[k] = v
+    }
+    if (isSaved) savedTrips.setModes(tripId(from, to), next)
+    navigate(tripPath({ fromId: from, toId: to, fromName, toName, modes: next }, extra), { replace: true })
+  }
 
   return (
     <>
@@ -88,6 +101,8 @@ export default function TripResults() {
         }
       />
       <Stack gap={3} p={4}>
+        <ModePicker value={modes} onChange={changeModes} size="xs" />
+        {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
         {isLoading && [0, 1, 2].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
           <Stack align="center" py={8} gap={2}>

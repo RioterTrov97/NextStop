@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageHeader } from '../components/PageHeader'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
+import { EXPAND_OPTIONS, settings, useSettings } from '../store/settings'
 
 const THEMES = [
   ['system', 'System'],
@@ -15,6 +16,7 @@ const THEMES = [
 export default function Settings() {
   const { theme, setTheme } = useTheme()
   const saved = useSavedTrips()
+  const { expandUpTo } = useSettings()
   const [confirm, setConfirm] = useState<'trips' | 'cache'>()
 
   return (
@@ -36,6 +38,28 @@ export default function Settings() {
                 onClick={() => setTheme(k)}
               >
                 {label}
+              </Button>
+            ))}
+          </HStack>
+        </Box>
+
+        <Box>
+          <Text fontWeight="semibold">Saved trip cards</Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            Show upcoming departures on each card while you have up to this many saved trips. With more, cards show just the route.
+          </Text>
+          <HStack gap={2} wrap="wrap">
+            {EXPAND_OPTIONS.map((n) => (
+              <Button
+                key={n}
+                size="sm"
+                borderRadius="full"
+                colorPalette="teal"
+                variant={expandUpTo === n ? 'solid' : 'outline'}
+                aria-pressed={expandUpTo === n}
+                onClick={() => settings.set({ expandUpTo: n })}
+              >
+                {n === 0 ? 'Never' : n}
               </Button>
             ))}
           </HStack>
@@ -79,8 +103,8 @@ export default function Settings() {
             About
           </Text>
           <Text>
-            NextStop uses Transport for NSW Open Data under the Creative Commons Attribution licence. Map tiles by OpenStreetMap
-            contributors and CARTO. Carriage loads are only available for Sydney Trains and Metro services that are currently running.
+            NextStop uses Transport for NSW Open Data under the Creative Commons Attribution licence. Map tiles by MapTiler and
+            OpenStreetMap contributors. Carriage loads are only available for Sydney Trains and Metro services that are currently running.
           </Text>
         </Box>
       </Stack>

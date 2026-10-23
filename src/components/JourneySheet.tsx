@@ -6,6 +6,7 @@ import { useVehicles } from '../api/hooks'
 import type { InfoLink, Journey, Leg } from '../api/types'
 import { journeyAlerts, isTransit, legOccupancy, platformOf, vehicleModeForLeg } from '../lib/journey'
 import { lineColor } from '../lib/lines'
+import { isMapExpanded } from '../lib/mapState'
 import { formatDuration, formatTime } from '../lib/time'
 import { AlertCard, toAlertProps } from './AlertCard'
 import { CarriageStrip } from './CarriageStrip'
@@ -102,7 +103,7 @@ function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
       {(leg.coords?.length ?? 0) > 0 && (
         <Box mt={3}>
           <Suspense fallback={<Box h="220px" bg="bg.muted" borderRadius="xl" />}>
-            <LiveMap legs={[leg]} vehicles={vehicle ? [vehicle] : []} />
+            <LiveMap legs={[leg]} vehicles={vehicle ? [vehicle] : []} mode={mode} />
           </Suspense>
         </Box>
       )}
@@ -138,7 +139,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
   const important = alerts.filter(isImportant)
   const minor = alerts.filter((a) => !isImportant(a))
   return (
-    <Drawer.Root open={!!journey} placement="bottom" onOpenChange={(e) => !e.open && onClose()}>
+    <Drawer.Root open={!!journey} placement="bottom" onOpenChange={(e) => !e.open && !isMapExpanded() && onClose()}>
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
@@ -149,6 +150,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
                 {minor.length > 0 && (
                   <Box position="relative">
                     <IconButton
+                      ml="2"
                       aria-label={showInfo ? 'Hide service information' : 'Show service information'}
                       aria-pressed={showInfo}
                       size="sm"
@@ -159,8 +161,8 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
                     </IconButton>
                     <Box
                       position="absolute"
-                      top="-2px"
-                      right="-2px"
+                      top="0px"
+                      right="0px"
                       minW="16px"
                       h="16px"
                       px="4px"
@@ -211,7 +213,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
               </Stack>
             </Drawer.Body>
             <Drawer.CloseTrigger asChild>
-              <CloseButton position="absolute" top={3} right={3} />
+              <CloseButton position="absolute" top={5} right={2} />
             </Drawer.CloseTrigger>
           </Drawer.Content>
         </Drawer.Positioner>

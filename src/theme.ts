@@ -5,6 +5,8 @@ const config = defineConfig({
     'html, body, #root': { height: '100vh' },
     // iOS applies the rubber-band to the root element, so it must be disabled there too.
     'html, body': { overscrollBehavior: 'none' },
+    // Only the OSM fallback needs this; MapTiler ships a real dark style.
+    '.dark .tiles-invert .leaflet-tile-pane': { filter: 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' },
     body: {
       bg: 'bg',
       color: 'fg',
@@ -21,10 +23,10 @@ const config = defineConfig({
           200: { value: '#FED7AA' },
           300: { value: '#FDBA74' },
           400: { value: '#FB923C' },
-          500: { value: '#D95A0B' },
-          600: { value: '#C2410C' },
-          700: { value: '#9A3412' },
-          800: { value: '#7C2D12' },
+          500: { value: '#F97316' },
+          600: { value: '#EA6A12' },
+          700: { value: '#C2570C' },
+          800: { value: '#9A3F0C' },
           900: { value: '#431407' },
           950: { value: '#2A0C04' },
         },

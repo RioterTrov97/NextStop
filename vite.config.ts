@@ -28,7 +28,7 @@ export default defineConfig({
         name: 'NextStop',
         short_name: 'NextStop',
         description: 'Live Sydney train, metro, bus, ferry and light rail trips.',
-        theme_color: '#C2410C',
+        theme_color: '#EA6A12',
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
@@ -46,6 +46,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            // Map tiles seen once stay available offline.
+            urlPattern: /^https:\/\/(tile\.openstreetmap\.org|api\.maptiler\.com)\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'map-tiles',
+              expiration: { maxEntries: 300, maxAgeSeconds: 7 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

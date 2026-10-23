@@ -3,13 +3,14 @@ import { useState } from 'react'
 import { useAlerts } from '../api/hooks'
 import type { Alert } from '../api/types'
 import { AlertCard } from '../components/AlertCard'
+import { NoConnection } from '../components/NoConnection'
 import { PageHeader } from '../components/PageHeader'
 import { useSavedTrips } from '../store/savedTrips'
 
 const RANK: Record<string, number> = { veryHigh: 0, high: 1, normal: 2, low: 3, veryLow: 4 }
 
 export default function Alerts() {
-  const { data, isLoading, error } = useAlerts()
+  const { data, isLoading, error, fetchStatus } = useAlerts()
   const trips = useSavedTrips()
   const [all, setAll] = useState(false)
 
@@ -35,6 +36,7 @@ export default function Alerts() {
             </Button>
           </HStack>
         )}
+        {!data && fetchStatus === 'paused' && <NoConnection what="the alert list" />}
         {isLoading && [0, 1, 2].map((i) => <Skeleton key={i} h="64px" borderRadius="lg" />)}
         {error && !data && <Text color="red.500">{(error as Error).message}</Text>}
         {data && list.length === 0 && (

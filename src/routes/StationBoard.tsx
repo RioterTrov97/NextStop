@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { useDepartures } from '../api/hooks'
 import { DelayBadge } from '../components/DelayBadge'
 import { LineBadge } from '../components/LineBadge'
+import { NoConnection } from '../components/NoConnection'
 import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
@@ -15,7 +16,7 @@ export default function StationBoard() {
   const { id = '' } = useParams()
   const [sp] = useSearchParams()
   const now = useNow(1000)
-  const { data, isLoading, error } = useDepartures(id)
+  const { data, isLoading, error, fetchStatus } = useDepartures(id)
   const [platform, setPlatform] = useState<string>()
 
   const events = data ?? []
@@ -51,6 +52,7 @@ export default function StationBoard() {
             ))}
           </HStack>
         )}
+        {!data && fetchStatus === 'paused' && <NoConnection what="this station" />}
         {isLoading && [0, 1, 2, 3].map((i) => <Skeleton key={i} h="68px" borderRadius="xl" />)}
         {error && !data && <Text color="red.500">{(error as Error).message}</Text>}
         {data && shown.length === 0 && (

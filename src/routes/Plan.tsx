@@ -4,7 +4,7 @@ import { LuArrowUpDown } from 'react-icons/lu'
 import { useNavigate } from 'react-router-dom'
 import type { Place } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { MODES } from '../lib/lines'
+import { ModePicker } from '../components/ModePicker'
 import { tripPath } from '../lib/paths'
 import { StopSearch } from '../components/StopSearch'
 
@@ -64,24 +64,7 @@ export default function Plan() {
           <Text fontSize="sm" fontWeight="semibold" mb={2}>
             Transport
           </Text>
-          <HStack wrap="wrap" gap={2}>
-            {MODES.map((m) => {
-              const on = modes.includes(m.key)
-              return (
-                <Button
-                  key={m.key}
-                  size="sm"
-                  borderRadius="full"
-                  variant={on ? 'solid' : 'outline'}
-                  colorPalette="teal"
-                  aria-pressed={on}
-                  onClick={() => setModes(on ? modes.filter((x) => x !== m.key) : [...modes, m.key])}
-                >
-                  {m.label}
-                </Button>
-              )
-            })}
-          </HStack>
+          <ModePicker value={modes} onChange={setModes} />
           <Text fontSize="xs" color="fg.muted" mt={1}>
             {modes.length ? 'Only the selected modes.' : 'All modes.'}
           </Text>

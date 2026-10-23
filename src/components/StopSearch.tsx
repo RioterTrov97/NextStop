@@ -32,7 +32,7 @@ const modeLabels = (modes?: number[]) =>
 export function StopSearch({ label, value, onChange }: Props) {
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
-  const { data, isFetching } = useStopSearch(text)
+  const { data, isFetching, fetchStatus } = useStopSearch(text)
   const recents = useRecentStops()
 
   const select = (p: Place) => {
@@ -101,6 +101,22 @@ export function StopSearch({ label, value, onChange }: Props) {
         onBlur={() => setOpen(false)}
       />
       {isFetching && <Spinner size="sm" position="absolute" right={4} top={4} color="fg.muted" />}
+      {open && text.trim() && !data && fetchStatus === 'paused' && (
+        <Text
+          position="absolute"
+          zIndex="dropdown"
+          mt={1}
+          w="full"
+          bg="bg.panel"
+          color="fg.muted"
+          borderRadius="xl"
+          shadow="lg"
+          p={3}
+          fontSize="sm"
+        >
+          Offline. Search needs a connection, but quick picks and recent stops still work.
+        </Text>
+      )}
       {open && !text.trim() && (
         <Flex
           position="absolute"
