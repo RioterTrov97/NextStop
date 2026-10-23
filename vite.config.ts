@@ -2,6 +2,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { themeColor } from './shared/brand.ts'
 
 export default defineConfig({
   build: {
@@ -19,6 +20,10 @@ export default defineConfig({
     },
   },
   plugins: [
+    {
+      name: 'brand-theme-color',
+      transformIndexHtml: (html) => html.replaceAll('%THEME_COLOR%', themeColor),
+    },
     react(),
     cloudflare(),
     VitePWA({
@@ -28,7 +33,7 @@ export default defineConfig({
         name: 'NextStop',
         short_name: 'NextStop',
         description: 'Live Sydney train, metro, bus, ferry and light rail trips.',
-        theme_color: '#EA6A12',
+        theme_color: themeColor,
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',

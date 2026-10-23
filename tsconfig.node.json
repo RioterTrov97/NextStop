@@ -7,9 +7,10 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "pwa-assets.config.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "pwa-assets.config.ts", "shared/brand.ts", "scripts/generate-logo.ts"]
 }

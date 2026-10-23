@@ -1,3 +1,4 @@
+import { brand } from '../shared/brand'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
 const config = defineConfig({
@@ -18,17 +19,7 @@ const config = defineConfig({
       // The "teal" palette name is kept so existing colorPalette="teal" usages pick up the accent colour.
       colors: {
         teal: {
-          50: { value: '#FFF7ED' },
-          100: { value: '#FFEDD5' },
-          200: { value: '#FED7AA' },
-          300: { value: '#FDBA74' },
-          400: { value: '#FB923C' },
-          500: { value: '#F97316' },
-          600: { value: '#EA6A12' },
-          700: { value: '#C2570C' },
-          800: { value: '#9A3F0C' },
-          900: { value: '#431407' },
-          950: { value: '#2A0C04' },
+          ...Object.fromEntries(Object.entries(brand).map(([k, v]) => [k, { value: v }])),
         },
       },
       fonts: {

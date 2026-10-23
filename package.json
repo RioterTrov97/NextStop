@@ -12,7 +12,7 @@
     "lint": "oxlint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "icons": "pwa-assets-generator",
+    "icons": "node scripts/generate-logo.ts && pwa-assets-generator",
     "deploy": "npm run build && wrangler deploy"
   },
   "keywords": [],
