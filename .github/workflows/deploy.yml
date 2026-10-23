@@ -1,0 +1,38 @@
+name: Deploy to Cloudflare
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vitest run
+
+      # Builds the frontend (tsc + vite) into dist/, which the Worker serves as static assets.
+      - run: npm run build
+
+      # Deploys the Worker (API) and the frontend assets together, and syncs the TfNSW key as a Worker secret.
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --domain ${{ vars.CUSTOM_DOMAIN }}
+          secrets: |
+            TFNSW_API_KEY
+        env:
+          TFNSW_API_KEY: ${{ secrets.TFNSW_API_KEY }}

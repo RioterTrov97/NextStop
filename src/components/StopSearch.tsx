@@ -1,36 +1,21 @@
 import { Box, Button, Flex, Input, Spinner, Text } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuMapPin } from 'react-icons/lu'
-import { searchStops } from '../api/client'
 import { useStopSearch } from '../api/hooks'
 import type { Place } from '../api/types'
 import { MODES } from '../lib/lines'
+import { QUICK_STATIONS } from '../lib/stations'
 import { recentStops, useRecentStops } from '../store/recentStops'
 
-// Fixed display order. `query` is what the stop finder resolves to a station.
-const DEFAULT_PICKS = [
-  { label: 'Lidcombe', query: 'Lidcombe Station' },
-  { label: 'Wynyard', query: 'Wynyard Station' },
-  { label: 'Strathfield', query: 'Strathfield Station' },
-  { label: 'Campsie', query: 'Campsie Station' },
-  { label: 'Burwood', query: 'Burwood Station' },
-  { label: 'Central', query: 'Central Station' },
-  { label: 'Town Hall', query: 'Town Hall Station' },
-  { label: 'Redfern', query: 'Redfern Station' },
-  { label: 'Parramatta', query: 'Parramatta Station' },
-]
+const QUICK_COUNT = QUICK_STATIONS.length
 
-const QUICK_COUNT = DEFAULT_PICKS.length
-
-const isRail = (p: Place) => !!p.modes?.some((m) => m === 1 || m === 2)
-const isDefault = (p: Place) => DEFAULT_PICKS.some((d) => p.name.toLowerCase().startsWith(d.query.toLowerCase()))
-const shortName = (p: Place) => p.disassembledName ?? p.name.split(',')[0]
+const isDefault = (p: Place) => QUICK_STATIONS.some((d) => d.id === p.id)
+const shortName = (p: Place) => (p.disassembledName ?? p.name.split(',')[0]).replace(/ Station$/, '')
 
 interface QuickPick {
   key: string
   label: string
-  place?: Place
-  query?: string
+  place: Place
 }
 
 interface Props {
@@ -49,7 +34,6 @@ export function StopSearch({ label, value, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const { data, isFetching } = useStopSearch(text)
   const recents = useRecentStops()
-  const [resolving, setResolving] = useState<string>()
 
   const select = (p: Place) => {
     recentStops.add(p)
@@ -58,22 +42,10 @@ export function StopSearch({ label, value, onChange }: Props) {
     setText('')
   }
 
-  const pickDefault = async (query: string) => {
-    setResolving(query)
-    try {
-      const results = await searchStops(query)
-      const best = results.find(isRail) ?? results[0]
-      if (best) select(best)
-    } finally {
-      setResolving(undefined)
-    }
-  }
-
   // Newly used non-default stations push the last defaults off; the list stays at QUICK_COUNT.
-  const quick: QuickPick[] = [
-    ...recents.filter((p) => !isDefault(p)).map((p) => ({ key: p.id, label: shortName(p), place: p })),
-    ...DEFAULT_PICKS.map((d) => ({ key: d.query, label: d.label, query: d.query })),
-  ].slice(0, QUICK_COUNT)
+  const quick: QuickPick[] = [...recents.filter((p) => !isDefault(p)), ...QUICK_STATIONS]
+    .slice(0, QUICK_COUNT)
+    .map((p) => ({ key: p.id, label: shortName(p), place: p }))
 
   if (value && !open) {
     return (
@@ -147,15 +119,7 @@ export function StopSearch({ label, value, onChange }: Props) {
           onMouseDown={(e) => e.preventDefault()}
         >
           {quick.map((q) => (
-            <Button
-              key={q.key}
-              size="sm"
-              variant="outline"
-              borderRadius="full"
-              loading={!!q.query && resolving === q.query}
-              disabled={!!resolving}
-              onClick={() => (q.place ? select(q.place) : pickDefault(q.query!))}
-            >
+            <Button key={q.key} size="sm" variant="outline" borderRadius="full" onClick={() => select(q.place)}>
               {q.label}
             </Button>
           ))}

@@ -1,14 +1,19 @@
 import { ChakraProvider } from '@chakra-ui/react'
 import { QueryClient } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { PersistQueryClientProvider, type Persister } from '@tanstack/react-query-persist-client'
 import { del, get, set } from 'idb-keyval'
 import { ThemeProvider } from 'next-themes'
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './router'
 import { system } from './theme'
+
+const Devtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-query-devtools').then((m) => ({ default: () => <m.ReactQueryDevtools buttonPosition="bottom-right" /> })),
+    )
+  : () => null
 
 const DAY = 24 * 3600_000
 
@@ -35,7 +40,9 @@ createRoot(document.getElementById('root')!).render(
           }}
         >
           <RouterProvider router={router} />
-          <ReactQueryDevtools buttonPosition="relative" />
+          <Suspense fallback={null}>
+            <Devtools />
+          </Suspense>
         </PersistQueryClientProvider>
       </ChakraProvider>
     </ThemeProvider>

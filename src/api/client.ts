@@ -2,9 +2,16 @@ import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
 import { toAddInfoDate, toItd } from '../lib/time'
 import type { Alert, Journey, Place, StopEvent } from './types'
 
+// Manual refresh asks the proxy to skip its edge cache for a few seconds.
+let freshUntil = 0
+export const requestFresh = () => {
+  freshUntil = Date.now() + 3000
+}
+
 async function get<T>(path: string, params: Record<string, string | undefined>, signal?: AbortSignal): Promise<T> {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) if (v !== undefined) qs.set(k, v)
+  if (Date.now() < freshUntil) qs.set('fresh', '1')
   const res = await fetch(`/api/${path}?${qs}`, { signal })
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string }

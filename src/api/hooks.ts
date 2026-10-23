@@ -25,12 +25,22 @@ export function useStopSearch(text: string) {
   })
 }
 
+export const REALTIME_MS = 15_000
+const REALTIME_KEYS = new Set(['trips', 'departures', 'vehicles'])
+export const isRealtimeKey = (key: readonly unknown[]) => REALTIME_KEYS.has(key[0] as string)
+
 export function useTrips(q: TripQuery, enabled = true) {
   return useQuery({
     queryKey: ['trips', q.from, q.to, q.mode, q.when?.getTime() ?? 'now', q.count ?? 6, q.excluded],
     queryFn: ({ signal }) => fetchTrips(q, signal),
     enabled,
-    refetchInterval: 30_000,
+    staleTime: REALTIME_MS,
+    refetchInterval: REALTIME_MS,
+    // Growing the list keeps the current trips on screen instead of dropping back to skeletons.
+    placeholderData: (prev, prevQuery) => {
+      const k = prevQuery?.queryKey
+      return k && k[1] === q.from && k[2] === q.to && k[3] === q.mode && k[4] === (q.when?.getTime() ?? 'now') ? prev : undefined
+    },
   })
 }
 
@@ -38,7 +48,8 @@ export function useDepartures(stopId: string) {
   return useQuery({
     queryKey: ['departures', stopId],
     queryFn: ({ signal }) => fetchDepartures(stopId, signal),
-    refetchInterval: 20_000,
+    staleTime: REALTIME_MS,
+    refetchInterval: REALTIME_MS,
   })
 }
 
@@ -51,7 +62,8 @@ export function useVehicles(mode: VehicleMode | undefined, trips: string[], enab
     queryKey: ['vehicles', mode, trips],
     queryFn: ({ signal }) => fetchVehicles(mode!, trips, signal),
     enabled: enabled && !!mode && trips.length > 0,
-    refetchInterval: 15_000,
+    staleTime: REALTIME_MS,
+    refetchInterval: REALTIME_MS,
     // Live positions are worthless once stale, so never persist them.
     meta: { persist: false },
   })
@@ -64,8 +76,8 @@ function useRailVehicles(mode: 'train' | 'metro', trips: string[]) {
     queryKey: ['vehicles', mode],
     queryFn: ({ signal }) => fetchVehicles(mode, [], signal),
     enabled: trips.length > 0,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: REALTIME_MS,
+    refetchInterval: REALTIME_MS,
     select: (all) => all.filter((v) => wanted.has(v.tripId)),
     meta: { persist: false },
   })

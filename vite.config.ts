@@ -4,6 +4,20 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        // Stable vendor chunks cache across deploys, so app-code releases don't re-download Chakra or React.
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id)) return 'react'
+          if (/node_modules\/(@chakra-ui|@emotion|@ark-ui|@zag-js|next-themes)\//.test(id)) return 'chakra'
+          if (id.includes('node_modules/@tanstack/') || id.includes('node_modules/idb-keyval')) return 'query'
+          return undefined
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     cloudflare(),

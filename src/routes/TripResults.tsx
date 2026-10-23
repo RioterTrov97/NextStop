@@ -1,17 +1,22 @@
 import { Button, IconButton, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuArrowLeftRight, LuBookmark, LuBookmarkCheck } from 'react-icons/lu'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useJourneyVehicles, useTrips } from '../api/hooks'
 import { JourneyRow } from '../components/JourneyRow'
 import { JourneySheet } from '../components/JourneySheet'
 import { PageHeader } from '../components/PageHeader'
+import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
 import { journeyComparator, summarize } from '../lib/journey'
 import { exclusionParams } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { savedTrips, tripId, useSavedTrips } from '../store/savedTrips'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
+
+const PAGE = 4
+// Trips loaded per route, so returning from another tab restores the longer list.
+const loadedCounts = new Map<string, number>()
 
 export default function TripResults() {
   const { from = '', to = '' } = useParams()
@@ -27,10 +32,23 @@ export default function TripResults() {
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
-  const [count, setCount] = useState(6)
+  const { pathname, search } = useLocation()
+  const routeKey = pathname + search
+  const [count, setCountState] = useState(() => loadedCounts.get(routeKey) ?? 6)
+  const setCount = (n: number) => {
+    loadedCounts.set(routeKey, n)
+    setCountState(n)
+  }
   const [selected, setSelected] = useState<number>()
 
-  const { data, isLoading, error, isFetching, refetch } = useTrips({ from, to, mode, when, excluded: exclusionParams(modes), count })
+  const { data, isLoading, error, isFetching, isPlaceholderData, refetch } = useTrips({
+    from,
+    to,
+    mode,
+    when,
+    excluded: exclusionParams(modes),
+    count,
+  })
   const isSaved = saved.some((t) => t.id === tripId(from, to))
   const visible = (data ?? [])
     .filter((j) => {
@@ -52,6 +70,7 @@ export default function TripResults() {
         back
         action={
           <>
+            <RefreshButton />
             <IconButton aria-label="Swap direction" variant="ghost" color="white" onClick={swap}>
               <LuArrowLeftRight />
             </IconButton>
@@ -87,7 +106,7 @@ export default function TripResults() {
           <JourneyRow key={`${summarize(j).depPlanned}-${i}`} journey={j} now={now} vehicles={vehicles} onClick={() => setSelected(i)} />
         ))}
         {data && (
-          <Button variant="subtle" borderRadius="xl" loading={isFetching} onClick={() => setCount((c) => c + 4)}>
+          <Button variant="subtle" borderRadius="xl" loading={isFetching && isPlaceholderData} onClick={() => setCount(count + PAGE)}>
             Show later trips
           </Button>
         )}

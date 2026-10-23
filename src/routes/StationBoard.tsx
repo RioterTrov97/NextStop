@@ -5,6 +5,7 @@ import { useDepartures } from '../api/hooks'
 import { DelayBadge } from '../components/DelayBadge'
 import { LineBadge } from '../components/LineBadge'
 import { PageHeader } from '../components/PageHeader'
+import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
 import { countdown, formatTime } from '../lib/time'
 
@@ -23,7 +24,7 @@ export default function StationBoard() {
 
   return (
     <>
-      <PageHeader title={sp.get('n')?.split(',')[0] ?? 'Station'} subtitle="Next departures" back />
+      <PageHeader title={sp.get('n')?.split(',')[0] ?? 'Station'} subtitle="Next departures" back action={<RefreshButton />} />
       <Stack gap={3} p={4}>
         {platforms.length > 1 && (
           <HStack wrap="wrap" gap={2}>

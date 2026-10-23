@@ -1,5 +1,5 @@
 import { Box, Button, Flex, HStack, IconButton, Input, Stack, Text } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LuArrowUpDown } from 'react-icons/lu'
 import { useNavigate } from 'react-router-dom'
 import type { Place } from '../api/types'
@@ -12,13 +12,24 @@ type When = 'now' | 'dep' | 'arr'
 
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
+// Module-level so the form survives switching tabs, which unmounts this page.
+let draft: { modes: string[]; when: When; at: string } = {
+  modes: [],
+  when: 'now',
+  at: toLocalInput(new Date()),
+}
+
 export default function Plan() {
   const navigate = useNavigate()
   const [from, setFrom] = useState<Place>()
   const [to, setTo] = useState<Place>()
-  const [modes, setModes] = useState<string[]>([])
-  const [when, setWhen] = useState<When>('now')
-  const [at, setAt] = useState(() => toLocalInput(new Date()))
+  const [modes, setModes] = useState<string[]>(draft.modes)
+  const [when, setWhen] = useState<When>(draft.when)
+  const [at, setAt] = useState(draft.at)
+
+  useEffect(() => {
+    draft = { modes, when, at }
+  }, [modes, when, at])
 
   const swap = () => {
     setFrom(to)

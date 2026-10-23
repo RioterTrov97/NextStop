@@ -12,12 +12,12 @@ const TP_VERSION = '10.2.1.42'
 const TP_ENDPOINTS: Record<string, { ttl: number; params: RegExp }> = {
   stop_finder: { ttl: 86400, params: /^(type_sf|name_sf|TfNSWSF|anyObjFilter_sf|anyMaxSizeHitList)$/ },
   trip: {
-    ttl: 20,
+    ttl: 10,
     params:
       /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|wheelchair)$/,
   },
   departure_mon: {
-    ttl: 20,
+    ttl: 10,
     params: /^(mode|type_dm|name_dm|itdDate|itdTime|departureMonitorMacro|TfNSWDM|excludedMeans|exclMOT_\d+)$/,
   },
   add_info: { ttl: 60, params: /^(filterDateValid|filterPublicationStatus|filterMOTType|filterPNLineSub|itdDateDayMonthYear)$/ },
@@ -37,10 +37,10 @@ const json = (body: unknown, status = 200, extra: HeadersInit = {}) =>
     headers: { 'content-type': 'application/json; charset=utf-8', ...extra },
   })
 
-async function cached(request: Request, ctx: ExecutionContext, ttl: number, produce: () => Promise<Response>) {
+async function cached(request: Request, ctx: ExecutionContext, ttl: number, bypass: boolean, produce: () => Promise<Response>) {
   const cache = caches.default
   const key = new Request(request.url, { method: 'GET' })
-  const hit = await cache.match(key)
+  const hit = bypass ? undefined : await cache.match(key)
   if (hit) return hit
   const res = await produce()
   if (res.ok) {
@@ -72,7 +72,7 @@ function handleTp(endpoint: string, url: URL, request: Request, env: Env, ctx: E
   target.searchParams.set('version', TP_VERSION)
 
   const cacheReq = new Request(target.toString().replace(API, url.origin), request)
-  return cached(cacheReq, ctx, cfg.ttl, async () => {
+  return cached(cacheReq, ctx, cfg.ttl, url.searchParams.has('fresh'), async () => {
     const res = await fetch(target, { headers: { Authorization: `apikey ${env.TFNSW_API_KEY}`, Accept: 'application/json' } })
     return res.ok ? new Response(res.body, { headers: { 'content-type': 'application/json' } }) : upstreamError(res.status)
   })
@@ -88,7 +88,7 @@ async function handleVehicles(url: URL, request: Request, env: Env, ctx: Executi
   const rail = mode === 'train' || mode === 'metro'
 
   const cacheReq = new Request(`${url.origin}/api/vehicles?mode=${mode}&trips=${rail ? '' : [...trips].sort().join(',')}`, request)
-  const res = await cached(cacheReq, ctx, rail ? 15 : 10, async () => {
+  const res = await cached(cacheReq, ctx, 10, url.searchParams.has('fresh'), async () => {
     const results = await Promise.all(
       feeds.map(async (path) => {
         const res = await fetch(API + path, {

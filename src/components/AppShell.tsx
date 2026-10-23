@@ -1,22 +1,30 @@
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { useEffect } from 'react'
 import { LuBell, LuClock, LuSettings, LuTrainFront } from 'react-icons/lu'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useOnline } from '../lib/hooks'
 
+const inTrips = (p: string) => p === '/' || p.startsWith('/plan') || p.startsWith('/trip/')
+
 const TABS = [
-  { to: '/', label: 'Trips', icon: LuTrainFront, end: true },
-  { to: '/departures', label: 'Departures', icon: LuClock },
-  { to: '/alerts', label: 'Alerts', icon: LuBell },
-  { to: '/settings', label: 'Settings', icon: LuSettings },
+  { to: '/', label: 'Trips', icon: LuTrainFront, match: inTrips },
+  { to: '/departures', label: 'Departures', icon: LuClock, match: (p: string) => p.startsWith('/departures') || p.startsWith('/station/') },
+  { to: '/alerts', label: 'Alerts', icon: LuBell, match: (p: string) => p.startsWith('/alerts') },
+  { to: '/settings', label: 'Settings', icon: LuSettings, match: (p: string) => p.startsWith('/settings') },
 ]
+
+// Where the user last was inside the Trips section, so switching tabs and back doesn't drop them to Home.
+let lastTrips = '/'
 
 export function AppShell() {
   const online = useOnline()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
+  useEffect(() => {
+    if (inTrips(pathname)) lastTrips = pathname + search
+  }, [pathname, search])
 
   return (
     <Box maxW="640px" mx="auto" minH="100dvh" pb="calc(76px + env(safe-area-inset-bottom))">
@@ -40,18 +48,21 @@ export function AppShell() {
         justify="center"
       >
         <Flex w="full" maxW="640px">
-          {TABS.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} style={{ flex: 1 }}>
-              {({ isActive }) => (
+          {TABS.map(({ to, label, icon: Icon, match }) => {
+            const isActive = match(pathname)
+            // Tapping the active Trips tab goes home; from another tab it returns to the last trips page.
+            const target = to === '/' ? (isActive ? '/' : lastTrips) : to
+            return (
+              <Link key={to} to={target} style={{ flex: 1 }} aria-current={isActive ? 'page' : undefined}>
                 <Flex direction="column" align="center" gap="2px" py={2} color={isActive ? 'teal.500' : 'fg.muted'}>
                   <Icon size={22} />
                   <Text fontSize="xs" fontWeight={isActive ? 'semibold' : 'normal'}>
                     {label}
                   </Text>
                 </Flex>
-              )}
-            </NavLink>
-          ))}
+              </Link>
+            )
+          })}
         </Flex>
       </Flex>
     </Box>
