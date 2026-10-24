@@ -1,12 +1,13 @@
 import { Box, Button, Flex, HStack, Image, Stack, Text } from '@chakra-ui/react'
 import { clear as clearCache } from 'idb-keyval'
 import { useTheme } from 'next-themes'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { LuEraser, LuTriangleAlert } from 'react-icons/lu'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/ModePicker'
 import { WalkOptions } from '../components/WalkOptions'
 import { PageHeader } from '../components/PageHeader'
+import { exportBackup, importBackup } from '../lib/backup'
 import { history, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
 import { EXPAND_OPTIONS, HISTORY_OPTIONS, settings, useSettings } from '../store/settings'
@@ -35,6 +36,8 @@ export default function Settings() {
   const searchHistory = useSearchHistory()
   const { expandUpTo, preferredModes, historyLimit } = useSettings()
   const [confirm, setConfirm] = useState<'trips' | 'cache' | 'reset' | 'tripHistory' | 'searchHistory'>()
+  const [backupMsg, setBackupMsg] = useState<string>()
+  const fileInput = useRef<HTMLInputElement>(null)
 
   return (
     <>
@@ -137,6 +140,46 @@ export default function Settings() {
               </Button>
             ))}
           </HStack>
+        </Box>
+
+        <Box>
+          <Text fontWeight="semibold">Backup</Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            Removing the app from your home screen erases its data. Save a backup file of your saved trips, history and settings to restore
+            after reinstalling.
+          </Text>
+          <HStack gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => exportBackup().catch((e: Error) => setBackupMsg(`Could not export backup: ${e.message}`))}
+            >
+              Export backup
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
+              Import backup
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                importBackup(file).then(
+                  () => location.reload(),
+                  (err: Error) => setBackupMsg(err.message),
+                )
+              }}
+            />
+          </HStack>
+          {backupMsg && (
+            <Text fontSize="xs" color="red.fg" mt={2}>
+              {backupMsg}
+            </Text>
+          )}
         </Box>
 
         <Box>
