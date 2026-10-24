@@ -24,7 +24,7 @@ export interface Settings {
   historyLimit: number
 }
 
-export const DEFAULT_SETTINGS: Settings = { expandUpTo: 3, preferredModes: [], maxEndWalk: 0, walkPace: 'normal', historyLimit: 25 }
+export const DEFAULT_SETTINGS: Settings = { expandUpTo: 3, preferredModes: [], maxEndWalk: 5, walkPace: 'normal', historyLimit: 25 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
 export const HISTORY_OPTIONS = [10, 25, 50, 100]
 export const EXPAND_OPTIONS = [0, 1, 2, 3, 4, 5]
