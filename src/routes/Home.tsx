@@ -34,7 +34,7 @@ import { PageHeader } from '../components/PageHeader'
 import { WalkBadge } from '../components/WalkBadge'
 import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
-import { summarize, journeyComparator, trailingWalk } from '../lib/journey'
+import { isTransit, summarize, journeyComparator, trailingWalk } from '../lib/journey'
 import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatTime } from '../lib/time'
@@ -92,36 +92,44 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
         const s = summarize(j)
         const dep = s.depEstimated ?? s.depPlanned
         const arr = s.arrEstimated ?? s.arrPlanned
-        const cls = s.firstTransit?.transportation
+        const transit = j.legs.filter(isTransit)
         const tailWalk = trailingWalk(j, walkPace)
         return (
           <Flex
-            key={i}
             as="button"
             align="center"
-            gap={3}
+            gap={2}
             px={2}
             py={2}
             borderRadius="lg"
             onClick={() => setSelected(i)}
             _hover={{ bg: 'bg.muted' }}
           >
-            <Box minW="88px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
-              <Text fontWeight="bold">{formatTime(dep)}</Text>
+            <Box minW="72px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
+              <Text fontSize="sm" fontWeight="bold">
+                {formatTime(dep)}
+              </Text>
               {arr && (
-                <Text color="fg.muted" fontSize="xs">
+                <Text color="fg.muted" fontSize="2xs">
                   arrives {formatTime(arr)}
                 </Text>
               )}
             </Box>
-            <HStack gap={1.5} flexShrink={0}>
-              <LineBadge number={cls?.number ?? cls?.disassembledName} cls={cls?.product?.class} size="sm" />
+            <HStack gap={1} flex="1 1 96px" minW="96px" wrap="wrap">
+              {transit.map((leg, legIndex) => (
+                <LineBadge
+                  key={legIndex}
+                  number={leg.transportation?.number ?? leg.transportation?.disassembledName}
+                  cls={leg.transportation?.product?.class}
+                  size="sm"
+                />
+              ))}
               {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size="sm" />}
             </HStack>
-            <Box flex={1} textAlign="start">
-              <DelayBadge planned={s.depPlanned} estimated={s.depEstimated} realtime={s.realtime} />
+            <Box flexShrink={0} textAlign="start">
+              <DelayBadge planned={s.depPlanned} estimated={s.depEstimated} realtime={s.realtime} size="sm" />
             </Box>
-            <Text fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums">
+            <Text flexShrink={0} fontSize="sm" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums">
               {countdown(dep, now)}
             </Text>
           </Flex>

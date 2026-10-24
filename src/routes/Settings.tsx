@@ -56,8 +56,7 @@ export default function Settings() {
       <Stack gap={6} p={4}>
         <Stack gap={4} p={4} bg="bg.panel" borderWidth="1px" borderRadius="2xl" shadow="xs">
           <Flex align="center" gap={3}>
-            <Image src="/logo-mark-light.svg" alt="" h="40px" _dark={{ display: 'none' }} />
-            <Image src="/logo-mark.svg" alt="" h="40px" display="none" _dark={{ display: 'block' }} />
+            <Image src="/logo-mark-light.svg" alt="" h="40px" />
             <Box flex={1}>
               <Text fontWeight="bold" lineHeight="short">
                 NextStop
