@@ -1,3 +1,4 @@
+import { useRealtimeScheduler } from '../api/realtime'
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { useEffect } from 'react'
 import { LuBell, LuClock, LuSettings, LuTrainFront } from 'react-icons/lu'
@@ -18,6 +19,7 @@ let lastTrips = '/'
 
 export function AppShell() {
   const online = useOnline()
+  useRealtimeScheduler()
   const { pathname, search } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)

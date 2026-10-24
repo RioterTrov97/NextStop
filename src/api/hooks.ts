@@ -25,6 +25,7 @@ export function useStopSearch(text: string) {
   })
 }
 
+// Live queries have no timer of their own: useRealtimeScheduler refetches them all together every REALTIME_MS.
 export const REALTIME_MS = 15_000
 const REALTIME_KEYS = new Set(['trips', 'departures', 'vehicles'])
 export const isRealtimeKey = (key: readonly unknown[]) => REALTIME_KEYS.has(key[0] as string)
@@ -35,7 +36,6 @@ export function useTrips(q: TripQuery, enabled = true) {
     queryFn: ({ signal }) => fetchTrips(q, signal),
     enabled,
     staleTime: REALTIME_MS,
-    refetchInterval: REALTIME_MS,
     // Growing the list keeps the current trips on screen instead of dropping back to skeletons.
     placeholderData: (prev, prevQuery) => {
       const k = prevQuery?.queryKey
@@ -49,7 +49,6 @@ export function useDepartures(stopId: string) {
     queryKey: ['departures', stopId],
     queryFn: ({ signal }) => fetchDepartures(stopId, signal),
     staleTime: REALTIME_MS,
-    refetchInterval: REALTIME_MS,
   })
 }
 
@@ -63,7 +62,6 @@ export function useVehicles(mode: VehicleMode | undefined, trips: string[], enab
     queryFn: ({ signal }) => fetchVehicles(mode!, trips, signal),
     enabled: enabled && !!mode && trips.length > 0,
     staleTime: REALTIME_MS,
-    refetchInterval: REALTIME_MS,
     // Live positions are worthless once stale, so never persist them.
     meta: { persist: false },
   })
@@ -77,7 +75,6 @@ function useRailVehicles(mode: 'train' | 'metro', trips: string[]) {
     queryFn: ({ signal }) => fetchVehicles(mode, [], signal),
     enabled: trips.length > 0,
     staleTime: REALTIME_MS,
-    refetchInterval: REALTIME_MS,
     select: (all) => all.filter((v) => wanted.has(v.tripId)),
     meta: { persist: false },
   })
