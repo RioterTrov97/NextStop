@@ -49,13 +49,21 @@ npm run deploy
 
 Open the deployed URL on a phone and use Add to Home Screen (iOS Safari) or Install (Chrome on Android).
 
+## PWA
+
+- Home screen shortcuts (Plan trip, Trip history, Alerts) are defined in the manifest in `vite.config.ts`. iOS ignores manifest shortcuts; Android and desktop show them.
+- The service worker updates automatically and checks for a new version whenever the app returns to the foreground (`src/main.tsx`), which matters for iOS standalone apps that are rarely cold-started.
+- If the frontend is served through a CDN such as CloudFront, send `Cache-Control: no-cache` for `index.html`, `sw.js`, `registerSW.js` and `manifest.webmanifest`, allow long caching for `/assets/*`, and invalidate the first three after each deploy. Otherwise installed apps keep the old version.
+- Removing the app from the iOS home screen erases its local data. Use Settings, Backup to export a JSON file first and import it after reinstalling.
+
 ## Project layout
 
 - `worker/` proxy: allow-listed Trip Planner endpoints, edge caching, protobuf vehicle decoding
 - `shared/` types shared by the Worker and the app
 - `src/api/` API client and TanStack Query hooks
 - `src/lib/` time (Sydney timezone), line colours, occupancy, journey helpers
-- `src/store/` saved trips, stored in `localStorage`
+- `src/store/` saved trips, history and settings, stored in `localStorage`
+- `src/lib/backup.ts` export/import of that local data as a JSON file
 - `src/components/`, `src/routes/` UI
 
 ## Notes

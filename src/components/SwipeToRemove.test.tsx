@@ -26,7 +26,7 @@ const swipe = (el: HTMLElement, to: number) => {
 }
 
 describe('SwipeToRemove', () => {
-  it('removes when released past halfway', () => {
+  it('removes when released past the threshold', () => {
     vi.useFakeTimers()
     const { el, onRemove } = setup()
     swipe(el, 520)
@@ -35,10 +35,10 @@ describe('SwipeToRemove', () => {
     vi.useRealTimers()
   })
 
-  it('keeps the row when released before halfway', () => {
+  it('keeps the row when released before the threshold', () => {
     vi.useFakeTimers()
     const { el, onRemove } = setup()
-    swipe(el, 480)
+    swipe(el, 420)
     vi.advanceTimersByTime(300)
     expect(onRemove).not.toHaveBeenCalled()
     vi.useRealTimers()
