@@ -4,9 +4,10 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities'
 import { useState, type ReactNode } from 'react'
 import { LuArrowRight, LuBookmark, LuBookmarkPlus, LuGripVertical, LuChevronRight, LuPlus } from 'react-icons/lu'
-import { Link, useNavigate } from 'react-router-dom'
-import { useTrips } from '../api/hooks'
+import { Link } from 'react-router-dom'
+import { useTrips, useJourneyVehicles } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
+import { JourneySheet } from '../components/JourneySheet'
 import { DelayBadge } from '../components/DelayBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { CurrentTripCard } from '../components/CurrentTripCard'
@@ -19,15 +20,16 @@ import { summarize, journeyComparator, trailingWalk } from '../lib/journey'
 import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatTime } from '../lib/time'
-import { useCurrentTrip } from '../store/currentTrip'
+import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { SwipeToRemove } from '../components/SwipeToRemove'
 import { dedupeRoutes, history, routeKey, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
 import { useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const navigate = useNavigate()
   const { maxEndWalk } = useSettings()
+  const current = useCurrentTrip()
+  const [selected, setSelected] = useState<number>()
   // Same query key as the trip results page, so opening a trip reuses this data.
   const { data, isLoading, error, fetchStatus } = useTrips({
     from: trip.fromId,
@@ -42,6 +44,10 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
       return new Date(s.depEstimated ?? s.depPlanned ?? 0).getTime() > now - 60_000
     })
     .sort(journeyComparator('dep'))
+  const selectedJourney = selected === undefined ? undefined : upcoming[selected]
+  // Only fetches vehicle positions while the sheet is open.
+  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(selectedJourney ? [selectedJourney] : [])
+  const isCurrent = !!selectedJourney && !!current && tripKey(selectedJourney) === tripKey(current.journey)
 
   return (
     <Stack gap={0} px={2} pb={2}>
@@ -76,7 +82,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
             px={2}
             py={2}
             borderRadius="lg"
-            onClick={() => navigate(tripPath(trip))}
+            onClick={() => setSelected(i)}
             _hover={{ bg: 'bg.muted' }}
           >
             <Box minW="88px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
@@ -100,6 +106,34 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
           </Flex>
         )
       })}
+      <JourneySheet
+        journey={selectedJourney}
+        vehicles={vehicles}
+        vehiclesLoading={vehiclesLoading}
+        isCurrent={isCurrent}
+        onToggleCurrent={() => {
+          if (!selectedJourney) return
+          if (isCurrent) currentTrip.clear()
+          else {
+            currentTrip.set({
+              journey: selectedJourney,
+              fromId: trip.fromId,
+              toId: trip.toId,
+              fromName: trip.fromName,
+              toName: trip.toName,
+            })
+            history.addTrip({
+              fromId: trip.fromId,
+              toId: trip.toId,
+              fromName: trip.fromName,
+              toName: trip.toName,
+              modes: [],
+              journey: selectedJourney,
+            })
+          }
+        }}
+        onClose={() => setSelected(undefined)}
+      />
     </Stack>
   )
 }

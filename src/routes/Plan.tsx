@@ -112,7 +112,7 @@ export default function Plan() {
           <Text fontSize="sm" fontWeight="semibold" mb={2}>
             Transport
           </Text>
-          <ModePicker value={modes} onChange={setModes} />
+          <ModePicker value={modes} onChange={setModes} size="xs" />
           <Text fontSize="xs" color="fg.muted" mt={1}>
             {modes.length ? 'Only the selected modes.' : 'All modes.'}
           </Text>

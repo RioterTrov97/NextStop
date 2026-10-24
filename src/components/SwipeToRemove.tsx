@@ -49,7 +49,7 @@ export function SwipeToRemove({
       opacity={gone ? 0 : 1}
       transition="opacity 0.18s"
       tabIndex={-1}
-      onKeyDown={(e) => e.key === 'Delete' && onRemove()}
+      onKeyDown={(e) => e.key === 'Delete' && e.currentTarget.contains(e.target as Node) && onRemove()}
     >
       <Flex
         position="absolute"
@@ -68,13 +68,15 @@ export function SwipeToRemove({
         touchAction="pan-y"
         style={{ transform: `translateX(${dx}px)`, transition: dragging ? 'none' : 'transform 0.18s ease-out' }}
         onPointerDown={(e) => {
+          // React bubbles events from portals (dialogs, sheets) through the tree; only the row itself may start a swipe.
+          if (!e.currentTarget.contains(e.target as Node)) return
           if ((e.target as HTMLElement).closest('[data-no-swipe]')) return
           start.current = { x: e.clientX, y: e.clientY, locked: false }
           moved.current = false
         }}
         onPointerMove={(e) => {
           const s = start.current
-          if (!s) return
+          if (!s || !e.currentTarget.contains(e.target as Node)) return
           const mx = e.clientX - s.x
           if (!s.locked) {
             if (Math.abs(mx) < 8) return
@@ -90,11 +92,15 @@ export function SwipeToRemove({
           dxRef.current = mx
           setDx(mx)
         }}
-        onPointerUp={() => start.current?.locked && finish(Math.abs(dxRef.current) > (rowRef.current?.offsetWidth ?? 0) * ratio)}
+        onPointerUp={() => {
+          // A tap never locks, so clear it here or later pointer moves elsewhere would continue this gesture.
+          if (start.current?.locked) finish(Math.abs(dxRef.current) > (rowRef.current?.offsetWidth ?? 0) * ratio)
+          else start.current = null
+        }}
         onDragStart={(e) => e.preventDefault()}
         onPointerCancel={() => start.current && finish(false)}
         onClickCapture={(e) => {
-          if (moved.current) {
+          if (moved.current && e.currentTarget.contains(e.target as Node)) {
             e.preventDefault()
             e.stopPropagation()
             moved.current = false
