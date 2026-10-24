@@ -189,7 +189,7 @@ export function Home() {
         action={
           <>
             {current && <RefreshButton />}
-            <Image src="/logo.svg" alt="" boxSize="40px" borderRadius="lg" />
+            <Image src="/logo-mark.svg" alt="" h="34px" />
           </>
         }
       />

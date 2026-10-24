@@ -1,15 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { brand, logoGradient } from '../shared/brand.ts'
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NextStop">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="${logoGradient[0]}"/>
-      <stop offset="1" stop-color="${logoGradient[1]}"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <ellipse cx="256" cy="452" rx="120" ry="12" fill="#000" fill-opacity=".14"/>
+const train = (shadow: boolean) => `${shadow ? `  <ellipse cx="256" cy="452" rx="120" ry="12" fill="#000" fill-opacity=".14"/>` : ''}
   <path d="M196 396L156 448M316 396L356 448" stroke="#fff" stroke-opacity=".9" stroke-width="16" stroke-linecap="round"/>
   <path d="M176 426h160" stroke="#fff" stroke-opacity=".5" stroke-width="12" stroke-linecap="round"/>
   <rect x="132" y="72" width="248" height="324" rx="72" fill="#fff"/>
@@ -21,6 +13,22 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role=
   <circle cx="310" cy="338" r="22" fill="${brand[500]}"/>
   <circle cx="202" cy="338" r="9" fill="#fff" fill-opacity=".85"/>
   <circle cx="310" cy="338" r="9" fill="#fff" fill-opacity=".85"/>
+`
+
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NextStop">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${logoGradient[0]}"/>
+      <stop offset="1" stop-color="${logoGradient[1]}"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+${train(true)}
 </svg>
 `
 writeFileSync(new URL('../public/logo.svg', import.meta.url), svg)
+const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="120 60 272 400" role="img" aria-label="NextStop">
+${train(false)}
+</svg>
+`
+writeFileSync(new URL('../public/logo-mark.svg', import.meta.url), mark)
