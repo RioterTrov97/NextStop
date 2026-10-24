@@ -14,7 +14,7 @@ const TP_ENDPOINTS: Record<string, { ttl: number; params: RegExp }> = {
   trip: {
     ttl: 10,
     params:
-      /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|wheelchair)$/,
+      /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|wheelchair|changeSpeed)$/,
   },
   departure_mon: {
     ttl: 10,

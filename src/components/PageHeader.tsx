@@ -7,11 +7,13 @@ interface Props {
   title: string
   subtitle?: string
   back?: boolean
+  /** Where Back goes; defaults to the previous page. */
+  backTo?: string
   action?: ReactNode
   children?: ReactNode
 }
 
-export function PageHeader({ title, subtitle, back, action, children }: Props) {
+export function PageHeader({ title, subtitle, back, backTo, action, children }: Props) {
   const navigate = useNavigate()
   return (
     <Box
@@ -29,7 +31,14 @@ export function PageHeader({ title, subtitle, back, action, children }: Props) {
     >
       <Flex align="center" gap={2}>
         {back && (
-          <IconButton aria-label="Back" variant="ghost" color="white" size="sm" ms={-2} onClick={() => navigate(-1)}>
+          <IconButton
+            aria-label="Back"
+            variant="ghost"
+            color="white"
+            size="sm"
+            ms={-2}
+            onClick={() => (backTo ? navigate(backTo, { replace: true }) : navigate(-1))}
+          >
             <LuChevronLeft />
           </IconButton>
         )}

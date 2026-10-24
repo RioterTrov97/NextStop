@@ -5,11 +5,11 @@ const config = defineConfig({
   globalCss: {
     'html, body, #root': { height: '100vh' },
     // iOS applies the rubber-band to the root element, so it must be disabled there too.
-    'html, body': { overscrollBehavior: 'none' },
+    // The canvas must also match the body, or content taller than the viewport spills onto a different colour.
+    'html, body': { overscrollBehavior: 'none', bg: 'bg' },
     // Only the OSM fallback needs this; MapTiler ships a real dark style.
     '.dark .tiles-invert .leaflet-tile-pane': { filter: 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' },
     body: {
-      bg: 'bg',
       color: 'fg',
       WebkitTapHighlightColor: 'transparent',
     },

@@ -37,7 +37,7 @@ window.addEventListener('storage', (e) => {
 })
 
 /** Drop the map geometry so the snapshot stays small enough for localStorage. */
-const slim = (j: Journey): Journey => ({
+export const slim = (j: Journey): Journey => ({
   ...j,
   legs: j.legs.map(({ coords: _coords, footPathInfo: _foot, stopSequence, ...leg }) => ({
     ...leg,

@@ -5,6 +5,11 @@ import { REALTIME_MS, isRealtimeKey } from './hooks'
 let nextAt = Date.now() + REALTIME_MS
 export const getNextRefreshAt = () => nextAt
 
+/** Restarts the countdown, e.g. after the user changes what is being shown. */
+export const resetRefreshTimer = () => {
+  nextAt = Date.now() + REALTIME_MS
+}
+
 const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => number }) =>
   isRealtimeKey(q.queryKey) && q.getObserversCount() > 0
 
@@ -31,10 +36,15 @@ export function useRealtimeScheduler() {
       }
       if (document.visibilityState === 'visible' && Date.now() >= nextAt) void refreshRealtime(qc)
     }
+    // Any live query starting to fetch (new route, changed modes, ...) restarts the countdown.
+    const unsubscribe = qc.getQueryCache().subscribe((e) => {
+      if (e.type === 'updated' && e.action.type === 'fetch' && isRealtimeKey(e.query.queryKey)) resetRefreshTimer()
+    })
     const id = setInterval(tick, 500)
     document.addEventListener('visibilitychange', tick)
     return () => {
       clearInterval(id)
+      unsubscribe()
       document.removeEventListener('visibilitychange', tick)
     }
   }, [qc])

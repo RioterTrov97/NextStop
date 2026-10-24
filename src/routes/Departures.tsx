@@ -1,6 +1,7 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import { useNavigate } from 'react-router-dom'
 import type { Place } from '../api/types'
+import { LiveTabs } from '../components/LiveTabs'
 import { PageHeader } from '../components/PageHeader'
 import { StopSearch } from '../components/StopSearch'
 import { useSavedTrips } from '../store/savedTrips'
@@ -18,7 +19,9 @@ export default function Departures() {
 
   return (
     <>
-      <PageHeader title="Departures" subtitle="Live board for any station or stop" />
+      <PageHeader title="Live" subtitle="Departures and alerts">
+        <LiveTabs />
+      </PageHeader>
       <Stack gap={4} p={4}>
         <StopSearch label="Search a station or stop" onChange={(p?: Place) => p && open(p.id, p.name)} />
         {recent.size > 0 && (

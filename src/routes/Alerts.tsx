@@ -4,6 +4,7 @@ import { useAlerts } from '../api/hooks'
 import type { Alert } from '../api/types'
 import { AlertCard } from '../components/AlertCard'
 import { NoConnection } from '../components/NoConnection'
+import { LiveTabs } from '../components/LiveTabs'
 import { PageHeader } from '../components/PageHeader'
 import { useSavedTrips } from '../store/savedTrips'
 
@@ -24,7 +25,9 @@ export default function Alerts() {
 
   return (
     <>
-      <PageHeader title="Alerts" subtitle="Disruptions and notices" />
+      <PageHeader title="Live" subtitle="Departures and alerts">
+        <LiveTabs />
+      </PageHeader>
       <Stack gap={3} p={4}>
         {trips.length > 0 && (
           <HStack gap={2}>

@@ -1,5 +1,8 @@
 import { Button, IconButton, Skeleton, Stack, Text } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { requestFresh } from '../api/client'
+import { refreshRealtime } from '../api/realtime'
 import { LuArrowLeftRight, LuBookmark, LuBookmarkCheck, LuTrainFront } from 'react-icons/lu'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useJourneyVehicles, useTrips } from '../api/hooks'
@@ -11,9 +14,11 @@ import { NoConnection } from '../components/NoConnection'
 import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { useNow } from '../lib/hooks'
-import { journeyComparator, summarize } from '../lib/journey'
+import { journeyComparator, summarize, trailingWalk } from '../lib/journey'
 import { exclusionParams } from '../lib/lines'
 import { tripPath } from '../lib/paths'
+import { useSettings } from '../store/settings'
+import { history } from '../store/history'
 import { savedTrips, tripId, useSavedTrips } from '../store/savedTrips'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 
@@ -32,6 +37,7 @@ export default function TripResults() {
   const fromName = sp.get('fn') ?? from
   const toName = sp.get('tn') ?? to
   const modes = sp.get('modes')?.split(',').filter(Boolean) ?? []
+  const { maxEndWalk } = useSettings()
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
@@ -44,6 +50,18 @@ export default function TripResults() {
   }
   const [selected, setSelected] = useState<number>()
 
+  // Changing the route (swap, new modes) refetches live data now, even when a cached copy is still fresh.
+  const qc = useQueryClient()
+  const firstRoute = useRef(true)
+  useEffect(() => {
+    if (firstRoute.current) {
+      firstRoute.current = false
+      return
+    }
+    requestFresh()
+    void refreshRealtime(qc)
+  }, [routeKey, qc])
+
   const { data, isLoading, error, isFetching, isPlaceholderData, fetchStatus, refetch } = useTrips({
     from,
     to,
@@ -53,7 +71,9 @@ export default function TripResults() {
     count,
   })
   const isSaved = saved.some((t) => t.id === tripId(from, to))
+  const hiddenByWalk = (data ?? []).filter((j) => (trailingWalk(j)?.durationSec ?? 0) > maxEndWalk * 60).length
   const visible = (data ?? [])
+    .filter((j) => (trailingWalk(j)?.durationSec ?? 0) <= maxEndWalk * 60)
     .filter((j) => {
       if (when) return true
       const s = summarize(j)
@@ -69,7 +89,10 @@ export default function TripResults() {
 
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(visible)
 
-  const swap = () => navigate(tripPath({ fromId: to, toId: from, fromName: toName, toName: fromName, modes }), { replace: true })
+  const swap = () => {
+    history.addSearch({ fromId: to, toId: from, fromName: toName, toName: fromName, modes: [] })
+    navigate(tripPath({ fromId: to, toId: from, fromName: toName, toName: fromName, modes }), { replace: true })
+  }
 
   // Applies to this view and, for a saved trip, to the saved trip itself.
   const changeModes = (next: string[]) => {
@@ -109,6 +132,13 @@ export default function TripResults() {
       />
       <Stack gap={3} p={4}>
         <ModePicker value={modes} onChange={changeModes} size="xs" />
+        {hiddenByWalk > 0 && (
+          <Text fontSize="xs" color="fg.muted">
+            {hiddenByWalk} {hiddenByWalk === 1 ? 'trip is' : 'trips are'} hidden because{' '}
+            {maxEndWalk === 0 ? 'they end with a walk' : `the walk at the end is over ${maxEndWalk} min`}. Tap the footprints icon to allow
+            longer walks.
+          </Text>
+        )}
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
         {(isLoading || settling) && [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
@@ -151,7 +181,10 @@ export default function TripResults() {
           const j = selected === undefined ? undefined : visible[selected]
           if (!j) return
           if (current && tripKey(j) === tripKey(current.journey)) currentTrip.clear()
-          else currentTrip.set({ journey: j, fromId: from, toId: to, fromName, toName })
+          else {
+            currentTrip.set({ journey: j, fromId: from, toId: to, fromName, toName })
+            history.addTrip({ fromId: from, toId: to, fromName, toName, modes: [], journey: j })
+          }
         }}
         onClose={() => setSelected(undefined)}
       />

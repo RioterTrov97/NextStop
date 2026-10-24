@@ -5,6 +5,16 @@ import { occupancyFromEnum, occupancyFromName, type OccupancyLevel } from './occ
 
 export const isTransit = (l: Leg) => (l.transportation?.product?.class ?? 99) < 99
 
+const MIN_TAIL_WALK_SEC = 120
+
+/** The walk after the last ride, ignoring short in-station transfers. */
+export function trailingWalk(j: Journey): { durationSec: number; to: string } | undefined {
+  let sec = 0
+  for (let i = j.legs.length - 1; i >= 0 && !isTransit(j.legs[i]); i--) sec += j.legs[i].duration ?? 0
+  const last = j.legs[j.legs.length - 1]
+  return sec >= MIN_TAIL_WALK_SEC && !isTransit(last) ? { durationSec: sec, to: last.destination.name ?? '' } : undefined
+}
+
 export interface JourneySummary {
   firstTransit?: Leg
   depPlanned?: string
@@ -21,8 +31,15 @@ export function summarize(j: Journey): JourneySummary {
   const firstTransit = transit[0]
   const last = j.legs[j.legs.length - 1]
   const dep = firstTransit?.origin ?? j.legs[0].origin
-  const arrEstimated = last.destination.arrivalTimeEstimated
-  const arrPlanned = last.destination.arrivalTimePlanned
+  const tail = trailingWalk(j)
+  // Walking legs can lack their own times, so the arrival is the last ride's arrival plus the walk.
+  const arrival = (t: 'arrivalTimeEstimated' | 'arrivalTimePlanned') => {
+    if (last.destination[t]) return last.destination[t]
+    const lastRide = transit[transit.length - 1]?.destination[t]
+    return lastRide && tail ? new Date(new Date(lastRide).getTime() + tail.durationSec * 1000).toISOString() : lastRide
+  }
+  const arrEstimated = arrival('arrivalTimeEstimated')
+  const arrPlanned = arrival('arrivalTimePlanned')
   // Door-to-door time, so waits between legs count (summing leg durations would hide them).
   const start = j.legs[0].origin.departureTimeEstimated ?? j.legs[0].origin.departureTimePlanned
   const end = arrEstimated ?? arrPlanned

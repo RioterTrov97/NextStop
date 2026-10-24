@@ -1,4 +1,4 @@
-import { Box, Button, CloseButton, Drawer, Flex, HStack, IconButton, Portal, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, CloseButton, Drawer, Flex, IconButton, Portal, Stack, Text } from '@chakra-ui/react'
 import { Suspense, lazy, useState } from 'react'
 import { LuFootprints, LuInfo, LuPin, LuPinOff } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
@@ -38,7 +38,7 @@ function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
   const color = lineColor(t?.number, t?.product?.class)
 
   return (
-    <Box borderLeftWidth="4px" pl={3} style={{ borderColor: color }}>
+    <Box bg="bg.subtle" borderWidth="1px" borderLeftWidth="5px" borderRadius="xl" p={3} style={{ borderLeftColor: color }}>
       <Flex align="center" gap={2} wrap="wrap">
         <LineBadge number={t?.number ?? t?.disassembledName} cls={t?.product?.class} />
         <Text fontWeight="semibold" flex={1} minW={0}>
@@ -111,14 +111,56 @@ function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
   )
 }
 
-function WalkLeg({ leg }: { leg: Leg }) {
+function WalkLeg({ leg, isFinal }: { leg: Leg; isFinal: boolean }) {
+  // The walk that ends the trip opens on the map; shorter in-station walks stay collapsed.
+  const [showMap, setShowMap] = useState(isFinal)
+  const canMap = (leg.coords?.length ?? 0) > 1 && (leg.duration ?? 0) >= 120
+  const long = isFinal && (leg.duration ?? 0) >= 120
   return (
-    <HStack borderLeftWidth="4px" borderStyle="dotted" pl={3} color="fg.muted" fontSize="sm">
-      <LuFootprints />
-      <Text>
-        Walk {formatDuration(leg.duration ?? 0)} to {leg.destination.disassembledName ?? leg.destination.name}
-      </Text>
-    </HStack>
+    <Box
+      bg={long ? 'orange.subtle' : 'bg.subtle'}
+      borderWidth="1px"
+      borderColor={long ? 'orange.muted' : undefined}
+      borderRadius="xl"
+      p={3}
+      fontSize="sm"
+    >
+      <Flex align="center" gap={3}>
+        <Flex
+          boxSize="32px"
+          borderRadius="full"
+          bg={long ? 'orange.solid' : 'bg.emphasized'}
+          color={long ? 'white' : 'fg.muted'}
+          align="center"
+          justify="center"
+          flexShrink={0}
+        >
+          <LuFootprints />
+        </Flex>
+        <Box flex={1} minW={0}>
+          {long && (
+            <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="orange.fg">
+              WALK TO YOUR DESTINATION
+            </Text>
+          )}
+          <Text fontWeight="semibold">
+            Walk {formatDuration(leg.duration ?? 0)} to {leg.destination.disassembledName ?? leg.destination.name}
+          </Text>
+        </Box>
+        {canMap && (
+          <Box as="button" color="teal.500" fontWeight="semibold" flexShrink={0} onClick={() => setShowMap((v) => !v)}>
+            {showMap ? 'Hide map' : 'Show map'}
+          </Box>
+        )}
+      </Flex>
+      {canMap && showMap && (
+        <Box mt={3}>
+          <Suspense fallback={<Box h="200px" bg="bg.muted" borderRadius="xl" />}>
+            <LiveMap legs={[leg]} vehicles={[]} height={200} />
+          </Suspense>
+        </Box>
+      )}
+    </Box>
   )
 }
 
@@ -207,7 +249,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
                   isTransit(l) ? (
                     <TransitLeg key={i} leg={l} vehicles={vehicles} vehiclesLoading={vehiclesLoading} />
                   ) : (
-                    <WalkLeg key={i} leg={l} />
+                    <WalkLeg key={i} leg={l} isFinal={i === journey.legs.length - 1} />
                   ),
                 )}
               </Stack>

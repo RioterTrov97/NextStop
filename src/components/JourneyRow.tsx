@@ -2,12 +2,13 @@ import { Box, Flex, HStack, Text } from '@chakra-ui/react'
 import { LuTriangleAlert } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import type { Journey } from '../api/types'
-import { isTransit, journeyAlerts, legOccupancy, platformOf, summarize, vehicleModeForLeg } from '../lib/journey'
+import { isTransit, journeyAlerts, legOccupancy, platformOf, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
 import { MiniTrain } from './MiniTrain'
 import { VehicleLoad } from './VehicleLoad'
+import { WalkBadge } from './WalkBadge'
 
 interface Props {
   journey: Journey
@@ -22,6 +23,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
   const arr = s.arrEstimated ?? s.arrPlanned
   const alerts = journeyAlerts(journey).filter((a) => a.priority === 'high' || a.priority === 'veryHigh')
   const transit = journey.legs.filter(isTransit)
+  const tailWalk = trailingWalk(journey)
   const platform = s.firstTransit ? platformOf(s.firstTransit) : undefined
   const origin = s.firstTransit?.origin
   const station = (origin?.disassembledName ?? origin?.name ?? '').split(',')[0].replace(/ (Station|Platform).*$/i, '')
@@ -71,6 +73,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
               size={tileSize}
             />
           ))}
+          {tailWalk && <WalkBadge seconds={tailWalk.durationSec} size={tileSize} />}
           <DelayBadge
             planned={s.depPlanned}
             estimated={s.depEstimated}

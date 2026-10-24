@@ -9,6 +9,7 @@ import { lineColor } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { currentTrip, tripKey, type CurrentTrip } from '../store/currentTrip'
+import { JourneySheet } from './JourneySheet'
 import { DelayBadge } from './DelayBadge'
 import { ConfirmDialog } from './ConfirmDialog'
 import { LineBadge } from './LineBadge'
@@ -144,6 +145,7 @@ function WalkRow({ leg }: { leg: Leg }) {
 
 export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number }) {
   const [confirmClear, setConfirmClear] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const planned = summarize(trip.journey).depPlanned
   const { data } = useTrips({
     from: trip.fromId,
@@ -155,7 +157,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   })
   // Prefer the live version of the same trip so delays and platforms stay current.
   const journey = data?.find((j) => tripKey(j) === tripKey(trip.journey)) ?? trip.journey
-  const { vehicles } = useJourneyVehicles([journey])
+  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey])
 
   const s = summarize(journey)
   const dep = s.depEstimated ?? s.depPlanned
@@ -171,7 +173,19 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   const steps = pendingSteps(buildSteps(journey.legs), now)
 
   return (
-    <Box bg="bg.panel" borderRadius="2xl" borderWidth="2px" borderColor="teal.500" p={4}>
+    <Box
+      bg="bg.panel"
+      borderRadius="2xl"
+      borderWidth="2px"
+      borderColor="teal.500"
+      p={4}
+      mb={2}
+      cursor="pointer"
+      onClick={(e) => {
+        // Buttons and links inside the card keep their own behaviour.
+        if (!(e.target as HTMLElement).closest('button, a, [role="dialog"]')) setDetailOpen(true)
+      }}
+    >
       <Flex align="center" justify="space-between" mb={1}>
         <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="teal.500">
           CURRENT TRIP
@@ -229,6 +243,17 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
           See other trips
         </Link>
       </Button>
+      <JourneySheet
+        journey={detailOpen ? journey : undefined}
+        vehicles={vehicles}
+        vehiclesLoading={vehiclesLoading}
+        isCurrent
+        onToggleCurrent={() => {
+          setDetailOpen(false)
+          currentTrip.clear()
+        }}
+        onClose={() => setDetailOpen(false)}
+      />
     </Box>
   )
 }

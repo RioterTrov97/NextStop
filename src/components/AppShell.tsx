@@ -1,7 +1,7 @@
 import { useRealtimeScheduler } from '../api/realtime'
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { useEffect } from 'react'
-import { LuBell, LuClock, LuSettings, LuTrainFront } from 'react-icons/lu'
+import { LuHistory, LuRadio, LuSettings, LuTrainFront } from 'react-icons/lu'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useOnline } from '../lib/hooks'
 
@@ -9,8 +9,13 @@ const inTrips = (p: string) => p === '/' || p.startsWith('/plan') || p.startsWit
 
 const TABS = [
   { to: '/', label: 'Trips', icon: LuTrainFront, match: inTrips },
-  { to: '/departures', label: 'Departures', icon: LuClock, match: (p: string) => p.startsWith('/departures') || p.startsWith('/station/') },
-  { to: '/alerts', label: 'Alerts', icon: LuBell, match: (p: string) => p.startsWith('/alerts') },
+  { to: '/history', label: 'History', icon: LuHistory, match: (p: string) => p.startsWith('/history') },
+  {
+    to: '/alerts',
+    label: 'Live',
+    icon: LuRadio,
+    match: (p: string) => p.startsWith('/departures') || p.startsWith('/station/') || p.startsWith('/alerts'),
+  },
   { to: '/settings', label: 'Settings', icon: LuSettings, match: (p: string) => p.startsWith('/settings') },
 ]
 

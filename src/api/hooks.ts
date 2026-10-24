@@ -1,3 +1,4 @@
+import { useSettings } from '../store/settings'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
@@ -30,9 +31,11 @@ export const REALTIME_MS = 15_000
 const REALTIME_KEYS = new Set(['trips', 'departures', 'vehicles'])
 export const isRealtimeKey = (key: readonly unknown[]) => REALTIME_KEYS.has(key[0] as string)
 
-export function useTrips(q: TripQuery, enabled = true) {
+export function useTrips(query: TripQuery, enabled = true) {
+  const { walkPace } = useSettings()
+  const q = { ...query, walkPace }
   return useQuery({
-    queryKey: ['trips', q.from, q.to, q.mode, q.when?.getTime() ?? 'now', q.count ?? 6, q.excluded],
+    queryKey: ['trips', q.from, q.to, q.mode, q.when?.getTime() ?? 'now', q.count ?? 6, q.excluded, walkPace],
     queryFn: ({ signal }) => fetchTrips(q, signal),
     enabled,
     staleTime: REALTIME_MS,

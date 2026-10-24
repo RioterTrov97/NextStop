@@ -41,6 +41,7 @@ export interface TripQuery {
   when?: Date
   excluded: Record<string, string>
   count?: number
+  walkPace?: 'fast' | 'normal' | 'slow'
 }
 
 export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
@@ -56,6 +57,7 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Jo
       name_destination: q.to,
       calcNumberOfTrips: String(q.count ?? 6),
       TfNSWTR: 'true',
+      changeSpeed: q.walkPace ?? 'normal',
       ...q.excluded,
     },
     signal,

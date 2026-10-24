@@ -9,6 +9,7 @@ const TripResults = lazy(() => import('./routes/TripResults'))
 const Departures = lazy(() => import('./routes/Departures'))
 const StationBoard = lazy(() => import('./routes/StationBoard'))
 const Alerts = lazy(() => import('./routes/Alerts'))
+const History = lazy(() => import('./routes/History'))
 const Settings = lazy(() => import('./routes/Settings'))
 
 const wrap = (el: React.ReactNode) => <Suspense fallback={null}>{el}</Suspense>
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: '/departures', element: wrap(<Departures />) },
       { path: '/station/:id', element: wrap(<StationBoard />) },
       { path: '/alerts', element: wrap(<Alerts />) },
+      { path: '/history', element: wrap(<History />) },
       { path: '/settings', element: wrap(<Settings />) },
     ],
   },
