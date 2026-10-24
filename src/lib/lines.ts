@@ -13,7 +13,7 @@ export const MODES: ModeInfo[] = [
   { key: 'ferry', label: 'Ferry', color: '#5AB031', classes: [9] },
 ]
 
-const WALK: ModeInfo = { key: 'walk', label: 'Walk', color: '#64748b', classes: [99, 100, 107] }
+const WALK: ModeInfo = { key: 'walk', label: 'Walk', color: '#242b34', classes: [99, 100, 107] }
 
 export function modeForClass(cls?: number): ModeInfo {
   return MODES.find((m) => cls !== undefined && m.classes.includes(cls)) ?? WALK

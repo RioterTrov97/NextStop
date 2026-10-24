@@ -41,7 +41,7 @@ const persister: Persister = {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" disableTransitionOnChange defaultTheme="system">
+    <ThemeProvider attribute="class" disableTransitionOnChange defaultTheme="dark">
       <ChakraProvider value={system}>
         <PersistQueryClientProvider
           client={queryClient}

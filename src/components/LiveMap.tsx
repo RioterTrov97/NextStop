@@ -2,10 +2,11 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { LuMaximize2, LuMinimize2 } from 'react-icons/lu'
+import { LuMaximize2, LuX } from 'react-icons/lu'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
 import type { Leg } from '../api/types'
+import { isTransit } from '../lib/journey'
 import { useColorMode } from '../lib/colorMode'
 import { lineColor } from '../lib/lines'
 import { markMapExpanded } from '../lib/mapState'
@@ -89,9 +90,12 @@ function MapView({ legs, vehicles, mode, height = 220, fullscreen }: Props & { f
           key={i}
           positions={l.coords!}
           pathOptions={{
-            color: lineColor(l.transportation?.number, l.transportation?.product?.class),
+            color:
+              dark && !isTransit(l)
+                ? '#ffffff'
+                : lineColor(l.transportation?.number, l.transportation?.product?.class),
             weight: 5,
-            dashArray: (l.transportation?.product?.class ?? 99) >= 99 ? '2 8' : undefined,
+            dashArray: !isTransit(l) ? '2 8' : undefined,
           }}
         />
       ))}
@@ -181,7 +185,7 @@ export default function LiveMap(props: Props) {
             <div style={{ position: 'relative', height: '100%' }}>
               <MapView {...props} height="100%" fullscreen />
               <MapButton label="Close map" top="10px" onClick={() => setHost(null)}>
-                <LuMinimize2 size={16} />
+                <LuX size={18} />
               </MapButton>
             </div>
           </div>,

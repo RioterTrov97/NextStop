@@ -1,6 +1,6 @@
 import { Box, Button, CloseButton, Drawer, Flex, IconButton, Portal, Stack, Text } from '@chakra-ui/react'
 import { Suspense, lazy, useState } from 'react'
-import { LuFootprints, LuInfo, LuPin, LuPinOff } from 'react-icons/lu'
+import { LuFootprints, LuInfo, LuNavigation, LuPin, LuPinOff } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import { useVehicles } from '../api/hooks'
 import type { InfoLink, Journey, Leg } from '../api/types'
@@ -111,11 +111,21 @@ function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
   )
 }
 
+function walkMapsUrl(leg: Leg): string {
+  const dest = leg.destination.coord
+    ? `${leg.destination.coord[0]},${leg.destination.coord[1]}`
+    : encodeURIComponent(leg.destination.disassembledName ?? leg.destination.name ?? '')
+  const origin = leg.origin?.coord ? `${leg.origin.coord[0]},${leg.origin.coord[1]}` : undefined
+  return `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=walking${origin ? `&origin=${origin}` : ''}`
+}
+
 function WalkLeg({ leg, isFinal }: { leg: Leg; isFinal: boolean }) {
   // The walk that ends the trip opens on the map; shorter in-station walks stay collapsed.
-  const [showMap, setShowMap] = useState(isFinal)
+  const [showMap] = useState(isFinal)
   const canMap = (leg.coords?.length ?? 0) > 1 && (leg.duration ?? 0) >= 120
   const long = isFinal && (leg.duration ?? 0) >= 120
+  const mapsUrl = walkMapsUrl(leg)
+
   return (
     <Box
       bg={long ? 'orange.subtle' : 'bg.subtle'}
@@ -147,11 +157,20 @@ function WalkLeg({ leg, isFinal }: { leg: Leg; isFinal: boolean }) {
             Walk {formatDuration(leg.duration ?? 0)} to {leg.destination.disassembledName ?? leg.destination.name}
           </Text>
         </Box>
-        {canMap && (
-          <Box as="button" color="teal.500" fontWeight="semibold" flexShrink={0} onClick={() => setShowMap((v) => !v)}>
-            {showMap ? 'Hide map' : 'Show map'}
-          </Box>
-        )}
+        <Flex align="center" gap={1} flexShrink={0}>
+          <IconButton
+            asChild
+            size="sm"
+            variant="ghost"
+            aria-label="Open directions in Google Maps"
+            title="Open in Google Maps"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+              <LuNavigation />
+            </a>
+          </IconButton>
+        </Flex>
       </Flex>
       {canMap && showMap && (
         <Box mt={3}>
@@ -184,7 +203,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, on
     <Drawer.Root open={!!journey} placement="bottom" onOpenChange={(e) => !e.open && !isMapExpanded() && onClose()}>
       <Portal>
         <Drawer.Backdrop />
-        <Drawer.Positioner>
+        <Drawer.Positioner maxW="640px" mx="auto" left="0" right="0">
           <Drawer.Content borderTopRadius="3xl" maxH="92vh" pb="env(safe-area-inset-bottom)">
             <Drawer.Header pr={12}>
               <Flex align="center" gap={2} w="full">
