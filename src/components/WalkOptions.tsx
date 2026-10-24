@@ -5,8 +5,16 @@ const chip = (on: boolean) =>
   ({ size: 'sm', borderRadius: 'full', variant: on ? 'solid' : 'outline', colorPalette: 'teal', 'aria-pressed': on }) as const
 
 /** The two global walking preferences, shared by Settings and the shortcut dialog. */
-export function WalkOptions({ onPick }: { onPick?: () => void }) {
-  const { maxEndWalk, walkPace } = useSettings()
+export function WalkOptions({
+  onPick,
+  endWalk,
+}: {
+  onPick?: () => void
+  /** Edits one saved trip's end walk instead of the global default. */
+  endWalk?: { value: number; onChange: (n: number) => void }
+}) {
+  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const maxEndWalk = endWalk?.value ?? globalEndWalk
   return (
     <Stack gap={5}>
       <Box>
@@ -20,7 +28,8 @@ export function WalkOptions({ onPick }: { onPick?: () => void }) {
               key={n}
               {...chip(maxEndWalk === n)}
               onClick={() => {
-                settings.set({ maxEndWalk: n })
+                if (endWalk) endWalk.onChange(n)
+                else settings.set({ maxEndWalk: n })
                 onPick?.()
               }}
             >

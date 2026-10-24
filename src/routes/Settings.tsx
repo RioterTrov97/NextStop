@@ -98,7 +98,8 @@ export default function Settings() {
         <Box>
           <Text fontWeight="semibold">Saved trip cards</Text>
           <Text fontSize="sm" color="fg.muted" mb={2}>
-            Show upcoming departures on each card while you have up to this many saved trips. With more, cards show just the route.
+            Show upcoming departures on this many saved cards, from the top. The rest show just the route. Trips set to the current time of
+            day appear under "Active now" with departures.
           </Text>
           <HStack gap={2} wrap="wrap">
             {EXPAND_OPTIONS.map((n) => (

@@ -3,7 +3,24 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState, type ReactNode } from 'react'
-import { LuArrowRight, LuBookmark, LuBookmarkPlus, LuGripVertical, LuChevronRight, LuPlus } from 'react-icons/lu'
+import {
+  LuArrowRight,
+  LuBus,
+  LuClock,
+  LuFootprints,
+  LuShip,
+  LuTrainFront,
+  LuTrainTrack,
+  LuTramFront,
+  LuBookmark,
+  LuBookmarkPlus,
+  LuArrowUpDown,
+  LuGripVertical,
+  LuTrash2,
+  LuEllipsisVertical,
+  LuPlus,
+} from 'react-icons/lu'
+import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
 import { useTrips, useJourneyVehicles } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
@@ -11,6 +28,7 @@ import { JourneySheet } from '../components/JourneySheet'
 import { DelayBadge } from '../components/DelayBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { CurrentTripCard } from '../components/CurrentTripCard'
+import { ModePicker } from '../components/ModePicker'
 import { LineBadge } from '../components/LineBadge'
 import { PageHeader } from '../components/PageHeader'
 import { WalkBadge } from '../components/WalkBadge'
@@ -23,11 +41,12 @@ import { countdown, formatTime } from '../lib/time'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { SwipeToRemove } from '../components/SwipeToRemove'
 import { dedupeRoutes, history, routeKey, useSearchHistory, useTripHistory } from '../store/history'
-import { savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
-import { useSettings } from '../store/settings'
+import { PERIODS, periodAt, savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
+import { END_WALK_OPTIONS, useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const { maxEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
   // Same query key as the trip results page, so opening a trip reuses this data.
@@ -138,12 +157,24 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   )
 }
 
+const MODE_ICONS: Record<string, IconType> = {
+  train: LuTrainFront,
+  metro: LuTrainTrack,
+  lightrail: LuTramFront,
+  bus: LuBus,
+  ferry: LuShip,
+}
+
 /** Beyond the user's limit the card is just the route, so a long list doesn't fire a live request per trip. */
 function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: number; compact: boolean; handle?: ReactNode }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
-  const modes = MODES.filter((m) => trip.modes.includes(m.key))
-    .map((m) => m.label)
-    .join(', ')
+  const [editing, setEditing] = useState(false)
+  const period = PERIODS.find((p) => p.key === (trip.period ?? 'all')) ?? PERIODS[0]
+  const { maxEndWalk: globalEndWalk } = useSettings()
+  const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
+  // No filter, or every mode picked, means no icons are needed.
+  const shownModes = trip.modes.length && trip.modes.length < MODES.length ? MODES.filter((m) => trip.modes.includes(m.key)) : []
+  const when = period.key === 'all' ? period.label : `${period.label} (${period.hours.replace(/ – /g, '-')})`
 
   return (
     <>
@@ -164,17 +195,140 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                 <Text fontWeight="bold" truncate>
                   {trip.toName.split(',')[0]}
                 </Text>
-                {modes && (
-                  <Text fontSize="xs" color="fg.muted" truncate>
-                    {modes}
-                  </Text>
-                )}
+                <HStack fontSize="xs" color="fg.muted" gap={2} wrap="nowrap" overflow="hidden">
+                  <HStack gap={1} flexShrink={0}>
+                    <LuClock aria-hidden />
+                    <Text>{when}</Text>
+                  </HStack>
+                  {shownModes.length === 0 ? (
+                    <HStack gap={1} flexShrink={0}>
+                      {' · '}
+                      <Text>All modes</Text>
+                    </HStack>
+                  ) : (
+                    <HStack gap={1} flexShrink={0} aria-label={shownModes.map((m) => m.label).join(', ')}>
+                      {' · '}
+                      {shownModes.map((m) => {
+                        const Icon = MODE_ICONS[m.key]
+                        return <Icon key={m.key} title={m.label} />
+                      })}
+                    </HStack>
+                  )}
+                  {maxEndWalk > 0 && (
+                    <HStack gap={1} flexShrink={0} aria-label={`${maxEndWalk} minute walk`}>
+                      {' · '}
+                      <LuFootprints aria-hidden />
+                      <Text>{maxEndWalk}m</Text>
+                    </HStack>
+                  )}
+                </HStack>
               </Link>
             </Box>
-            <Box color="fg.subtle" flexShrink={0} aria-hidden>
-              <LuChevronRight />
-            </Box>
+            <IconButton
+              data-no-swipe
+              aria-label="Edit trip"
+              aria-expanded={editing}
+              variant={editing ? 'subtle' : 'ghost'}
+              size="sm"
+              color="fg.muted"
+              flexShrink={0}
+              onClick={() => setEditing((e) => !e)}
+            >
+              <LuEllipsisVertical />
+            </IconButton>
           </Flex>
+          {editing && (
+            <Stack gap={3} px={4} pb={4} borderTopWidth="1px" borderBottomWidth={compact ? 0 : '1px'} pt={3} data-no-swipe>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                  Show this trip
+                </Text>
+                <HStack gap={1.5} wrap="wrap">
+                  {PERIODS.map((p) => (
+                    <Button
+                      key={p.key}
+                      size="xs"
+                      borderRadius="full"
+                      colorPalette="teal"
+                      variant={p.key === period.key ? 'solid' : 'outline'}
+                      aria-pressed={p.key === period.key}
+                      title={p.hours}
+                      onClick={() => {
+                        savedTrips.setPeriod(trip.id, p.key)
+                        setEditing(false)
+                      }}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </HStack>
+                <Text fontSize="xs" color="fg.muted" mt={1.5}>
+                  {period.hours}
+                </Text>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                  Transport modes
+                </Text>
+                <ModePicker
+                  hideWalk
+                  value={trip.modes}
+                  onChange={(m) => {
+                    savedTrips.setModes(trip.id, m)
+                    setEditing(false)
+                  }}
+                />
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                  Longest walk at the end
+                </Text>
+                <HStack gap={1.5} wrap="wrap">
+                  {END_WALK_OPTIONS.map((n) => (
+                    <Button
+                      key={n}
+                      size="xs"
+                      borderRadius="full"
+                      colorPalette="teal"
+                      variant={n === maxEndWalk ? 'solid' : 'outline'}
+                      aria-pressed={n === maxEndWalk}
+                      onClick={() => {
+                        savedTrips.setEndWalk(trip.id, n)
+                        setEditing(false)
+                      }}
+                    >
+                      {n === 0 ? 'None' : `${n}m`}
+                    </Button>
+                  ))}
+                </HStack>
+              </Box>
+              <HStack gap={2}>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  borderRadius="full"
+                  onClick={() => {
+                    savedTrips.reverse(trip.id)
+                    setEditing(false)
+                  }}
+                >
+                  <LuArrowUpDown /> Reverse
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  colorPalette="red"
+                  borderRadius="full"
+                  onClick={() => {
+                    setConfirmRemove(true)
+                    setEditing(false)
+                  }}
+                >
+                  <LuTrash2 /> Remove
+                </Button>
+              </HStack>
+            </Stack>
+          )}
           {!compact && <Upcoming trip={trip} now={now} />}
         </Box>
       </SwipeToRemove>
@@ -279,6 +433,9 @@ export function Home() {
   const current = useCurrentTrip()
   const now = useNow(1000)
   const { expandUpTo } = useSettings()
+  const period = periodAt(now)
+  const active = trips.filter((t) => period && t.period && t.period !== 'all' && t.period === period)
+  const rest = trips.filter((t) => !active.includes(t))
   // The grip handle starts a drag after a small move, so taps and page scrolling elsewhere are unaffected.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -356,13 +513,31 @@ export function Home() {
               </Button>
             </Flex>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={trips.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                {trips.map((t) => (
+              {active.length > 0 && (
+                <>
+                  <Flex align="center" gap={2} px={1} color="teal.fg">
+                    <Box boxSize="8px" borderRadius="full" bg="teal.solid" aria-hidden />
+                    <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider">
+                      Active now
+                    </Text>
+                  </Flex>
+                  <SortableContext items={active.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                    {active.map((t) => (
+                      <SortableTrip key={t.id} trip={t} now={now} compact={false} sortable={trips.length > 1} />
+                    ))}
+                  </SortableContext>
+                  <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="fg.muted" px={1} mt={2}>
+                    Other trips
+                  </Text>
+                </>
+              )}
+              <SortableContext items={rest.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                {rest.map((t, i) => (
                   <SortableTrip
                     key={t.id}
                     trip={t}
                     now={now}
-                    compact={!!current || trips.length > expandUpTo}
+                    compact={!!current || active.length > 0 || i >= expandUpTo}
                     sortable={trips.length > 1}
                   />
                 ))}

@@ -6,8 +6,9 @@ import { useSettings } from '../store/settings'
 import { WalkOptions } from './WalkOptions'
 
 /** Icon button that opens the global "longest walk after the last ride" choice. */
-export function EndWalkSetting() {
-  const { maxEndWalk, walkPace } = useSettings()
+export function EndWalkSetting({ endWalk }: { endWalk?: { value: number; onChange: (n: number) => void } }) {
+  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const maxEndWalk = endWalk?.value ?? globalEndWalk
   const [open, setOpen] = useState(false)
   return (
     <Dialog.Root placement="center" lazyMount size="sm" open={open} onOpenChange={(e) => setOpen(e.open)}>
@@ -31,6 +32,7 @@ export function EndWalkSetting() {
             </Dialog.Header>
             <Dialog.Body>
               <WalkOptions
+                endWalk={endWalk}
                 onPick={() => {
                   resetRefreshTimer()
                   setOpen(false)

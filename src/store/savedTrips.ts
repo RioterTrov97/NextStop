@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { settings } from './settings'
 
 export interface SavedTrip {
   id: string
@@ -7,6 +8,29 @@ export interface SavedTrip {
   toId: string
   toName: string
   modes: string[]
+  /** When of the day this trip is relevant; missing means all day. */
+  period?: TripPeriod
+  /** Longest walk after the last ride in minutes; missing follows the global setting. */
+  maxEndWalk?: number
+}
+
+export type TripPeriod = 'all' | 'morning' | 'afternoon' | 'evening' | 'night'
+export const PERIODS: { key: TripPeriod; label: string; hours: string }[] = [
+  { key: 'all', label: 'All day', hours: 'Any time' },
+  { key: 'morning', label: 'Morning', hours: '6am – 11am' },
+  { key: 'afternoon', label: 'Afternoon', hours: '11am – 3pm' },
+  { key: 'evening', label: 'Evening', hours: '3pm – 7pm' },
+  { key: 'night', label: 'Night', hours: '7pm – midnight' },
+]
+
+/** The period a moment falls in; 12am–6am belongs to none. */
+export function periodAt(ms: number): TripPeriod | undefined {
+  const h = new Date(ms).getHours()
+  if (h >= 6 && h < 11) return 'morning'
+  if (h >= 11 && h < 15) return 'afternoon'
+  if (h >= 15 && h < 19) return 'evening'
+  if (h >= 19) return 'night'
+  return undefined
 }
 
 const KEY = 'nextstop.savedTrips.v1'
@@ -43,7 +67,7 @@ export const savedTrips = {
   add(t: Omit<SavedTrip, 'id'>) {
     const id = tripId(t.fromId, t.toId)
     if (read().some((x) => x.id === id)) return
-    write([...read(), { ...t, id }])
+    write([...read(), { maxEndWalk: settings.get().maxEndWalk, ...t, id }])
   },
   remove(id: string) {
     write(read().filter((t) => t.id !== id))
@@ -57,6 +81,12 @@ export const savedTrips = {
   },
   setModes(id: string, modes: string[]) {
     write(read().map((t) => (t.id === id ? { ...t, modes } : t)))
+  },
+  setEndWalk(id: string, maxEndWalk: number) {
+    write(read().map((t) => (t.id === id ? { ...t, maxEndWalk } : t)))
+  },
+  setPeriod(id: string, period: TripPeriod) {
+    write(read().map((t) => (t.id === id ? { ...t, period } : t)))
   },
   reorder(activeId: string, overId: string) {
     const list = [...read()]

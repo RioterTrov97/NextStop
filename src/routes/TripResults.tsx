@@ -37,7 +37,7 @@ export default function TripResults() {
   const fromName = sp.get('fn') ?? from
   const toName = sp.get('tn') ?? to
   const modes = sp.get('modes')?.split(',').filter(Boolean) ?? []
-  const { maxEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
@@ -70,7 +70,9 @@ export default function TripResults() {
     excluded: exclusionParams(modes),
     count,
   })
-  const isSaved = saved.some((t) => t.id === tripId(from, to))
+  const savedTrip = saved.find((t) => t.id === tripId(from, to))
+  const isSaved = !!savedTrip
+  const maxEndWalk = savedTrip?.maxEndWalk ?? globalEndWalk
   const hiddenByWalk = (data ?? []).filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) > maxEndWalk * 60).length
   const visible = (data ?? [])
     .filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) <= maxEndWalk * 60)
@@ -131,7 +133,12 @@ export default function TripResults() {
         }
       />
       <Stack gap={3} p={4}>
-        <ModePicker value={modes} onChange={changeModes} size="xs" />
+        <ModePicker
+          value={modes}
+          onChange={changeModes}
+          size="xs"
+          endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
+        />
         {hiddenByWalk > 0 && (
           <Text fontSize="xs" color="fg.muted">
             {hiddenByWalk} {hiddenByWalk === 1 ? 'trip is' : 'trips are'} hidden because{' '}

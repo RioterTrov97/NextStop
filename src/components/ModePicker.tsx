@@ -8,10 +8,12 @@ interface Props {
   size?: 'xs' | 'sm'
   /** Hide the walking-at-the-end shortcut where it already has its own section. */
   hideWalk?: boolean
+  /** Makes the walking shortcut edit a saved trip's own end walk. */
+  endWalk?: { value: number; onChange: (n: number) => void }
 }
 
 /** Toggle chips for transport modes. An empty value means every mode, and shows every chip selected. */
-export function ModePicker({ value, onChange, size = 'sm', hideWalk }: Props) {
+export function ModePicker({ value, onChange, size = 'sm', hideWalk, endWalk }: Props) {
   const all = MODES.map((m) => m.key as string)
   const shown = value.length ? value : all
   const toggle = (key: string) => {
@@ -38,7 +40,7 @@ export function ModePicker({ value, onChange, size = 'sm', hideWalk }: Props) {
           </Button>
         )
       })}
-      {!hideWalk && <EndWalkSetting />}
+      {!hideWalk && <EndWalkSetting endWalk={endWalk} />}
     </HStack>
   )
 }
