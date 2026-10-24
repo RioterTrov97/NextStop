@@ -8,6 +8,9 @@ export const WALK_PACES: { key: WalkPace; label: string; hint: string }[] = [
   { key: 'slow', label: 'Relaxed', hint: 'Longer walks and roomier transfers' },
 ]
 
+/** Walking speeds used to turn a walk's distance into minutes; the planner's own walk times run slower. */
+export const WALK_SPEED_KMH: Record<WalkPace, number> = { fast: 6, normal: 5, slow: 4 }
+
 export interface Settings {
   /** Saved trip cards show upcoming departures only while there are at most this many trips; 0 turns them off. */
   expandUpTo: number

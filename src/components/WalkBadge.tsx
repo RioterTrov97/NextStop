@@ -1,13 +1,15 @@
 import { Box } from '@chakra-ui/react'
 import { LuFootprints } from 'react-icons/lu'
+import { formatKm } from '../lib/journey'
 
 interface Props {
   seconds: number
+  meters?: number
   size?: 'sm' | 'md'
 }
 
 /** Walk at the end of a journey, shaped like a LineBadge so it reads as one more leg. */
-export function WalkBadge({ seconds, size = 'md' }: Props) {
+export function WalkBadge({ seconds, meters, size = 'md' }: Props) {
   return (
     <Box
       as="span"
@@ -25,7 +27,7 @@ export function WalkBadge({ seconds, size = 'md' }: Props) {
       aria-label={`Walk ${Math.round(seconds / 60)} minutes`}
     >
       <LuFootprints />
-      {Math.max(1, Math.round(seconds / 60))}m
+      {Math.max(1, Math.round(seconds / 60))}m{meters ? ` · ${formatKm(meters)}` : ''}
     </Box>
   )
 }

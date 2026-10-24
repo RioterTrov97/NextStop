@@ -33,7 +33,7 @@ function TripDetails({ entry }: { entry: HistoryEntry }) {
                   size="sm"
                 />
               ) : (
-                <WalkBadge seconds={l.duration ?? 0} size="sm" />
+                <WalkBadge seconds={l.duration ?? 0} meters={l.distance} size="sm" />
               )}
             </Box>
             <Box flex={1} minW={0} fontSize="sm">

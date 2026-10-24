@@ -44,25 +44,83 @@ export interface TripQuery {
   walkPace?: 'fast' | 'normal' | 'slow'
 }
 
+const journeyKey = (j: Journey) =>
+  j.legs
+    .map(
+      (l) =>
+        `${l.origin.id ?? l.origin.name}@${l.origin.departureTimePlanned}>${l.destination.id ?? l.destination.name}@${l.destination.arrivalTimePlanned}`,
+    )
+    .join('|')
+
+// Stop IDs from the stop finder.
+const REDFERN = '201510'
+const CENTRAL = '200060'
+const TOWN_HALL = '200070'
+const WYNYARD = '200080'
+// const STRATHFIELD = '213510'
+// const PARRAMATTA = '215020'
+
+// Interchanges where rail, metro and light rail meet.
+const VIA_HUBS = [CENTRAL, TOWN_HALL, REDFERN, WYNYARD]
+
+const REQUEST_SPACING_MS = 250
+
+const delay = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t)
+      reject(signal.reason)
+    })
+  })
+
+const durationMs = (j: Journey) => {
+  const first = j.legs[0].origin
+  const last = j.legs[j.legs.length - 1].destination
+  return Date.parse(last.arrivalTimePlanned ?? '') - Date.parse(first.departureTimePlanned ?? '')
+}
+
 export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
   const itd = toItd(q.when ?? new Date())
-  const data = await get<{ journeys?: Journey[] }>(
-    'tp/trip',
-    {
-      depArrMacro: q.mode,
-      ...itd,
-      type_origin: 'any',
-      name_origin: q.from,
-      type_destination: 'any',
-      name_destination: q.to,
-      calcNumberOfTrips: String(q.count ?? 6),
-      TfNSWTR: 'true',
-      changeSpeed: q.walkPace ?? 'normal',
-      ...q.excluded,
-    },
-    signal,
-  )
-  return data.journeys ?? []
+  const run = async (extra: Record<string, string>) => {
+    const data = await get<{ journeys?: Journey[] }>(
+      'tp/trip',
+      {
+        depArrMacro: q.mode,
+        ...itd,
+        type_origin: 'any',
+        name_origin: q.from,
+        type_destination: 'any',
+        name_destination: q.to,
+        calcNumberOfTrips: String(q.count ?? 6),
+        TfNSWTR: 'true',
+        changeSpeed: q.walkPace ?? 'normal',
+        ...q.excluded,
+        ...extra,
+      },
+      signal,
+    )
+    return data.journeys ?? []
+  }
+  // The planner only returns its preferred routes; forcing a via-stop at major interchanges surfaces the other rail/metro/light-rail combinations.
+  const hubs = VIA_HUBS.filter((id) => id !== q.from && id !== q.to)
+  // Requests start 250ms apart (the base query counts as slot 0) to stay under the upstream 5 req/s limit.
+  const viaHub = async (id: string, i: number) => {
+    await delay((i + 1) * REQUEST_SPACING_MS, signal)
+    return run({ type_via: 'any', name_via: id, maxChanges: '4' }).catch(() => [] as Journey[])
+  }
+  const [base, ...viaResults] = await Promise.all([run({}), ...hubs.map(viaHub)])
+  const merged = [...base, ...viaResults.flat()]
+  // Via routes can detour; keep only those not much slower than the best option.
+  const best = Math.min(...base.map(durationMs).filter(Number.isFinite), Infinity)
+  const viaKeep = (j: Journey) => base.includes(j) || durationMs(j) <= best * 1.4 + 10 * 60_000
+  const seen = new Set<string>()
+  return merged.filter(viaKeep).filter((j) => {
+    const k = journeyKey(j)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 }
 
 export async function fetchDepartures(stopId: string, signal?: AbortSignal): Promise<StopEvent[]> {

@@ -2,17 +2,29 @@ import type { VehicleMode } from '../../shared/vehicles'
 import type { InfoLink, Journey, Leg, StopPoint } from '../api/types'
 import { modeForClass } from './lines'
 import { occupancyFromEnum, occupancyFromName, type OccupancyLevel } from './occupancy'
+import { WALK_SPEED_KMH, type WalkPace } from '../store/settings'
 
 export const isTransit = (l: Leg) => (l.transportation?.product?.class ?? 99) < 99
 
 const MIN_TAIL_WALK_SEC = 120
 
-/** The walk after the last ride, ignoring short in-station transfers. */
-export function trailingWalk(j: Journey): { durationSec: number; to: string } | undefined {
+/** Walk time for a distance at the given pace. */
+export const walkSeconds = (metres: number, pace: WalkPace) => Math.round(metres / (WALK_SPEED_KMH[pace] / 3.6))
+
+/** Kilometres with at most one decimal. */
+export const formatKm = (m: number) => `${Math.max(0.1, Number((m / 1000).toFixed(1)))}km`
+
+/** The walk after the last ride, ignoring short in-station transfers. Duration comes from distance at the user's pace. */
+export function trailingWalk(j: Journey, pace: WalkPace = 'normal'): { durationSec: number; distanceM: number; to: string } | undefined {
   let sec = 0
-  for (let i = j.legs.length - 1; i >= 0 && !isTransit(j.legs[i]); i--) sec += j.legs[i].duration ?? 0
+  let metres = 0
+  for (let i = j.legs.length - 1; i >= 0 && !isTransit(j.legs[i]); i--) {
+    sec += j.legs[i].duration ?? 0
+    metres += j.legs[i].distance ?? 0
+  }
+  if (metres > 0) sec = walkSeconds(metres, pace)
   const last = j.legs[j.legs.length - 1]
-  return sec >= MIN_TAIL_WALK_SEC && !isTransit(last) ? { durationSec: sec, to: last.destination.name ?? '' } : undefined
+  return sec >= MIN_TAIL_WALK_SEC && !isTransit(last) ? { durationSec: sec, distanceM: metres, to: last.destination.name ?? '' } : undefined
 }
 
 export interface JourneySummary {

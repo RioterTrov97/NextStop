@@ -3,7 +3,6 @@ import { Box, Flex, Text } from '@chakra-ui/react'
 import { useEffect } from 'react'
 import { LuHistory, LuRadio, LuSettings, LuTrainFront } from 'react-icons/lu'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { useOnline } from '../lib/hooks'
 
 const inTrips = (p: string) => p === '/' || p.startsWith('/plan') || p.startsWith('/trip/')
 
@@ -23,7 +22,6 @@ const TABS = [
 let lastTrips = '/'
 
 export function AppShell() {
-  const online = useOnline()
   useRealtimeScheduler()
   const { pathname, search } = useLocation()
   useEffect(() => {
@@ -35,11 +33,6 @@ export function AppShell() {
 
   return (
     <Flex direction="column" maxW="640px" mx="auto" minH="100vh">
-      {!online && (
-        <Box bg="orange.500" color="white" fontSize="sm" textAlign="center" py={1} pt="calc(4px + env(safe-area-inset-top))">
-          Offline. Showing the last data we saved.
-        </Box>
-      )}
       <Box flex="1">
         <Outlet />
       </Box>

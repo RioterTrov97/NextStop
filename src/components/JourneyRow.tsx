@@ -4,6 +4,7 @@ import type { VehicleInfo } from '../../shared/vehicles'
 import type { Journey } from '../api/types'
 import { isTransit, journeyAlerts, legOccupancy, platformOf, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
 import { countdown, formatDuration, formatTime } from '../lib/time'
+import { useSettings } from '../store/settings'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
 import { MiniTrain } from './MiniTrain'
@@ -18,12 +19,13 @@ interface Props {
 }
 
 export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
+  const { walkPace } = useSettings()
   const s = summarize(journey)
   const dep = s.depEstimated ?? s.depPlanned
   const arr = s.arrEstimated ?? s.arrPlanned
   const alerts = journeyAlerts(journey).filter((a) => a.priority === 'high' || a.priority === 'veryHigh')
   const transit = journey.legs.filter(isTransit)
-  const tailWalk = trailingWalk(journey)
+  const tailWalk = trailingWalk(journey, walkPace)
   const platform = s.firstTransit ? platformOf(s.firstTransit) : undefined
   const origin = s.firstTransit?.origin
   const station = (origin?.disassembledName ?? origin?.name ?? '').split(',')[0].replace(/ (Station|Platform).*$/i, '')
@@ -73,7 +75,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
               size={tileSize}
             />
           ))}
-          {tailWalk && <WalkBadge seconds={tailWalk.durationSec} size={tileSize} />}
+          {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size={tileSize} />}
           <DelayBadge
             planned={s.depPlanned}
             estimated={s.depEstimated}

@@ -27,7 +27,7 @@ import { savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
 import { useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const { maxEndWalk } = useSettings()
+  const { maxEndWalk, walkPace } = useSettings()
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
   // Same query key as the trip results page, so opening a trip reuses this data.
@@ -38,7 +38,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
     excluded: exclusionParams(trip.modes),
   })
   const upcoming = (data ?? [])
-    .filter((j) => (trailingWalk(j)?.durationSec ?? 0) <= maxEndWalk * 60)
+    .filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) <= maxEndWalk * 60)
     .filter((j) => {
       const s = summarize(j)
       return new Date(s.depEstimated ?? s.depPlanned ?? 0).getTime() > now - 60_000
@@ -72,7 +72,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
         const dep = s.depEstimated ?? s.depPlanned
         const arr = s.arrEstimated ?? s.arrPlanned
         const cls = s.firstTransit?.transportation
-        const tailWalk = trailingWalk(j)
+        const tailWalk = trailingWalk(j, walkPace)
         return (
           <Flex
             key={i}
@@ -95,7 +95,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
             </Box>
             <HStack gap={1.5} flexShrink={0}>
               <LineBadge number={cls?.number ?? cls?.disassembledName} cls={cls?.product?.class} size="sm" />
-              {tailWalk && <WalkBadge seconds={tailWalk.durationSec} size="sm" />}
+              {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size="sm" />}
             </HStack>
             <Box flex={1} textAlign="start">
               <DelayBadge planned={s.depPlanned} estimated={s.depEstimated} realtime={s.realtime} />

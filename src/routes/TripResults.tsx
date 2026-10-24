@@ -37,7 +37,7 @@ export default function TripResults() {
   const fromName = sp.get('fn') ?? from
   const toName = sp.get('tn') ?? to
   const modes = sp.get('modes')?.split(',').filter(Boolean) ?? []
-  const { maxEndWalk } = useSettings()
+  const { maxEndWalk, walkPace } = useSettings()
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
@@ -71,9 +71,9 @@ export default function TripResults() {
     count,
   })
   const isSaved = saved.some((t) => t.id === tripId(from, to))
-  const hiddenByWalk = (data ?? []).filter((j) => (trailingWalk(j)?.durationSec ?? 0) > maxEndWalk * 60).length
+  const hiddenByWalk = (data ?? []).filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) > maxEndWalk * 60).length
   const visible = (data ?? [])
-    .filter((j) => (trailingWalk(j)?.durationSec ?? 0) <= maxEndWalk * 60)
+    .filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) <= maxEndWalk * 60)
     .filter((j) => {
       if (when) return true
       const s = summarize(j)

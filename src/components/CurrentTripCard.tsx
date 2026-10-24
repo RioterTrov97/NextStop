@@ -4,11 +4,12 @@ import { LuFootprints, LuX } from 'react-icons/lu'
 import { Link } from 'react-router-dom'
 import { useJourneyVehicles, useTrips } from '../api/hooks'
 import type { Leg } from '../api/types'
-import { isTransit, legOccupancy, platformAt, stationName, summarize, vehicleModeForLeg } from '../lib/journey'
+import { formatKm, isTransit, legOccupancy, platformAt, stationName, summarize, vehicleModeForLeg, walkSeconds } from '../lib/journey'
 import { lineColor } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { currentTrip, tripKey, type CurrentTrip } from '../store/currentTrip'
+import { useSettings } from '../store/settings'
 import { JourneySheet } from './JourneySheet'
 import { DelayBadge } from './DelayBadge'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -129,7 +130,39 @@ function RideRow({ leg, vehicle }: { leg: Leg; vehicle?: Parameters<typeof MiniT
   )
 }
 
-function WalkRow({ leg }: { leg: Leg }) {
+function WalkRow({ leg, final, toName, arrival }: { leg: Leg; final?: boolean; toName?: string; arrival?: string }) {
+  const { walkPace } = useSettings()
+  const metres = leg.distance ?? 0
+  const seconds = metres > 0 ? walkSeconds(metres, walkPace) : (leg.duration ?? 0)
+  const summary = `${formatDuration(seconds)}${metres > 0 ? ` · ${formatKm(metres)}` : ''}`
+  if (final) {
+    const to = (leg.destination.name ?? toName ?? '').split(',')[0]
+    return (
+      <Box borderTopWidth="1px" borderStyle="dashed" mt={2} pt={3}>
+        <Flex gap={3}>
+          <Flex w="20px" justify="center" flexShrink={0}>
+            <Box borderLeftWidth="3px" borderStyle="dotted" borderColor="fg.muted" />
+          </Flex>
+          <Box flex={1} minW={0}>
+            <HStack gap={2} color="fg.muted" fontSize="sm">
+              <LuFootprints />
+              <Text fontWeight="semibold">Walk {summary}</Text>
+            </HStack>
+            {to && (
+              <Flex justify="space-between" align="center" gap={2} mt={1}>
+                <Text fontWeight="bold" truncate>
+                  to {to}
+                </Text>
+                <Text fontWeight="bold" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+                  {formatTime(arrival)}
+                </Text>
+              </Flex>
+            )}
+          </Box>
+        </Flex>
+      </Box>
+    )
+  }
   return (
     <Flex gap={3}>
       <Flex w="20px" justify="center" flexShrink={0}>
@@ -137,7 +170,7 @@ function WalkRow({ leg }: { leg: Leg }) {
       </Flex>
       <HStack py={2} fontSize="sm" color="fg.muted">
         <LuFootprints />
-        <Text>Walk {formatDuration(leg.duration ?? 0)}</Text>
+        <Text>Walk {summary}</Text>
       </HStack>
     </Flex>
   )
@@ -233,7 +266,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
           ) : st.type === 'ride' ? (
             <RideRow key={i} leg={st.leg} vehicle={vehicles.get(st.leg.transportation?.properties?.RealtimeTripId ?? '')} />
           ) : (
-            <WalkRow key={i} leg={st.leg} />
+            <WalkRow key={i} leg={st.leg} final={i === steps.length - 1} toName={trip.toName} arrival={arr} />
           ),
         )}
       </Box>
