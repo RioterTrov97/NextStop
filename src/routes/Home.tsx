@@ -182,7 +182,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
         <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" overflow="hidden">
           <Flex align="center" p={4} pb={compact ? 4 : 2} gap={3}>
             {handle}
-            <Flex direction="column" align="center" gap="3px" flexShrink={0} aria-hidden>
+            <Flex direction="column" align="center" gap="3px" mt={1.5} alignSelf="flex-start" flexShrink={0} aria-hidden>
               <Box boxSize="9px" borderRadius="full" borderWidth="2px" borderColor="teal.solid" />
               <Box w="2px" h="14px" borderRadius="full" bg="border.emphasized" />
               <Box boxSize="9px" borderRadius="full" bg="teal.solid" />
@@ -195,7 +195,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                 <Text fontWeight="bold" truncate>
                   {trip.toName.split(',')[0]}
                 </Text>
-                <HStack fontSize="xs" color="fg.muted" gap={2} wrap="nowrap" overflow="hidden">
+                <HStack fontSize="xs" color="fg.muted" gap={2} wrap="nowrap" overflow="hidden" mt={0.5}>
                   <HStack gap={1} flexShrink={0}>
                     <LuClock aria-hidden />
                     <Text>{when}</Text>
