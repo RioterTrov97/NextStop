@@ -104,6 +104,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
             borderRadius="lg"
             onClick={() => setSelected(i)}
             _hover={{ bg: 'bg.muted' }}
+            key={`${trip.fromId}-${trip.toId}-${dep}`}
           >
             <Box minW="72px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
               <Text fontSize="sm" fontWeight="bold">
