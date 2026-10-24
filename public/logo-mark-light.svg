@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="120 60 272 400" role="img" aria-label="NextStop">
+  <mask id="body-light">
+    <rect x="100" y="40" width="312" height="380" fill="#fff"/>
+    <rect x="164" y="138" width="184" height="122" rx="34" fill="#000"/>
+  </mask>
+  <path d="M196 396L156 448M316 396L356 448" stroke="#EA6A12" stroke-opacity=".9" stroke-width="16" stroke-linecap="round"/>
+  <path d="M176 426h160" stroke="#EA6A12" stroke-opacity=".5" stroke-width="12" stroke-linecap="round"/>
+  <rect x="132" y="72" width="248" height="324" rx="72" fill="#EA6A12" mask="url(#body-light)"/>
+  <rect x="206" y="100" width="100" height="18" rx="9" fill="#fff"/>
+  <rect x="164" y="286" width="184" height="10" rx="5" fill="#fff"/>
+  <circle cx="202" cy="338" r="22" fill="#fff"/>
+  <circle cx="310" cy="338" r="22" fill="#fff"/>
+  <circle cx="202" cy="338" r="9" fill="#EA6A12" fill-opacity="1"/>
+  <circle cx="310" cy="338" r="9" fill="#EA6A12" fill-opacity="1"/>
+
+</svg>

@@ -17,6 +17,7 @@ interface Props {
 export function PageHeader({ title, subtitle, back, backTo, action, children }: Props) {
   const navigate = useNavigate()
   const online = useOnline()
+
   return (
     <>
       <Box

@@ -1,7 +1,7 @@
 import { Box, Button, Flex, HStack, Image, Stack, Text } from '@chakra-ui/react'
 import { clear as clearCache } from 'idb-keyval'
 import { useTheme } from 'next-themes'
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { LuEraser, LuTriangleAlert } from 'react-icons/lu'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/ModePicker'
@@ -11,6 +11,17 @@ import { exportBackup, importBackup } from '../lib/backup'
 import { history, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
 import { EXPAND_OPTIONS, HISTORY_OPTIONS, settings, useSettings } from '../store/settings'
+
+function AboutRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Flex gap={3}>
+      <Text w="104px" flexShrink={0} color="fg.muted">
+        {label}
+      </Text>
+      <Text flex={1}>{children}</Text>
+    </Flex>
+  )
+}
 
 const THEMES = [
   ['system', 'System'],
@@ -43,10 +54,11 @@ export default function Settings() {
     <>
       <PageHeader title="Settings" />
       <Stack gap={6} p={4}>
-        <Stack gap={3} p={4} bg="bg.panel" borderWidth="1px" borderRadius="2xl" shadow="xs">
+        <Stack gap={4} p={4} bg="bg.panel" borderWidth="1px" borderRadius="2xl" shadow="xs">
           <Flex align="center" gap={3}>
-            <Image src="/logo-mark.svg" alt="" h="36px" />
-            <Box>
+            <Image src="/logo-mark-light.svg" alt="" h="40px" _dark={{ display: 'none' }} />
+            <Image src="/logo-mark.svg" alt="" h="40px" display="none" _dark={{ display: 'block' }} />
+            <Box flex={1}>
               <Text fontWeight="bold" lineHeight="short">
                 NextStop
               </Text>
@@ -54,12 +66,18 @@ export default function Settings() {
                 Live Sydney public transport
               </Text>
             </Box>
+            <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
+              v{__APP_VERSION__}
+            </Text>
           </Flex>
-          <Stack as="ul" gap={1.5} ps={0} listStyleType="none" fontSize="sm" color="fg.muted">
-            <Text as="li">Data: Transport for NSW Open Data, CC BY licence.</Text>
-            <Text as="li">Maps: MapTiler and OpenStreetMap contributors.</Text>
-            <Text as="li">Carriage loads: Sydney Trains and Metro services currently running.</Text>
+          <Stack gap={3} fontSize="sm" borderTopWidth="1px" pt={3}>
+            <AboutRow label="Data">Transport for NSW Open Data , licensed CC BY 4.0</AboutRow>
+            <AboutRow label="Maps">MapTiler and OpenStreetMap contributors</AboutRow>
+            <AboutRow label="Carriage loads">Available for Sydney Trains and Metro services currently running</AboutRow>
           </Stack>
+          <Text fontSize="xs" color="fg.muted" borderTopWidth="1px" pt={3}>
+            An independent app, not affiliated with or endorsed by Transport for NSW.
+          </Text>
         </Stack>
 
         <Box>

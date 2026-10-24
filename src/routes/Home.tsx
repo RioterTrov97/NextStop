@@ -22,7 +22,7 @@ import {
 } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
-import { useTrips, useJourneyVehicles } from '../api/hooks'
+import { REALTIME_MS, useTrips, useJourneyVehicles } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
 import { JourneySheet } from '../components/JourneySheet'
 import { DelayBadge } from '../components/DelayBadge'
@@ -50,7 +50,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
   // Same query key as the trip results page, so opening a trip reuses this data.
-  const { data, isLoading, error, fetchStatus } = useTrips({
+  const { data, isLoading, isFetching, dataUpdatedAt, error, fetchStatus } = useTrips({
     from: trip.fromId,
     to: trip.toId,
     mode: 'dep',
@@ -63,6 +63,8 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
       return new Date(s.depEstimated ?? s.depPlanned ?? 0).getTime() > now - 60_000
     })
     .sort(journeyComparator('dep'))
+  // Data restored from the persisted cache can be hours old, so every journey looks departed until the refetch lands.
+  const refreshingStale = isFetching && upcoming.length === 0 && now - dataUpdatedAt > REALTIME_MS
   const selectedJourney = selected === undefined ? undefined : upcoming[selected]
   // Only fetches vehicle positions while the sheet is open.
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(selectedJourney ? [selectedJourney] : [])
@@ -70,7 +72,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
 
   return (
     <Stack gap={0} px={2} pb={2}>
-      {isLoading && <Skeleton h="44px" m={2} borderRadius="lg" />}
+      {(isLoading || refreshingStale) && <Skeleton h="44px" m={2} borderRadius="lg" />}
       {!data && fetchStatus === 'paused' && (
         <Text px={2} py={2} fontSize="sm" color="fg.muted">
           Offline. Not saved on this device yet.
@@ -81,7 +83,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
           {(error as Error).message}
         </Text>
       )}
-      {data && upcoming.length === 0 && (
+      {data && upcoming.length === 0 && !refreshingStale && (
         <Text px={2} py={2} fontSize="sm" color="fg.muted">
           No upcoming services found.
         </Text>

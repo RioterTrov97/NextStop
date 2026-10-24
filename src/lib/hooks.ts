@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
 export function useNow(intervalMs = 1000): number {
@@ -9,19 +10,11 @@ export function useNow(intervalMs = 1000): number {
   return now
 }
 
-const subscribe = (cb: () => void) => {
-  window.addEventListener('online', cb)
-  window.addEventListener('offline', cb)
-  return () => {
-    window.removeEventListener('online', cb)
-    window.removeEventListener('offline', cb)
-  }
-}
-
+/** Single source of truth for connectivity: React Query's online state, kept in step with the browser. */
 export function useOnline(): boolean {
   return useSyncExternalStore(
-    subscribe,
-    () => navigator.onLine,
+    (cb) => onlineManager.subscribe(cb),
+    () => onlineManager.isOnline(),
     () => true,
   )
 }

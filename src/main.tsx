@@ -1,5 +1,5 @@
 import { ChakraProvider } from '@chakra-ui/react'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, onlineManager } from '@tanstack/react-query'
 import { PersistQueryClientProvider, type Persister } from '@tanstack/react-query-persist-client'
 import { del, get, set } from 'idb-keyval'
 import { ThemeProvider } from 'next-themes'
@@ -26,6 +26,16 @@ const Devtools = import.meta.env.DEV
       import('@tanstack/react-query-devtools').then((m) => ({ default: () => <m.ReactQueryDevtools buttonPosition="bottom-right" /> })),
     )
   : () => null
+
+// The default listener trusts online/offline events only, so one missed event (PWA resume, flaky wifi handoff) leaves queries paused while online.
+// Re-read navigator.onLine whenever the app comes back to the foreground.
+onlineManager.setEventListener((setOnline) => {
+  const sync = () => setOnline(navigator.onLine)
+  const events = ['online', 'offline', 'focus', 'pageshow', 'visibilitychange'] as const
+  events.forEach((e) => window.addEventListener(e, sync))
+  sync()
+  return () => events.forEach((e) => window.removeEventListener(e, sync))
+})
 
 const DAY = 24 * 3600_000
 
