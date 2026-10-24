@@ -28,6 +28,7 @@ export default defineConfig({
     cloudflare(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['logo.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'NextStop',
@@ -45,10 +46,17 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-        shortcuts: [{ name: 'Departures', url: '/departures', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] }],
+        shortcuts: [
+          { name: 'Plan trip', url: '/plan', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+          { name: 'Trip history', url: '/history', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+          { name: 'Alerts', url: '/alerts', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [

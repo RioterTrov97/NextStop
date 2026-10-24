@@ -6,8 +6,20 @@ import { ThemeProvider } from 'next-themes'
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
+import { registerSW } from 'virtual:pwa-register'
 import { router } from './router'
 import { system } from './theme'
+
+// iOS standalone PWAs are rarely cold-started, so check for a new service worker whenever the app is foregrounded.
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, reg) {
+    if (!reg) return
+    const check = () => void reg.update().catch(() => {})
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check())
+    setInterval(check, 30 * 60_000)
+  },
+})
 
 const Devtools = import.meta.env.DEV
   ? lazy(() =>
