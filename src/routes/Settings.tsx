@@ -3,6 +3,7 @@ import { clear as clearCache } from 'idb-keyval'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { ModePicker } from '../components/ModePicker'
 import { PageHeader } from '../components/PageHeader'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
 import { EXPAND_OPTIONS, settings, useSettings } from '../store/settings'
@@ -16,7 +17,7 @@ const THEMES = [
 export default function Settings() {
   const { theme, setTheme } = useTheme()
   const saved = useSavedTrips()
-  const { expandUpTo } = useSettings()
+  const { expandUpTo, preferredModes } = useSettings()
   const [confirm, setConfirm] = useState<'trips' | 'cache'>()
 
   return (
@@ -41,6 +42,17 @@ export default function Settings() {
               </Button>
             ))}
           </HStack>
+        </Box>
+
+        <Box>
+          <Text fontWeight="semibold">Transport modes</Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            Pre-selected when you plan a new trip. You can still change them for each search. Choose none to include every mode.
+          </Text>
+          <ModePicker value={preferredModes} onChange={(preferredModes) => settings.set({ preferredModes })} />
+          <Text fontSize="xs" color="fg.muted" mt={2}>
+            {preferredModes.length ? 'Only the selected modes by default.' : 'All modes by default.'}
+          </Text>
         </Box>
 
         <Box>

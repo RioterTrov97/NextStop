@@ -9,13 +9,18 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role=
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <path d="M96 424c60-36 96-20 160-20s100-16 160-52" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 30"/>
-  <rect x="156" y="96" width="200" height="236" rx="52" fill="#fff"/>
-  <rect x="184" y="126" width="144" height="84" rx="22" fill="#111827"/>
-  <path d="M256 126v84" stroke="#fff" stroke-width="8"/>
-  <circle cx="198" cy="268" r="19" fill="${brand[500]}"/>
-  <circle cx="314" cy="268" r="19" fill="${brand[500]}"/>
-  <path d="M190 332l-26 44M322 332l26 44" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+  <ellipse cx="256" cy="452" rx="120" ry="12" fill="#000" fill-opacity=".14"/>
+  <path d="M196 396L156 448M316 396L356 448" stroke="#fff" stroke-opacity=".9" stroke-width="16" stroke-linecap="round"/>
+  <path d="M176 426h160" stroke="#fff" stroke-opacity=".5" stroke-width="12" stroke-linecap="round"/>
+  <rect x="132" y="72" width="248" height="324" rx="72" fill="#fff"/>
+  <rect x="206" y="100" width="100" height="18" rx="9" fill="${brand[200]}"/>
+  <rect x="164" y="138" width="184" height="122" rx="34" fill="#1F2937"/>
+  <path d="M190 148h56l-44 102h-36a14 14 0 0 1-14-14v-76a12 12 0 0 1 12-12Z" fill="#fff" fill-opacity=".1"/>
+  <rect x="164" y="286" width="184" height="10" rx="5" fill="${brand[200]}"/>
+  <circle cx="202" cy="338" r="22" fill="${brand[500]}"/>
+  <circle cx="310" cy="338" r="22" fill="${brand[500]}"/>
+  <circle cx="202" cy="338" r="9" fill="#fff" fill-opacity=".85"/>
+  <circle cx="310" cy="338" r="9" fill="#fff" fill-opacity=".85"/>
 </svg>
 `
 writeFileSync(new URL('../public/logo.svg', import.meta.url), svg)

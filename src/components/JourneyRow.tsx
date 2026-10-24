@@ -88,7 +88,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
             {(() => {
               const m = vehicleModeForLeg(railLeg)
               const v = tripId ? vehicles?.get(tripId) : undefined
-              return m === 'bus' || m === 'lightrail' ? (
+              return m === 'bus' || m === 'lightrail' || m === 'metro' ? (
                 <VehicleLoad mode={m} vehicle={v} fallback={legOccupancy(railLeg)} />
               ) : (
                 <MiniTrain vehicle={v} fallback={legOccupancy(railLeg)} />

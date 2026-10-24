@@ -7,14 +7,16 @@ import { PageHeader } from '../components/PageHeader'
 import { ModePicker } from '../components/ModePicker'
 import { tripPath } from '../lib/paths'
 import { StopSearch } from '../components/StopSearch'
+import { useSettings } from '../store/settings'
 
 type When = 'now' | 'dep' | 'arr'
 
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 // Module-level so the form survives switching tabs, which unmounts this page.
-let draft: { modes: string[]; when: When; at: string } = {
-  modes: [],
+// `modes` stays undefined until the user changes it here, so new searches follow the preferred modes from Settings.
+let draft: { modes?: string[]; when: When; at: string } = {
+  modes: undefined,
   when: 'now',
   at: toLocalInput(new Date()),
 }
@@ -23,13 +25,15 @@ export default function Plan() {
   const navigate = useNavigate()
   const [from, setFrom] = useState<Place>()
   const [to, setTo] = useState<Place>()
-  const [modes, setModes] = useState<string[]>(draft.modes)
+  const { preferredModes } = useSettings()
+  const [picked, setModes] = useState<string[] | undefined>(draft.modes)
+  const modes = picked ?? preferredModes
   const [when, setWhen] = useState<When>(draft.when)
   const [at, setAt] = useState(draft.at)
 
   useEffect(() => {
-    draft = { modes, when, at }
-  }, [modes, when, at])
+    draft = { modes: picked, when, at }
+  }, [picked, when, at])
 
   const swap = () => {
     setFrom(to)
@@ -44,6 +48,8 @@ export default function Plan() {
       extra.w = new Date(at).toISOString()
     }
     navigate(tripPath({ fromId: from.id, toId: to.id, fromName: from.name, toName: to.name, modes }, extra))
+    // The next search starts from the preferred modes again.
+    setModes(undefined)
   }
 
   return (

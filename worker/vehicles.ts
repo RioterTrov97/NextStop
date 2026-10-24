@@ -5,7 +5,8 @@ import { readFields, toFloat, toStr } from './protobuf'
 const CONSIST_EXTENSION = 1007
 
 function decodeCarriage(buf: Uint8Array): Carriage {
-  const c: Carriage = { position: 0, quiet: false }
+  // The feed omits occupancy_status when it is the proto default (EMPTY = 0), so absence means empty, not unknown.
+  const c: Carriage = { position: 0, quiet: false, occupancy: 0 }
   for (const f of readFields(buf)) {
     if (f.field === 1 && f.wire === 2) c.name = toStr(f.value)
     else if (f.field === 2 && f.wire === 0) c.position = f.value as number
@@ -40,6 +41,8 @@ function decodeVehicle(buf: Uint8Array): VehicleInfo {
     } else if (f.wire === 2 && f.field === CONSIST_EXTENSION) v.carriages.push(decodeCarriage(f.value as Uint8Array))
   }
   v.carriages = v.carriages.filter((c) => c.position > 0).sort((a, b) => a.position - b.position)
+  // Metro sends one placeholder carriage and reports the real load on the whole train, so use that instead.
+  if (v.carriages.length === 1 && v.occupancy !== undefined) v.carriages = []
   return v
 }
 

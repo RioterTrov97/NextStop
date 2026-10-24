@@ -1,7 +1,8 @@
-import { Box, Flex, HStack, Text } from '@chakra-ui/react'
+import { Box, Flex } from '@chakra-ui/react'
 import { LuVolumeX } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import { occupancyFromEnum, type OccupancyLevel } from '../lib/occupancy'
+import { VehicleLoad } from './VehicleLoad'
 
 interface Props {
   vehicle?: VehicleInfo
@@ -16,7 +17,7 @@ export function MiniTrain({ vehicle, fallback, size = 'sm' }: Props) {
   const md = size === 'md'
 
   if (cars.length) {
-    const levels = cars.map((c) => occupancyFromEnum(c.occupancy))
+    const levels = cars.map((c) => occupancyFromEnum(c.occupancy ?? 0))
 
     return (
       <Flex gap={md ? '3px' : '2px'} role="img" aria-label="Carriage occupancy, front to back">
@@ -55,12 +56,5 @@ export function MiniTrain({ vehicle, fallback, size = 'sm' }: Props) {
     )
   }
 
-  const overall = vehicle?.occupancy !== undefined ? occupancyFromEnum(vehicle.occupancy) : fallback
-  if (!overall || overall.level === 0) return null
-  return (
-    <HStack gap={1} fontSize="xs" color="fg.muted">
-      <Box w={2} h={2} borderRadius="full" style={{ background: overall.color }} />
-      <Text>{overall.label}</Text>
-    </HStack>
-  )
+  return <VehicleLoad mode="train" vehicle={vehicle} fallback={fallback} />
 }

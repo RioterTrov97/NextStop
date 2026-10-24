@@ -68,15 +68,15 @@ function TransitLeg({ leg, vehicles, vehiclesLoading }: LegProps) {
         {formatDuration(leg.duration ?? 0)} · {Math.max(0, stops.length - 1)} stops
       </Text>
 
-      {hasConsist && (
+      {mode === 'train' && (
         <Box mt={2}>
           <CarriageStrip vehicle={vehicle} loading={isLoading} fallback={legOccupancy(leg)} />
         </Box>
       )}
 
-      {(mode === 'bus' || mode === 'lightrail') && (
+      {(mode === 'bus' || mode === 'metro' || (mode === 'lightrail' && (vehicle?.occupancy !== undefined || legOccupancy(leg)))) && (
         <Box mt={2} bg="bg.muted" borderRadius="xl" p={3}>
-          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} size="md" />
+          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} loading={isLoading} size="md" />
         </Box>
       )}
 

@@ -1,49 +1,59 @@
-import { Box, Flex, HStack, Text } from '@chakra-ui/react'
-import { LuBus, LuTramFront } from 'react-icons/lu'
+import { Flex, Text } from '@chakra-ui/react'
+import { LuBus, LuTrainFront, LuTramFront } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import { occupancyFromEnum, type OccupancyLevel } from '../lib/occupancy'
+import { OccupancyInfo } from './OccupancyInfo'
+import { VehicleBody, type VehicleKind } from './VehicleBody'
 
 interface Props {
-  mode: 'bus' | 'lightrail'
+  mode: VehicleKind
   vehicle?: VehicleInfo
   fallback?: OccupancyLevel
-  /** `sm` for cards, `md` fills the width with a label. */
+  loading?: boolean
+  /** `sm` for cards, `md` for the detail view with a label. */
   size?: 'sm' | 'md'
 }
 
-/** Seat availability bar: more green segments means more room. Only filled segments render, never grey ones. */
-const SEGMENTS: Record<number, number> = { 1: 4, 2: 2, 3: 1, 4: 1 }
-const GREEN = '#22c55e'
-const RED = '#ef4444'
+const ICONS = { train: LuTrainFront, bus: LuBus, lightrail: LuTramFront, metro: LuTrainFront }
+const NAMES = { train: 'Train', bus: 'Bus', lightrail: 'Light rail', metro: 'Metro' }
 
-export function VehicleLoad({ mode, vehicle, fallback, size = 'sm' }: Props) {
+export function VehicleLoad({ mode, vehicle, fallback, loading, size = 'sm' }: Props) {
   const occ = vehicle?.occupancy !== undefined ? occupancyFromEnum(vehicle.occupancy) : fallback
-  if (!occ || occ.level === 0) return null
   const md = size === 'md'
-  const Icon = mode === 'bus' ? LuBus : LuTramFront
-  const color = occ.level >= 4 ? RED : GREEN
+  if (!occ || occ.level === 0) {
+    // Sydney light rail never reports occupancy, so a permanent "no data" note would just be noise.
+    if (!md || mode === 'lightrail') return null
+    const Icon = ICONS[mode]
+    return (
+      <Flex align="center" gap={3} color="fg.muted" role="img" aria-label={`${NAMES[mode]} load: no data`}>
+        <Icon size={22} />
+        <Text fontSize="sm">{loading ? 'Checking occupancy…' : 'Occupancy data appear once the service is running.'}</Text>
+      </Flex>
+    )
+  }
 
-  return (
-    <Flex
-      align="center"
-      gap={md ? 3 : 1.5}
-      w={md ? 'full' : undefined}
-      role="img"
-      aria-label={`${mode === 'bus' ? 'Bus' : 'Light rail'} load: ${occ.label}`}
-    >
-      <Box color="fg.muted" flexShrink={0}>
-        <Icon size={md ? 22 : 15} />
-      </Box>
-      <HStack gap={md ? '4px' : '2px'} flex={md ? 1 : undefined}>
-        {Array.from({ length: SEGMENTS[occ.level] ?? 1 }, (_, i) => (
-          <Box key={i} w={md ? '36px' : '14px'} h={md ? '14px' : '8px'} borderRadius="full" style={{ background: color }} />
-        ))}
-      </HStack>
-      {md && (
-        <Text fontSize="sm" fontWeight="semibold" flexShrink={0} style={{ color: occ.color }}>
-          {occ.label}
+  if (!md) {
+    return (
+      <Flex direction="column" align="center" gap="3px" role="img" aria-label={`${NAMES[mode]} load: ${occ.label}`}>
+        <VehicleBody mode={mode} color={occ.color} md={false} />
+        <Text fontSize="10px" lineHeight={1} fontWeight="semibold" color="fg.muted" whiteSpace="nowrap">
+          {occ.short}
         </Text>
-      )}
+      </Flex>
+    )
+  }
+  const visual = (
+    <Flex align="center" gap={3} role="img" aria-label={`${NAMES[mode]} load: ${occ.label}`}>
+      <VehicleBody mode={mode} color={occ.color} md />
+      <Text fontSize="sm" fontWeight="semibold">
+        {occ.label}
+      </Text>
+    </Flex>
+  )
+  return (
+    <Flex align="center" justify="space-between" gap={2}>
+      {visual}
+      <OccupancyInfo />
     </Flex>
   )
 }

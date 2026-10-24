@@ -1,8 +1,9 @@
 import { Button, IconButton, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { useState } from 'react'
-import { LuArrowLeftRight, LuBookmark, LuBookmarkCheck } from 'react-icons/lu'
+import { LuArrowLeftRight, LuBookmark, LuBookmarkCheck, LuTrainFront } from 'react-icons/lu'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useJourneyVehicles, useTrips } from '../api/hooks'
+import { EmptyState } from '../components/EmptyState'
 import { JourneyRow } from '../components/JourneyRow'
 import { JourneySheet } from '../components/JourneySheet'
 import { ModePicker } from '../components/ModePicker'
@@ -60,6 +61,12 @@ export default function TripResults() {
     })
     .sort(journeyComparator(mode, when))
 
+  // A short list means the planner has no further trips; a growing request keeps the button while loading.
+  const canLoadMore = !!data && visible.length > 0 && (isPlaceholderData || data.length >= count)
+
+  // Cached trips may all be in the past; wait for the refetch instead of flashing "No trips found".
+  const settling = !!data && visible.length === 0 && isFetching
+
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(visible)
 
   const swap = () => navigate(tripPath({ fromId: to, toId: from, fromName: toName, toName: fromName, modes }), { replace: true })
@@ -103,7 +110,7 @@ export default function TripResults() {
       <Stack gap={3} p={4}>
         <ModePicker value={modes} onChange={changeModes} size="xs" />
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
-        {isLoading && [0, 1, 2].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
+        {(isLoading || settling) && [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
           <Stack align="center" py={8} gap={2}>
             <Text color="red.500">{(error as Error).message}</Text>
@@ -112,15 +119,24 @@ export default function TripResults() {
             </Button>
           </Stack>
         )}
-        {data && visible.length === 0 && (
-          <Text textAlign="center" color="fg.muted" py={8}>
-            No trips found.
-          </Text>
+        {data && visible.length === 0 && !settling && (
+          <EmptyState
+            icon={LuTrainFront}
+            title="No trips found"
+            action={
+              <Button variant="subtle" size="sm" borderRadius="xl" onClick={swap}>
+                <LuArrowLeftRight /> Swap direction
+              </Button>
+            }
+          >
+            Nothing matches {fromName.split(',')[0]} to {toName.split(',')[0]} right now. Try another time, add more transport modes, or
+            swap direction.
+          </EmptyState>
         )}
         {visible.map((j, i) => (
           <JourneyRow key={`${summarize(j).depPlanned}-${i}`} journey={j} now={now} vehicles={vehicles} onClick={() => setSelected(i)} />
         ))}
-        {data && (
+        {canLoadMore && (
           <Button variant="subtle" borderRadius="xl" loading={isFetching && isPlaceholderData} onClick={() => setCount(count + PAGE)}>
             Show later trips
           </Button>

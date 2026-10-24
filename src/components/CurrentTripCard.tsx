@@ -119,8 +119,10 @@ function RideRow({ leg, vehicle }: { leg: Leg; vehicle?: Parameters<typeof MiniT
           estimated={leg.origin.departureTimeEstimated}
           realtime={leg.isRealtimeControlled}
         />
-        {(mode === 'train' || mode === 'metro') && <MiniTrain vehicle={vehicle} fallback={legOccupancy(leg)} />}
-        {(mode === 'bus' || mode === 'lightrail') && <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} />}
+        {mode === 'train' && <MiniTrain vehicle={vehicle} fallback={legOccupancy(leg)} />}
+        {(mode === 'bus' || mode === 'lightrail' || mode === 'metro') && (
+          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} />
+        )}
       </Flex>
     </Flex>
   )
