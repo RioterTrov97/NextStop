@@ -29,7 +29,9 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
         color="white"
         px={4}
         pb={4}
-        pt="calc(8px + min(env(safe-area-inset-top), 44px))"
+        // The full status bar height, uncapped: iOS 27 blurs anything in that zone, so the title must start below it
+        // (59px on Dynamic Island iPhones). The solid sticky header behind the status bar is also what stops the blur.
+        pt="calc(8px + env(safe-area-inset-top))"
         // Below only: the "md" token adds a 1px outline on every side, which drew a line under the iPhone status bar.
         boxShadow="0 4px 10px rgba(0, 0, 0, 0.18)"
         transition="background-color 0.3s ease-out"

@@ -35,6 +35,27 @@ export function AppShell() {
 
   return (
     <Flex direction="column" maxW="640px" mx="auto" minH="100vh">
+      {/*
+        Installed iPhone app only: a thin fixed strip in the header colour at the very top. iOS 27 draws a progressive
+        blur under the status bar unless something opaque is painted there, and the sticky header alone lets it come
+        back when the page is pulled down. Invisible against the header; dims with it while a sheet is open.
+      */}
+      <Box
+        aria-hidden
+        position="fixed"
+        top={0}
+        insetX={0}
+        h="11px"
+        bg="teal.600"
+        pointerEvents="none"
+        zIndex={11}
+        transition="background-color 0.3s ease-out"
+        display="none"
+        css={{
+          '@media (display-mode: standalone)': { display: 'block' },
+          'html[data-overlay] &': { bg: 'var(--ns-header-dim)', zIndex: 1551 },
+        }}
+      />
       <Box flex="1">
         <Outlet />
       </Box>

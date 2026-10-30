@@ -21,7 +21,7 @@ import { VehicleLoad } from './VehicleLoad'
 const LiveMap = lazy(() => import('./LiveMap'))
 
 /** The tallest the sheet gets: the page header (title, subtitle, padding and the notch) stays visible above it. */
-const SHEET_MAX_H = 'calc(100dvh - 104px - min(env(safe-area-inset-top), 44px))'
+const SHEET_MAX_H = 'calc(100dvh - 104px - env(safe-area-inset-top))'
 
 interface LegProps {
   leg: Leg
