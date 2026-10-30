@@ -2,7 +2,7 @@ import { Box, Button, Flex, HStack, IconButton, Image, Skeleton, Stack, Text, VS
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useState, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import {
   LuArrowRight,
   LuBus,
@@ -12,31 +12,35 @@ import {
   LuTrainFront,
   LuTrainTrack,
   LuTramFront,
-  LuBookmark,
   LuBookmarkPlus,
   LuArrowUpDown,
   LuGripVertical,
   LuTrash2,
   LuEllipsisVertical,
-  LuPlus,
+  LuSearch,
 } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
 import { REALTIME_MS, useTrips, useJourneyVehicles } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
 import { JourneySheet } from '../components/JourneySheet'
-import { DelayBadge } from '../components/DelayBadge'
+import { DelayText } from '../components/DelayBadge'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { CurrentTripCard } from '../components/CurrentTripCard'
+import { WeekendNotice } from '../components/WeekendNotice'
 import { ModePicker } from '../components/ModePicker'
 import { LineBadge } from '../components/LineBadge'
 import { PageHeader } from '../components/PageHeader'
 import { WalkBadge } from '../components/WalkBadge'
 import { RefreshButton } from '../components/RefreshButton'
+import { SaveTripChip } from '../components/SaveTrip'
+import { LoadIndicator } from '../components/LoadIndicator'
 import { useNow } from '../lib/hooks'
-import { isTransit, summarize, journeyComparator, trailingWalk } from '../lib/journey'
+import { isTransit, summarize, trailingWalk, tripList } from '../lib/journey'
 import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
+import { platformInfo } from '../lib/platforms'
+import { isCancelled } from '../lib/replan'
 import { countdown, formatTime } from '../lib/time'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { SwipeToRemove } from '../components/SwipeToRemove'
@@ -45,7 +49,7 @@ import { PERIODS, periodAt, savedTrips, useSavedTrips, type SavedTrip } from '..
 import { END_WALK_OPTIONS, useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
   const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
@@ -56,18 +60,21 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
     mode: 'dep',
     excluded: exclusionParams(trip.modes),
   })
-  const upcoming = (data ?? [])
-    .filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) <= maxEndWalk * 60)
-    .filter((j) => {
-      const s = summarize(j)
-      return new Date(s.depEstimated ?? s.depPlanned ?? 0).getTime() > now - 60_000
-    })
-    .sort(journeyComparator('dep'))
+  const upcoming = tripList(data ?? [], {
+    now,
+    mode: 'dep',
+    maxEndWalkMin: maxEndWalk,
+    minTransferMin: minTransfer,
+    pace: walkPace,
+  }).visible
   // Data restored from the persisted cache can be hours old, so every journey looks departed until the refetch lands.
   const refreshingStale = isFetching && upcoming.length === 0 && now - dataUpdatedAt > REALTIME_MS
   const selectedJourney = selected === undefined ? undefined : upcoming[selected]
-  // Only fetches vehicle positions while the sheet is open.
-  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(selectedJourney ? [selectedJourney] : [])
+  // Loads for the rows on show; rail comes from one shared feed query, so this adds no requests per card.
+  const shown = upcoming.slice(0, 3)
+  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(
+    selectedJourney && !shown.includes(selectedJourney) ? [...shown, selectedJourney] : shown,
+  )
   const isCurrent = !!selectedJourney && !!current && tripKey(selectedJourney) === tripKey(current.journey)
 
   return (
@@ -88,58 +95,87 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
           No upcoming services found.
         </Text>
       )}
-      {upcoming.slice(0, 3).map((j, i) => {
+      {shown.map((j, i) => {
         const s = summarize(j)
         const dep = s.depEstimated ?? s.depPlanned
         const arr = s.arrEstimated ?? s.arrPlanned
         const transit = j.legs.filter(isTransit)
         const tailWalk = trailingWalk(j, walkPace)
+        const boardAt = transit[0] && platformInfo(transit[0].origin, transit[0].transportation)?.long
         return (
-          <Flex
-            as="button"
-            align="center"
-            gap={2}
-            px={2}
-            py={2}
-            borderRadius="lg"
-            onClick={() => setSelected(i)}
-            _hover={{ bg: 'bg.muted' }}
-            key={`${trip.fromId}-${trip.toId}-${dep}`}
-          >
-            <Box minW="72px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
-              <Text fontSize="sm" fontWeight="bold">
-                {formatTime(dep)}
-              </Text>
-              {arr && (
-                <Text color="fg.muted" fontSize="2xs">
-                  arrives {formatTime(arr)}
+          // Two options can share a departure (a direct train and one that changes), so the whole route is the key.
+          <Fragment key={tripKey(j)}>
+            {/* A thin divider between trips, inset so it clears the rounded hover highlight. */}
+            {i > 0 && <Box h="1px" mx={2} bg="border.muted" aria-hidden />}
+            <Flex
+              as="button"
+              align="center"
+              // Even, clear gaps between the time, ride, load and countdown columns.
+              gap={3}
+              px={2}
+              py={2}
+              borderRadius="lg"
+              onClick={() => setSelected(i)}
+              _hover={{ bg: 'bg.muted' }}
+            >
+              {/* Fixed width, wide enough for "arrives 12:43 am", so line badges and platforms start at the same place in every row. */}
+              <Box w="84px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
+                <Text fontSize="sm" fontWeight="bold">
+                  {formatTime(dep)}
                 </Text>
-              )}
-            </Box>
-            <HStack gap={1} flex="1 1 96px" minW="96px" wrap="wrap">
-              {transit.map((leg, legIndex) => (
-                <LineBadge
-                  key={legIndex}
-                  number={leg.transportation?.number ?? leg.transportation?.disassembledName}
-                  cls={leg.transportation?.product?.class}
-                  size="sm"
+                {arr && (
+                  <Text color="fg.muted" fontSize="2xs">
+                    arrives {formatTime(arr)}
+                  </Text>
+                )}
+              </Box>
+              <Box flex={1} minW={0}>
+                <HStack gap={1} wrap="wrap">
+                  {transit.map((leg, legIndex) => (
+                    <LineBadge
+                      key={legIndex}
+                      number={leg.transportation?.number ?? leg.transportation?.disassembledName}
+                      cls={leg.transportation?.product?.class}
+                      size="sm"
+                    />
+                  ))}
+                  {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size="sm" />}
+                </HStack>
+                {/* Secondary line, like "arrives …": the platform or stand the first ride leaves from. */}
+                {boardAt && (
+                  <Text color="fg.muted" fontSize="2xs" mt={1} textAlign="start" truncate>
+                    {boardAt}
+                  </Text>
+                )}
+              </Box>
+              {/* Fixed-width column, as wide as the longest (train) strip, so the icons line up row under row. */}
+              <Flex w="82px" flexShrink={0} justify="center">
+                {transit[0] && (
+                  <LoadIndicator leg={transit[0]} vehicle={vehicles.get(transit[0].transportation?.properties?.RealtimeTripId ?? '')} />
+                )}
+              </Flex>
+              {/* Minutes to go with the running status tucked right under it, as one unit. */}
+              <Flex w="56px" flexShrink={0} direction="column" align="flex-end" whiteSpace="nowrap">
+                <Text fontSize="sm" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" lineHeight="1.2">
+                  {countdown(dep, now)}
+                </Text>
+                <DelayText
+                  planned={s.depPlanned}
+                  estimated={s.depEstimated}
+                  realtime={s.realtime}
+                  cancelled={!!s.firstTransit && isCancelled(s.firstTransit)}
                 />
-              ))}
-              {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size="sm" />}
-            </HStack>
-            <Box flexShrink={0} textAlign="start">
-              <DelayBadge planned={s.depPlanned} estimated={s.depEstimated} realtime={s.realtime} size="sm" />
-            </Box>
-            <Text flexShrink={0} fontSize="sm" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums">
-              {countdown(dep, now)}
-            </Text>
-          </Flex>
+              </Flex>
+            </Flex>
+          </Fragment>
         )
       })}
       <JourneySheet
         journey={selectedJourney}
         vehicles={vehicles}
         vehiclesLoading={vehiclesLoading}
+        // Home's header only carries the countdown while a trip is followed.
+        showRefresh={!current}
         isCurrent={isCurrent}
         onToggleCurrent={() => {
           if (!selectedJourney) return
@@ -423,15 +459,7 @@ function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) 
                 </Flex>
               </Link>
             </Box>
-            <IconButton
-              aria-label="Save trip"
-              variant="ghost"
-              size="sm"
-              color="fg.muted"
-              onClick={() => savedTrips.add({ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] })}
-            >
-              <LuBookmark />
-            </IconButton>
+            <SaveTripChip route={{ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] }} />
           </Flex>
         </SwipeToRemove>
       ))}
@@ -470,6 +498,7 @@ export function Home() {
       />
       <Stack gap={3} p={4} pt={6}>
         {current && <CurrentTripCard trip={current} now={now} />}
+        <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
           <>
             <Box borderWidth="2px" borderStyle="dashed" borderRadius="2xl" mt={2}>
@@ -479,12 +508,12 @@ export function Home() {
                 action={
                   <Button asChild colorPalette="teal" borderRadius="xl">
                     <Link to="/plan">
-                      <LuPlus /> Save a trip
+                      <LuSearch /> Plan a trip
                     </Link>
                   </Button>
                 }
               >
-                Save the trips you take often and see their live departures here, one tap away.
+                Search a trip, then tap Save to Home to keep it here with live departures.
               </EmptyState>
             </Box>
             <PreviousTrips limit={4} saved={trips} />
@@ -497,29 +526,42 @@ export function Home() {
                 Save your first trip
               </Text>
               <VStack gap={0} maxW="300px">
-                <Text color="fg.muted">Pick where you're going & it'll live here</Text>
-                <Text color="fg.muted">For e.g. Lidcombe to Wynyard</Text>
+                <Text color="fg.muted">Search a trip you take often, like Lidcombe to Wynyard,</Text>
+                <Text color="fg.muted">then tap Save to Home. It'll live here with live departures.</Text>
               </VStack>
               <Button mt="4" asChild colorPalette="teal" size="lg" borderRadius="xl">
-                <Link to="/plan">Plan a trip</Link>
+                <Link to="/plan">
+                  <LuSearch /> Plan a trip
+                </Link>
               </Button>
             </Stack>
             <PreviousTrips limit={4} saved={trips} />
           </>
         ) : (
           <>
-            <Flex align="center" justify="space-between" gap={3} px={1} mb={2}>
+            <Flex align="flex-start" justify="space-between" gap={3} px={1} mb={3}>
               <Box minW={0}>
                 <Text fontSize="lg" fontWeight="bold" lineHeight="short">
                   Saved trips
                 </Text>
-                <Text fontSize="xs" color="fg.muted">
-                  {`Tap for live times${trips.length > 1 ? ' · drag to reorder · swipe to remove' : ' · swipe to remove'}`}
+                {/* Quiet, and wraps only between phrases, so a small phone never strands a single word on its own line. */}
+                <Text fontSize="xs" color="fg.subtle" mt={0.5}>
+                  {(trips.length > 1
+                    ? ['Tap for live times', 'drag to sort', 'swipe to remove']
+                    : ['Tap for live times', 'swipe to remove']
+                  ).map((phrase, i, all) => (
+                    <Fragment key={phrase}>
+                      <Box as="span" whiteSpace="nowrap">
+                        {phrase}
+                        {i < all.length - 1 && ' ·'}
+                      </Box>{' '}
+                    </Fragment>
+                  ))}
                 </Text>
               </Box>
               <Button asChild size="sm" variant="subtle" colorPalette="teal" borderRadius="full" flexShrink={0}>
                 <Link to="/plan">
-                  <LuPlus /> Add trip
+                  <LuSearch /> Plan
                 </Link>
               </Button>
             </Flex>

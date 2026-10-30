@@ -2,12 +2,12 @@ import { CloseButton, Dialog, IconButton, Portal } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuFootprints } from 'react-icons/lu'
 import { resetRefreshTimer } from '../api/realtime'
-import { useSettings } from '../store/settings'
+import { DEFAULT_SETTINGS, useSettings } from '../store/settings'
 import { WalkOptions } from './WalkOptions'
 
-/** Icon button that opens the global "longest walk after the last ride" choice. */
+/** Icon button that opens the global walking and changing preferences. */
 export function EndWalkSetting({ endWalk }: { endWalk?: { value: number; onChange: (n: number) => void } }) {
-  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
   const maxEndWalk = endWalk?.value ?? globalEndWalk
   const [open, setOpen] = useState(false)
   return (
@@ -17,7 +17,7 @@ export function EndWalkSetting({ endWalk }: { endWalk?: { value: number; onChang
           aria-label="Walking settings"
           size="xs"
           borderRadius="full"
-          variant={maxEndWalk > 0 || walkPace !== 'normal' ? 'solid' : 'outline'}
+          variant={maxEndWalk > 0 || walkPace !== 'normal' || minTransfer !== DEFAULT_SETTINGS.minTransfer ? 'solid' : 'outline'}
           colorPalette="teal"
         >
           <LuFootprints />

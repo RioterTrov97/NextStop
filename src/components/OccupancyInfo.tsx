@@ -11,8 +11,12 @@ const LEVELS = [
 ]
 
 const SOURCES = [
-  { mode: 'Train', text: 'Each carriage, shown front to back.' },
-  { mode: 'Metro and bus', text: 'The whole vehicle, so every carriage shares one colour.' },
+  { mode: 'Train and metro', text: 'Each carriage, shown front to back. Grey means that carriage sent no reading.' },
+  {
+    mode: 'Older trains',
+    text: "Millennium, Tangara, OSCAR and Mariyung sets don't report loads. You'll see the trip planner's prediction, marked with *, or no data.",
+  },
+  { mode: 'Bus', text: 'The whole vehicle.' },
   { mode: 'Light rail', text: "Not reported by Transport for NSW, so it isn't shown." },
 ]
 
@@ -68,7 +72,7 @@ export function OccupancyInfo() {
                     ))}
                   </Stack>
                   <Text color="fg.muted" mt={2}>
-                    Live from Transport for NSW and refreshed every 15 seconds while you're watching.
+                    Live from Transport for NSW and refreshed every 10 seconds while you're watching.
                   </Text>
                 </Box>
               </Stack>

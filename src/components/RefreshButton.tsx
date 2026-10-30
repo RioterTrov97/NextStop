@@ -1,35 +1,53 @@
 import { Box, Button, Flex } from '@chakra-ui/react'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { LuCheck } from 'react-icons/lu'
 import { requestFresh } from '../api/client'
-import { REALTIME_MS, isRealtimeKey } from '../api/hooks'
+import { REALTIME_MS, isTimetableKey } from '../api/hooks'
 import { getNextRefreshAt, refreshRealtime } from '../api/realtime'
 import { useNow } from '../lib/hooks'
 
 const SIZE = 32
-const R = 12
+const R = 13
 const C = 2 * Math.PI * R
+/** How long the tick shows after fresh data lands. */
+const DONE_MS = 900
 
-/** Shows a ring that drains until the next shared refresh, and refetches every live query right now when tapped. */
-export function RefreshButton() {
+/**
+ * The live-data countdown: a ring that drains until the next shared refresh, a spinning arc while it refreshes,
+ * then a brief tick once fresh data is in. Tapping it refreshes everything now.
+ */
+export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
   const qc = useQueryClient()
   const now = useNow(250)
-  const fetching = useIsFetching({ predicate: (q) => isRealtimeKey(q.queryKey) }) > 0
+  const fetching = useIsFetching({ predicate: (q) => isTimetableKey(q.queryKey) }) > 0
+
+  // Note when a refresh finishes, in the same render, so the tick replaces the spinner with no countdown flash between.
+  const [doneAt, setDoneAt] = useState(0)
+  const [wasFetching, setWasFetching] = useState(fetching)
+  if (wasFetching !== fetching) {
+    setWasFetching(fetching)
+    if (!fetching) setDoneAt(now)
+  }
 
   const msLeft = getNextRefreshAt() - now
-  // Never show 0: at the end of the countdown the refresh is already underway.
+  // At the end of the countdown the refresh is already underway, so never show 0.
   const refreshing = fetching || msLeft <= 0
+  const done = !refreshing && now - doneAt < DONE_MS
   const seconds = Math.min(REALTIME_MS / 1000, Math.max(1, Math.ceil(msLeft / 1000)))
-  const fraction = refreshing ? 0.25 : Math.min(1, Math.max(0, msLeft / REALTIME_MS))
+  const fraction = Math.min(1, Math.max(0, msLeft / REALTIME_MS))
 
   return (
     <Button
+      className="ns-refresh"
       aria-label={refreshing ? 'Refreshing live data' : `Refresh live data, next refresh in ${seconds} seconds`}
+      aria-live="polite"
       variant="ghost"
-      color="white"
+      color={color}
       size="sm"
       px={1}
       borderRadius="full"
-      title={refreshing ? 'Refreshing' : undefined}
+      title={refreshing ? 'Refreshing' : 'Refresh now'}
       disabled={refreshing}
       _disabled={{ opacity: 1, cursor: 'default' }}
       onClick={() => {
@@ -38,30 +56,46 @@ export function RefreshButton() {
       }}
     >
       <Box position="relative" w={`${SIZE}px`} h={`${SIZE}px`} flexShrink={0}>
-        <Box
-          animationName={refreshing ? 'spin' : undefined}
-          animationDuration="1s"
-          animationTimingFunction="linear"
-          animationIterationCount="infinite"
+        <svg
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
+          width={SIZE}
+          height={SIZE} // Fixed size: Chakra's Button shrinks any svg inside it to icon size.
+          style={{ display: 'block', width: SIZE, height: SIZE }}
           aria-hidden
         >
-          <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE} style={{ display: 'block', width: SIZE, height: SIZE }}>
-            <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth={2} />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="currentColor" strokeOpacity={0.22} strokeWidth={2.5} />
+          {refreshing ? (
+            // Indeterminate arc: grows and shrinks while it turns.
+            <g className="ns-refresh-spin" style={{ transformOrigin: 'center' }}>
+              <circle
+                className="ns-refresh-arc"
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={R}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeDasharray={`${C * 0.25} ${C}`}
+              />
+            </g>
+          ) : (
             <circle
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={R}
               fill="none"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={2.5}
               strokeLinecap="round"
               strokeDasharray={C}
-              strokeDashoffset={C * (1 - fraction)}
+              strokeDashoffset={C * (1 - (done ? 1 : fraction))}
               transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-              style={{ transition: refreshing ? undefined : 'stroke-dashoffset 0.25s linear' }}
+              // Linear over the 250ms tick, so the ring drains in one continuous motion; refilling eases back.
+              style={{ transition: fraction > 0.97 || done ? 'stroke-dashoffset 0.45s ease-out' : 'stroke-dashoffset 0.25s linear' }}
             />
-          </svg>
-        </Box>
+          )}
+        </svg>
         <Flex
           position="absolute"
           inset={0}
@@ -72,13 +106,28 @@ export function RefreshButton() {
           fontVariantNumeric="tabular-nums"
         >
           {refreshing ? (
-            <Flex gap="2px" aria-hidden>
+            // Three soft dots in a gentle wave: fills the ring quietly while the spinner does the talking.
+            <Flex gap="2.5px" align="center" aria-hidden>
               {[0, 1, 2].map((i) => (
-                <Box key={i} w="2px" h="2px" borderRadius="full" bg="currentColor" />
+                <Box
+                  key={i}
+                  className="ns-refresh-dot"
+                  w="3px"
+                  h="3px"
+                  borderRadius="full"
+                  bg="currentColor"
+                  style={{ animationDelay: `${i * 0.16}s` }}
+                />
               ))}
             </Flex>
+          ) : done ? (
+            <Box className="ns-refresh-pop" lineHeight={0}>
+              <LuCheck size={14} strokeWidth={3} style={{ width: 14, height: 14 }} />
+            </Box>
           ) : (
-            seconds
+            <span key={seconds} className="ns-refresh-tick">
+              {seconds}
+            </span>
           )}
         </Flex>
       </Box>

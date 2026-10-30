@@ -1,6 +1,6 @@
-import { Box, Button, Flex, IconButton, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, Flex, Stack, Text } from '@chakra-ui/react'
 import { useState } from 'react'
-import { LuArrowRight, LuBookmark, LuBookmarkCheck, LuChevronDown, LuChevronUp } from 'react-icons/lu'
+import { LuArrowRight, LuChevronDown, LuChevronUp } from 'react-icons/lu'
 import { Link } from 'react-router-dom'
 import { LineBadge } from '../components/LineBadge'
 import { WalkBadge } from '../components/WalkBadge'
@@ -9,8 +9,8 @@ import { PageHeader } from '../components/PageHeader'
 import { isTransit, stationName, summarize } from '../lib/journey'
 import { tripPath } from '../lib/paths'
 import { formatDuration, formatTime } from '../lib/time'
-import { history, routeKey, tripEntryKey, useSearchHistory, useTripHistory, type HistoryEntry } from '../store/history'
-import { savedTrips, useSavedTrips } from '../store/savedTrips'
+import { history, tripEntryKey, useSearchHistory, useTripHistory, type HistoryEntry } from '../store/history'
+import { SaveTripChip } from '../components/SaveTrip'
 
 const dayLabel = (at?: number) =>
   at ? new Date(at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined
@@ -55,17 +55,7 @@ function TripDetails({ entry }: { entry: HistoryEntry }) {
   )
 }
 
-function RouteList({
-  items,
-  saved,
-  empty,
-  onRemove,
-}: {
-  items: HistoryEntry[]
-  saved: Set<string>
-  empty: string
-  onRemove: (e: HistoryEntry) => void
-}) {
+function RouteList({ items, empty, onRemove }: { items: HistoryEntry[]; empty: string; onRemove: (e: HistoryEntry) => void }) {
   const [open, setOpen] = useState<string>()
   if (items.length === 0) {
     return (
@@ -77,7 +67,6 @@ function RouteList({
   return (
     <Stack gap={2}>
       {items.map((e) => {
-        const isSaved = saved.has(routeKey(e))
         const k = tripEntryKey(e)
         const expandable = !!e.journey
         const expanded = expandable && open === k
@@ -122,16 +111,7 @@ function RouteList({
                     <Link to={tripPath({ ...e, modes: [] })}>{title}</Link>
                   </Box>
                 )}
-                <IconButton
-                  aria-label={isSaved ? 'Saved' : 'Save trip'}
-                  variant="ghost"
-                  size="sm"
-                  color={isSaved ? 'teal.fg' : 'fg.muted'}
-                  disabled={isSaved}
-                  onClick={() => savedTrips.add({ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] })}
-                >
-                  {isSaved ? <LuBookmarkCheck /> : <LuBookmark />}
-                </IconButton>
+                <SaveTripChip route={{ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] }} />
               </Flex>
               {expanded && <TripDetails entry={e} />}
             </Box>
@@ -145,7 +125,6 @@ function RouteList({
 export default function History() {
   const trips = useTripHistory()
   const searches = useSearchHistory()
-  const saved = new Set(useSavedTrips().map(routeKey))
   const [tab, setTab] = useState<'trips' | 'searches'>('trips')
 
   return (
@@ -182,12 +161,11 @@ export default function History() {
         {tab === 'trips' ? (
           <RouteList
             items={trips}
-            saved={saved}
             onRemove={history.removeTrip}
             empty="No followed trips yet. Follow a trip from its details and it shows up here."
           />
         ) : (
-          <RouteList items={searches} saved={saved} onRemove={history.removeSearch} empty="No searches yet." />
+          <RouteList items={searches} onRemove={history.removeSearch} empty="No searches yet." />
         )}
       </Stack>
     </>

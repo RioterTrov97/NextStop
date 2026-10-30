@@ -1,10 +1,11 @@
 import { Box, Flex } from '@chakra-ui/react'
 import { LuVolumeX } from 'react-icons/lu'
-import type { VehicleInfo } from '../../shared/vehicles'
+import { reportedCarriages, type VehicleInfo } from '../../shared/vehicles'
 import { occupancyFromEnum, type OccupancyLevel } from '../lib/occupancy'
 import { VehicleLoad } from './VehicleLoad'
 
 interface Props {
+  mode?: 'train' | 'metro'
   vehicle?: VehicleInfo
   /** Overall predicted occupancy, used when per-carriage data is unavailable. */
   fallback?: OccupancyLevel
@@ -12,24 +13,33 @@ interface Props {
   size?: 'sm' | 'md'
 }
 
-export function MiniTrain({ vehicle, fallback, size = 'sm' }: Props) {
-  const cars = vehicle?.carriages ?? []
+/** Compact strip widths: trains a quarter longer than the other shapes, metro carriages 15% longer. */
+const SM_WIDTH = { train: 82, metro: 67 }
+
+export function MiniTrain({ mode = 'train', vehicle, fallback, size = 'sm' }: Props) {
+  const cars = reportedCarriages(vehicle?.carriages)
   const md = size === 'md'
 
   if (cars.length) {
-    const levels = cars.map((c) => occupancyFromEnum(c.occupancy ?? 0))
+    // A carriage that reports nothing stays grey rather than pretending to be empty.
+    const levels = cars.map((c) => occupancyFromEnum(c.occupancy))
 
     return (
-      <Flex gap={md ? '3px' : '2px'} role="img" aria-label="Carriage occupancy, front to back">
+      <Flex
+        // Compact strips share a fixed width whatever the train length, so they line up with the other load icons.
+        w={md ? undefined : `${SM_WIDTH[mode]}px`}
+        gap={md ? '3px' : '1.5px'}
+        role="img"
+        aria-label={`Carriage occupancy, front to back: ${levels.map((l) => l.short).join(', ')}`}
+      >
         {cars.map((c, i) => (
           <Flex
             key={c.position}
             position="relative"
-            w={md ? undefined : '13px'}
-            flex={md ? 1 : undefined}
+            flex={1}
+            minW={0}
             maxW={md ? '48px' : undefined}
-            h={md ? '28px' : '11px'}
-            flexShrink={0}
+            h={md ? '28px' : '14px'}
             align="flex-end"
             justify="center"
             pb="2px"
@@ -42,10 +52,10 @@ export function MiniTrain({ vehicle, fallback, size = 'sm' }: Props) {
           >
             <Box
               position="absolute"
-              top={md ? '4px' : '2px'}
-              left={md ? '5px' : '3px'}
-              right={md ? '5px' : '3px'}
-              h={md ? '7px' : '3px'}
+              top={md ? '4px' : '3px'}
+              left={md ? '5px' : '1px'}
+              right={md ? '5px' : '1px'}
+              h={md ? '7px' : '4px'}
               borderRadius="full"
               bg="whiteAlpha.700"
             />
@@ -56,5 +66,5 @@ export function MiniTrain({ vehicle, fallback, size = 'sm' }: Props) {
     )
   }
 
-  return <VehicleLoad mode="train" vehicle={vehicle} fallback={fallback} />
+  return <VehicleLoad mode={mode} vehicle={vehicle} fallback={fallback} />
 }

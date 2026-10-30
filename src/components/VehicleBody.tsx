@@ -10,21 +10,22 @@ export function VehicleBody({ mode, color, md }: { mode: VehicleKind; color: str
   const bus = mode === 'bus'
   const metro = mode === 'metro'
   const cars = bus ? 1 : 4
-  const h = md ? '28px' : '11px'
-  const top = md ? '5px' : '2px'
-  const glass = md ? '8px' : '3px'
+  const h = md ? '28px' : '14px'
+  const top = md ? '5px' : '3px'
+  const glass = md ? '8px' : '4px'
   return (
     <Flex align="center" gap={md ? '6px' : '3px'} flexShrink={0}>
-      <Box position="relative" pb={bus ? (md ? '5px' : '2px') : 0}>
+      <Box position="relative" pb={bus ? (md ? '5px' : '3px') : 0}>
         <Flex gap={md ? '3px' : '2px'}>
           {Array.from({ length: cars }, (_, c) => (
             <Box
               key={c}
               position="relative"
-              w={md ? (bus ? '92px' : '28px') : bus ? '30px' : '11px'}
+              // Compact shapes stay within 48-58px so load icons match, except trains, which are a quarter longer (74px).
+              w={md ? (bus ? '92px' : '28px') : bus ? '48px' : mode === 'train' ? '17px' : '13px'}
               h={h}
               borderRadius={md ? '6px' : '3px'}
-              borderLeftRadius={c > 0 ? (md ? '6px' : '3px') : bus ? (md ? '10px' : '4px') : md ? '14px' : '7px'}
+              borderLeftRadius={c > 0 ? (md ? '6px' : '3px') : bus ? (md ? '10px' : '5px') : md ? '14px' : '8px'}
               style={{ background: color, clipPath: metro && c === 0 ? METRO_NOSE : undefined }}
             >
               {c === 0 && !metro && (
@@ -32,8 +33,8 @@ export function VehicleBody({ mode, color, md }: { mode: VehicleKind; color: str
                   position="absolute"
                   top={top}
                   left={md ? '4px' : '2px'}
-                  w={md ? '9px' : '3px'}
-                  h={md ? '14px' : '5px'}
+                  w={md ? '9px' : '4px'}
+                  h={md ? '14px' : '7px'}
                   borderRadius={md ? '4px' : '1.5px'}
                   bg="whiteAlpha.900"
                 />
@@ -41,7 +42,7 @@ export function VehicleBody({ mode, color, md }: { mode: VehicleKind; color: str
               <Flex
                 position="absolute"
                 top={top}
-                left={c === 0 ? (metro ? (md ? '14px' : '5px') : md ? '17px' : '6px') : md ? '5px' : '2px'}
+                left={c === 0 ? (metro ? (md ? '14px' : '6px') : md ? '17px' : '7px') : md ? '5px' : '2px'}
                 right={md ? '5px' : '2px'}
                 gap={md ? '3px' : '1px'}
               >
@@ -53,14 +54,14 @@ export function VehicleBody({ mode, color, md }: { mode: VehicleKind; color: str
           ))}
         </Flex>
         {bus &&
-          [md ? '16px' : '5px', md ? '66px' : '21px'].map((left) => (
+          [md ? '16px' : '8px', md ? '66px' : '33px'].map((left) => (
             <Box
               key={left}
               position="absolute"
               bottom={0}
               left={left}
-              w={md ? '11px' : '5px'}
-              h={md ? '11px' : '5px'}
+              w={md ? '11px' : '7px'}
+              h={md ? '11px' : '7px'}
               borderRadius="full"
               bg="gray.700"
               borderWidth={md ? '2px' : '1px'}

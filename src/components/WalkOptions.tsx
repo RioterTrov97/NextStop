@@ -1,10 +1,10 @@
 import { Box, Button, HStack, Stack, Text } from '@chakra-ui/react'
-import { END_WALK_OPTIONS, WALK_PACES, settings, useSettings } from '../store/settings'
+import { END_WALK_OPTIONS, TRANSFER_OPTIONS, WALK_PACES, settings, useSettings } from '../store/settings'
 
 const chip = (on: boolean) =>
   ({ size: 'sm', borderRadius: 'full', variant: on ? 'solid' : 'outline', colorPalette: 'teal', 'aria-pressed': on }) as const
 
-/** The two global walking preferences, shared by Settings and the shortcut dialog. */
+/** The global walking and changing preferences, shared by Settings and the shortcut dialog. */
 export function WalkOptions({
   onPick,
   endWalk,
@@ -13,7 +13,7 @@ export function WalkOptions({
   /** Edits one saved trip's end walk instead of the global default. */
   endWalk?: { value: number; onChange: (n: number) => void }
 }) {
-  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
   const maxEndWalk = endWalk?.value ?? globalEndWalk
   return (
     <Stack gap={5}>
@@ -60,6 +60,26 @@ export function WalkOptions({
         <Text fontSize="xs" color="fg.muted" mt={2}>
           {WALK_PACES.find((w) => w.key === walkPace)?.hint}.
         </Text>
+      </Box>
+      <Box>
+        <Text fontWeight="semibold">Time to change</Text>
+        <Text fontSize="sm" color="fg.muted" mb={2}>
+          The least time you want between getting off one service and the next one leaving. Trips with tighter changes are hidden.
+        </Text>
+        <HStack gap={2} wrap="wrap">
+          {TRANSFER_OPTIONS.map((n) => (
+            <Button
+              key={n}
+              {...chip(minTransfer === n)}
+              onClick={() => {
+                settings.set({ minTransfer: n })
+                onPick?.()
+              }}
+            >
+              {n} min
+            </Button>
+          ))}
+        </HStack>
       </Box>
     </Stack>
   )

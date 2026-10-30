@@ -27,10 +27,11 @@ export async function searchStops(query: string, signal?: AbortSignal): Promise<
     signal,
   )
   const places = (data.locations ?? []).filter((l) => l.type === 'stop' || l.type === 'platform' || l.type === 'poi' || !l.type)
-  // Stable sort: train/metro stations first, API relevance order kept within each group.
+  // Train/metro stations first, then by the finder's own match quality: its list order puts pubs in Armidale
+  // ahead of Central Station for "central".
   return places
     .map((p, i) => ({ p, i, rank: p.modes?.some((m) => m === 1 || m === 2) ? 0 : 1 }))
-    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .sort((a, b) => a.rank - b.rank || (b.p.matchQuality ?? 0) - (a.p.matchQuality ?? 0) || a.i - b.i)
     .map((x) => x.p)
 }
 
@@ -74,20 +75,29 @@ const delay = (ms: number, signal?: AbortSignal) =>
     })
   })
 
+// One queue for every trip request on the page, so a followed trip, its replan search and the saved trips together
+// still stay under the upstream 5 req/s limit instead of each spacing only its own requests.
+let nextSlot = 0
+async function tripSlot(signal?: AbortSignal) {
+  const now = Date.now()
+  const at = Math.max(now, nextSlot)
+  nextSlot = at + REQUEST_SPACING_MS
+  if (at > now) await delay(at - now, signal)
+}
+
 const durationMs = (j: Journey) => {
   const first = j.legs[0].origin
   const last = j.legs[j.legs.length - 1].destination
   return Date.parse(last.arrivalTimePlanned ?? '') - Date.parse(first.departureTimePlanned ?? '')
 }
 
-export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
-  const itd = toItd(q.when ?? new Date())
-  const run = async (extra: Record<string, string>) => {
-    const data = await get<{ journeys?: Journey[] }>(
+function planTrip(q: TripQuery, extra: Record<string, string>, signal?: AbortSignal) {
+  return tripSlot(signal).then(() =>
+    get<{ journeys?: Journey[] }>(
       'tp/trip',
       {
         depArrMacro: q.mode,
-        ...itd,
+        ...toItd(q.when ?? new Date()),
         type_origin: 'any',
         name_origin: q.from,
         type_destination: 'any',
@@ -99,28 +109,40 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Jo
         ...extra,
       },
       signal,
-    )
-    return data.journeys ?? []
-  }
-  // The planner only returns its preferred routes; forcing a via-stop at major interchanges surfaces the other rail/metro/light-rail combinations.
-  const hubs = VIA_HUBS.filter((id) => id !== q.from && id !== q.to)
-  // Requests start 250ms apart (the base query counts as slot 0) to stay under the upstream 5 req/s limit.
-  const viaHub = async (id: string, i: number) => {
-    await delay((i + 1) * REQUEST_SPACING_MS, signal)
-    return run({ type_via: 'any', name_via: id, maxChanges: '4' }).catch(() => [] as Journey[])
-  }
-  const [base, ...viaResults] = await Promise.all([run({}), ...hubs.map(viaHub)])
-  const merged = [...base, ...viaResults.flat()]
-  // Via routes can detour; keep only those not much slower than the best option.
-  const best = Math.min(...base.map(durationMs).filter(Number.isFinite), Infinity)
-  const viaKeep = (j: Journey) => base.includes(j) || durationMs(j) <= best * 1.4 + 10 * 60_000
+    ).then((d) => d.journeys ?? []),
+  )
+}
+
+/** The planner's own preferred routes: one request, so the list can show as soon as it lands. */
+export const fetchTripsDirect = (q: TripQuery, signal?: AbortSignal) => planTrip(q, {}, signal)
+
+export const viaHubsFor = (q: Pick<TripQuery, 'from' | 'to'>) => VIA_HUBS.filter((id) => id !== q.from && id !== q.to)
+
+/**
+ * The planner only returns its preferred routes; forcing a via-stop at the major interchanges surfaces the other
+ * rail, metro and light rail combinations. Slower, so it fills in after the direct results.
+ */
+export async function fetchTripsVia(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
+  const viaHub = (id: string) => planTrip(q, { type_via: 'any', name_via: id, maxChanges: '4' }, signal).catch(() => [] as Journey[])
+  return (await Promise.all(viaHubsFor(q).map(viaHub))).flat()
+}
+
+/** Direct results plus via-hub results that aren't much slower than the best direct one, without duplicates. */
+export function mergeTrips(direct: Journey[], via: Journey[]): Journey[] {
+  const best = Math.min(...direct.map(durationMs).filter(Number.isFinite), Infinity)
+  const viaKeep = (j: Journey) => durationMs(j) <= best * 1.4 + 10 * 60_000
   const seen = new Set<string>()
-  return merged.filter(viaKeep).filter((j) => {
+  return [...direct, ...via.filter(viaKeep)].filter((j) => {
     const k = journeyKey(j)
     if (seen.has(k)) return false
     seen.add(k)
     return true
   })
+}
+
+export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
+  const [direct, via] = await Promise.all([fetchTripsDirect(q, signal), fetchTripsVia(q, signal)])
+  return mergeTrips(direct, via)
 }
 
 export async function fetchDepartures(stopId: string, signal?: AbortSignal): Promise<StopEvent[]> {
@@ -132,10 +154,11 @@ export async function fetchDepartures(stopId: string, signal?: AbortSignal): Pro
   return data.stopEvents ?? []
 }
 
-export async function fetchAlerts(signal?: AbortSignal): Promise<Alert[]> {
+/** Alerts in force on a day: today by default, or e.g. the coming Saturday for weekend trackwork. */
+export async function fetchAlerts(signal?: AbortSignal, day: Date = new Date()): Promise<Alert[]> {
   const data = await get<{ infos?: { current?: Alert[] } | Alert[] }>(
     'tp/add_info',
-    { filterDateValid: toAddInfoDate(new Date()), filterPublicationStatus: 'current' },
+    { filterDateValid: toAddInfoDate(day), filterPublicationStatus: 'current' },
     signal,
   )
   const infos = data.infos

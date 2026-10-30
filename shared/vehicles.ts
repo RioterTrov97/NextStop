@@ -19,3 +19,8 @@ export interface VehicleInfo {
 }
 
 export type VehicleMode = 'train' | 'metro' | 'lightrail' | 'ferry' | 'bus'
+
+/** Carriages worth drawing: at least two, and at least one reporting a load. Anything else is no consist data at all. */
+export function reportedCarriages(cars: Carriage[] | undefined): Carriage[] {
+  return cars && cars.length > 1 && cars.some((c) => c.occupancy !== undefined) ? cars : []
+}

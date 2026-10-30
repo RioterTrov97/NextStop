@@ -4,13 +4,30 @@ import { AppShell } from './components/AppShell'
 import { ErrorFallback } from './components/ErrorFallback'
 import { Home } from './routes/Home'
 
-const Plan = lazy(() => import('./routes/Plan'))
-const TripResults = lazy(() => import('./routes/TripResults'))
-const Departures = lazy(() => import('./routes/Departures'))
-const StationBoard = lazy(() => import('./routes/StationBoard'))
-const Alerts = lazy(() => import('./routes/Alerts'))
-const History = lazy(() => import('./routes/History'))
-const Settings = lazy(() => import('./routes/Settings'))
+const pages = {
+  plan: () => import('./routes/Plan'),
+  tripResults: () => import('./routes/TripResults'),
+  departures: () => import('./routes/Departures'),
+  stationBoard: () => import('./routes/StationBoard'),
+  alerts: () => import('./routes/Alerts'),
+  history: () => import('./routes/History'),
+  settings: () => import('./routes/Settings'),
+}
+
+const Plan = lazy(pages.plan)
+const TripResults = lazy(pages.tripResults)
+const Departures = lazy(pages.departures)
+const StationBoard = lazy(pages.stationBoard)
+const Alerts = lazy(pages.alerts)
+const History = lazy(pages.history)
+const Settings = lazy(pages.settings)
+
+/** Loads every page's code in the background once the browser is idle; the chunks then come from memory on first visit. */
+export function preloadRoutes() {
+  const run = () => Object.values(pages).forEach((load) => void load().catch(() => {}))
+  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 3000 })
+  else setTimeout(run, 1500)
+}
 
 const wrap = (el: React.ReactNode) => <Suspense fallback={null}>{el}</Suspense>
 

@@ -1,12 +1,13 @@
-import type { Carriage, VehicleInfo } from '../shared/vehicles'
+import { reportedCarriages, type Carriage, type VehicleInfo } from '../shared/vehicles'
 import { readFields, toFloat, toStr } from './protobuf'
 
 // TfNSW GTFS-R extension number carrying the per-carriage "consist" list.
 const CONSIST_EXTENSION = 1007
 
 function decodeCarriage(buf: Uint8Array): Carriage {
-  // The feed omits occupancy_status when it is the proto default (EMPTY = 0), so absence means empty, not unknown.
-  const c: Carriage = { position: 0, quiet: false, occupancy: 0 }
+  // occupancy_status is an optional proto2 field, so absence means "not reported", not EMPTY. Only the Waratah fleets
+  // (A and B sets) send it; Millennium, Tangara, OSCAR and Mariyung trains list their carriages with no load at all.
+  const c: Carriage = { position: 0, quiet: false }
   for (const f of readFields(buf)) {
     if (f.field === 1 && f.wire === 2) c.name = toStr(f.value)
     else if (f.field === 2 && f.wire === 0) c.position = f.value as number
@@ -40,10 +41,20 @@ function decodeVehicle(buf: Uint8Array): VehicleInfo {
       }
     } else if (f.wire === 2 && f.field === CONSIST_EXTENSION) v.carriages.push(decodeCarriage(f.value as Uint8Array))
   }
-  v.carriages = v.carriages.filter((c) => c.position > 0).sort((a, b) => a.position - b.position)
-  // Metro sends one placeholder carriage and reports the real load on the whole train, so use that instead.
-  if (v.carriages.length === 1 && v.occupancy !== undefined) v.carriages = []
+  v.carriages = orderCarriages(v.carriages)
   return v
+}
+
+/**
+ * Sydney Trains number carriages 1..8 after an unnumbered header entry. Metro does the opposite: a numbered header
+ * ("Alstom Metropolis") followed by six real carriages that all have position 0, listed front to back.
+ * A consist where no carriage reports a load is dropped, so the UI falls back to whole-vehicle or predicted occupancy.
+ */
+export function orderCarriages(all: Carriage[]): Carriage[] {
+  const numbered = all.filter((c) => c.position > 0).sort((a, b) => a.position - b.position)
+  const unnumbered = all.filter((c) => c.position === 0)
+  const cars = unnumbered.length > numbered.length ? unnumbered.map((c, i) => ({ ...c, position: i + 1 })) : numbered
+  return reportedCarriages(cars)
 }
 
 export function decodeVehiclePositions(buf: Uint8Array, wanted?: Set<string>): VehicleInfo[] {

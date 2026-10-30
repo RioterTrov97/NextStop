@@ -1,12 +1,24 @@
 import { useSyncExternalStore } from 'react'
 import type { Journey } from '../api/types'
 
+/** Where a switched-to route starts: the legs from `keep` onward were planned from this stop at this time. */
+export interface TripAnchor {
+  keep: number
+  fromId: string
+  /** Planned departure of the first leg of that segment, used to look the segment up again for live times. */
+  when: string
+}
+
 export interface CurrentTrip {
   journey: Journey
   fromId: string
   toId: string
   fromName: string
   toName: string
+  /** Set once the user switches to a faster route mid-trip; each anchor starts a newer segment. */
+  anchors?: TripAnchor[]
+  /** Followed from a station's departure board: that board also keeps the ride's times and platform live. */
+  boardId?: string
 }
 
 const KEY = 'nextstop.currentTrip.v1'

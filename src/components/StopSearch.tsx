@@ -1,10 +1,10 @@
 import { Box, Button, Flex, Input, Spinner, Text } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuMapPin } from 'react-icons/lu'
-import { useStopSearch } from '../api/hooks'
+import { useDebounced, useStopSearch } from '../api/hooks'
 import type { Place } from '../api/types'
 import { MODES } from '../lib/lines'
-import { QUICK_STATIONS } from '../lib/stations'
+import { QUICK_STATIONS, searchStations } from '../lib/stations'
 import { recentStops, useRecentStops } from '../store/recentStops'
 
 const QUICK_COUNT = QUICK_STATIONS.length
@@ -24,6 +24,13 @@ interface Props {
   onChange: (p: Place | undefined) => void
 }
 
+/** Matches answered on the device before the stop finder replies. */
+const LOCAL_COUNT = 3
+const MAX_RESULTS = 8
+
+const baseName = (p: Place) => shortName(p).split(',')[0].toLowerCase()
+const sameName = (a: Place, b: Place) => baseName(a) === baseName(b)
+
 const modeLabels = (modes?: number[]) =>
   MODES.filter((m) => m.classes.some((c) => modes?.includes(c)))
     .map((m) => m.label)
@@ -34,6 +41,14 @@ export function StopSearch({ label, value, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const { data, isFetching, fetchStatus } = useStopSearch(text)
   const recents = useRecentStops()
+  // Stations come from the bundled list instantly; everything else (bus stops, places) follows from the network.
+  const local = searchStations(text, LOCAL_COUNT)
+  const remote = (data ?? []).filter((p) => !local.some((l) => l.id === p.id || (p.type === 'stop' && sameName(l, p))))
+  const results = [...local, ...remote].slice(0, MAX_RESULTS)
+  // The finder needs two letters and waits for typing to pause, so show the loader from the first keystroke it will answer.
+  const debounced = useDebounced(text.trim())
+  const searching = text.trim().length >= 2 && (isFetching || text.trim() !== debounced)
+  const offline = !data && fetchStatus === 'paused'
 
   const select = (p: Place) => {
     recentStops.add(p)
@@ -100,23 +115,6 @@ export function StopSearch({ label, value, onChange }: Props) {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
       />
-      {isFetching && <Spinner size="sm" position="absolute" right={4} top={4} color="fg.muted" />}
-      {open && text.trim() && !data && fetchStatus === 'paused' && (
-        <Text
-          position="absolute"
-          zIndex="dropdown"
-          mt={1}
-          w="full"
-          bg="bg.panel"
-          color="fg.muted"
-          borderRadius="xl"
-          shadow="lg"
-          p={3}
-          fontSize="sm"
-        >
-          Offline. Search needs a connection, but quick picks and recent stops still work.
-        </Text>
-      )}
       {open && !text.trim() && (
         <Flex
           position="absolute"
@@ -141,7 +139,7 @@ export function StopSearch({ label, value, onChange }: Props) {
           ))}
         </Flex>
       )}
-      {open && text.trim() && data && data.length > 0 && (
+      {open && text.trim() && (results.length > 0 || searching || offline) && (
         <Box
           position="absolute"
           zIndex="dropdown"
@@ -155,7 +153,7 @@ export function StopSearch({ label, value, onChange }: Props) {
           overflowY="auto"
           onMouseDown={(e) => e.preventDefault()}
         >
-          {data.slice(0, 8).map((p) => (
+          {results.map((p) => (
             <Box
               as="button"
               key={p.id}
@@ -175,6 +173,22 @@ export function StopSearch({ label, value, onChange }: Props) {
               </Text>
             </Box>
           ))}
+          {searching && (
+            <Flex align="center" gap={2} px={4} py={3} color="fg.muted" fontSize="sm" role="status">
+              <Spinner size="xs" />
+              <Text>Searching all stops and places…</Text>
+            </Flex>
+          )}
+          {offline && (
+            <Text px={4} py={3} color="fg.muted" fontSize="sm">
+              Offline. Stations still match, but other stops and places need a connection.
+            </Text>
+          )}
+          {!searching && !offline && results.length === 0 && (
+            <Text px={4} py={3} color="fg.muted" fontSize="sm">
+              No stops or places match.
+            </Text>
+          )}
         </Box>
       )}
     </Box>

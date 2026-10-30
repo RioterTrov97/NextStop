@@ -24,14 +24,26 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
         position="sticky"
         top={0}
         zIndex="docked"
-        bgGradient="to-br"
-        gradientFrom="teal.600"
-        gradientTo="teal.700"
+        // Solid, not a gradient: iOS 26+ colours a home-screen app's status bar by sampling the opaque sticky strip at the top.
+        bg="teal.600"
         color="white"
         px={4}
         pb={4}
-        pt="calc(12px + min(env(safe-area-inset-top), 44px))"
-        shadow="md"
+        pt="calc(8px + min(env(safe-area-inset-top), 44px))"
+        // Below only: the "md" token adds a 1px outline on every side, which drew a line under the iPhone status bar.
+        boxShadow="0 4px 10px rgba(0, 0, 0, 0.18)"
+        transition="background-color 0.3s ease-out"
+        // While a sheet or dialog is open: the header's colour as seen through the backdrop, drawn above it, so iOS
+        // (which samples this bar for the status bar) dims the status bar too. Taps fall through to the backdrop.
+        css={{
+          'html[data-overlay] &': {
+            bg: 'var(--ns-header-dim)',
+            // Above every backdrop, sheet (1400) and centred dialog (1500); none of them reach up into the header.
+            zIndex: 1550,
+            pointerEvents: 'none',
+            boxShadow: 'none',
+          },
+        }}
       >
         <Flex align="center" gap={2}>
           {back && (

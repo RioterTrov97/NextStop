@@ -1,9 +1,9 @@
-import { Button, IconButton, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Button, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestFresh } from '../api/client'
 import { refreshRealtime } from '../api/realtime'
-import { LuArrowLeftRight, LuBookmark, LuBookmarkCheck, LuTrainFront } from 'react-icons/lu'
+import { LuArrowLeftRight, LuTrainFront } from 'react-icons/lu'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useJourneyVehicles, useTrips } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
@@ -13,8 +13,9 @@ import { ModePicker } from '../components/ModePicker'
 import { NoConnection } from '../components/NoConnection'
 import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
+import { SaveTripChip } from '../components/SaveTrip'
 import { useNow } from '../lib/hooks'
-import { journeyComparator, summarize, trailingWalk } from '../lib/journey'
+import { summarize, tripList } from '../lib/journey'
 import { exclusionParams } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { useSettings } from '../store/settings'
@@ -37,7 +38,7 @@ export default function TripResults() {
   const fromName = sp.get('fn') ?? from
   const toName = sp.get('tn') ?? to
   const modes = sp.get('modes')?.split(',').filter(Boolean) ?? []
-  const { maxEndWalk: globalEndWalk, walkPace } = useSettings()
+  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
@@ -62,7 +63,7 @@ export default function TripResults() {
     void refreshRealtime(qc)
   }, [routeKey, qc])
 
-  const { data, isLoading, error, isFetching, isPlaceholderData, fetchStatus, refetch } = useTrips({
+  const { data, isLoading, isLoadingMore, error, isFetching, isPlaceholderData, fetchStatus, refetch } = useTrips({
     from,
     to,
     mode,
@@ -73,15 +74,14 @@ export default function TripResults() {
   const savedTrip = saved.find((t) => t.id === tripId(from, to))
   const isSaved = !!savedTrip
   const maxEndWalk = savedTrip?.maxEndWalk ?? globalEndWalk
-  const hiddenByWalk = (data ?? []).filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) > maxEndWalk * 60).length
-  const visible = (data ?? [])
-    .filter((j) => (trailingWalk(j, walkPace)?.durationSec ?? 0) <= maxEndWalk * 60)
-    .filter((j) => {
-      if (when) return true
-      const s = summarize(j)
-      return new Date(s.depEstimated ?? s.depPlanned ?? 0).getTime() > now - 60_000
-    })
-    .sort(journeyComparator(mode, when))
+  const { visible, hiddenByWalk, hiddenByTransfer } = tripList(data ?? [], {
+    now,
+    when,
+    mode,
+    maxEndWalkMin: maxEndWalk,
+    minTransferMin: minTransfer,
+    pace: walkPace,
+  })
 
   // A short list means the planner has no further trips; a growing request keeps the button while loading.
   const canLoadMore = !!data && visible.length > 0 && (isPlaceholderData || data.length >= count)
@@ -119,16 +119,7 @@ export default function TripResults() {
             <IconButton aria-label="Swap direction" variant="ghost" color="white" onClick={swap}>
               <LuArrowLeftRight />
             </IconButton>
-            <IconButton
-              aria-label={isSaved ? 'Remove from saved trips' : 'Save trip'}
-              variant="ghost"
-              color="white"
-              onClick={() =>
-                isSaved ? savedTrips.remove(tripId(from, to)) : savedTrips.add({ fromId: from, fromName, toId: to, toName, modes })
-              }
-            >
-              {isSaved ? <LuBookmarkCheck /> : <LuBookmark />}
-            </IconButton>
+            <SaveTripChip route={{ fromId: from, fromName, toId: to, toName, modes }} onHeader removable />
           </>
         }
       />
@@ -144,6 +135,12 @@ export default function TripResults() {
             {hiddenByWalk} {hiddenByWalk === 1 ? 'trip is' : 'trips are'} hidden because{' '}
             {maxEndWalk === 0 ? 'they end with a walk' : `the walk at the end is over ${maxEndWalk} min`}. Tap the footprints icon to allow
             longer walks.
+          </Text>
+        )}
+        {hiddenByTransfer > 0 && (
+          <Text fontSize="xs" color="fg.muted">
+            {hiddenByTransfer} {hiddenByTransfer === 1 ? 'trip is' : 'trips are'} hidden because a change leaves under {minTransfer} min, or
+            too little time to walk to the next platform. Tap the footprints icon to allow tighter changes.
           </Text>
         )}
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
@@ -173,6 +170,12 @@ export default function TripResults() {
         {visible.map((j, i) => (
           <JourneyRow key={`${summarize(j).depPlanned}-${i}`} journey={j} now={now} vehicles={vehicles} onClick={() => setSelected(i)} />
         ))}
+        {isLoadingMore && visible.length > 0 && (
+          <HStack justify="center" gap={2} color="fg.muted" fontSize="sm" py={1}>
+            <Spinner size="xs" />
+            <Text>Checking more routes through the city interchanges…</Text>
+          </HStack>
+        )}
         {canLoadMore && (
           <Button variant="subtle" borderRadius="xl" loading={isFetching && isPlaceholderData} onClick={() => setCount(count + PAGE)}>
             Show later trips

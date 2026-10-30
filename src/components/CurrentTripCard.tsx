@@ -1,26 +1,35 @@
 import { Badge, Box, Button, Flex, HStack, IconButton, Text } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LuFootprints, LuX } from 'react-icons/lu'
 import { Link } from 'react-router-dom'
-import { useJourneyVehicles, useTrips } from '../api/hooks'
-import type { Leg } from '../api/types'
-import { formatKm, isTransit, legOccupancy, platformAt, stationName, summarize, vehicleModeForLeg, walkSeconds } from '../lib/journey'
+import { useDepartures, useJourneyVehicles, useTrips, useTripsMany } from '../api/hooks'
+import { departureJourney } from '../lib/departure'
+import { exclusionParams, modeForClass } from '../lib/lines'
+import type { Leg, StopPoint } from '../api/types'
+import type { VehicleInfo } from '../../shared/vehicles'
+import { formatKm, isTransit, stationName, summarize, walkSeconds } from '../lib/journey'
 import { lineColor } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { countdown, formatDuration, formatTime } from '../lib/time'
-import { currentTrip, tripKey, type CurrentTrip } from '../store/currentTrip'
+import { applyReplan, findReplan, replanPoint, trackSegments, withLiveLegs } from '../lib/replan'
+import { currentTrip, type CurrentTrip } from '../store/currentTrip'
 import { useSettings } from '../store/settings'
 import { JourneySheet } from './JourneySheet'
 import { DelayBadge } from './DelayBadge'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ReplanBanner } from './ReplanBanner'
 import { LineBadge } from './LineBadge'
-import { MiniTrain } from './MiniTrain'
-import { VehicleLoad } from './VehicleLoad'
+import { LoadIndicator } from './LoadIndicator'
+import { StopPlatform } from './PlatformPill'
 
 const EXPIRY_GRACE_MS = 5 * 60_000
+/** Replans are only searched for this far ahead; beyond it the timetable will have changed by the time it matters. */
+const REPLAN_HORIZON_MS = 2 * 3600_000
+const minuteFloor = (t: number) => Math.floor(t / 60_000) * 60_000
 
 interface Action {
-  platform?: string
+  point: StopPoint
+  leg: Leg
   time?: string
 }
 
@@ -34,7 +43,7 @@ function buildSteps(legs: Leg[]): Step[] {
       continue
     }
     const station = stationName(leg.origin)
-    const board: Action = { platform: platformAt(leg.origin), time: leg.origin.departureTimeEstimated ?? leg.origin.departureTimePlanned }
+    const board: Action = { point: leg.origin, leg, time: leg.origin.departureTimeEstimated ?? leg.origin.departureTimePlanned }
     const prev = steps[steps.length - 1]
     // An interchange: merge "get off" and "board" into a single station row.
     if (prev?.type === 'stop' && prev.alight && !prev.board && prev.station === station) prev.board = board
@@ -43,7 +52,7 @@ function buildSteps(legs: Leg[]): Step[] {
     steps.push({
       type: 'stop',
       station: stationName(leg.destination),
-      alight: { platform: platformAt(leg.destination), time: leg.destination.arrivalTimeEstimated ?? leg.destination.arrivalTimePlanned },
+      alight: { point: leg.destination, leg, time: leg.destination.arrivalTimeEstimated ?? leg.destination.arrivalTimePlanned },
     })
   }
   return steps
@@ -73,9 +82,7 @@ function ActionRow({ kind, action }: { kind: 'board' | 'alight'; action: Action 
         <Badge colorPalette={kind === 'board' ? 'teal' : 'orange'} variant="subtle">
           {kind === 'board' ? 'Board' : 'Get off'}
         </Badge>
-        <Text fontSize="sm" fontWeight="semibold" color={action.platform ? undefined : 'fg.muted'}>
-          {action.platform ? `Platform ${action.platform}` : 'Platform TBC'}
-        </Text>
+        <StopPlatform point={action.point} transportation={action.leg.transportation} fallback="Platform TBC" />
       </HStack>
       <Text fontWeight="bold" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
         {formatTime(action.time)}
@@ -102,10 +109,9 @@ function StopRow({ step, divider }: { step: Extract<Step, { type: 'stop' }>; div
   )
 }
 
-function RideRow({ leg, vehicle }: { leg: Leg; vehicle?: Parameters<typeof MiniTrain>[0]['vehicle'] }) {
+function RideRow({ leg, vehicle }: { leg: Leg; vehicle?: VehicleInfo }) {
   const t = leg.transportation
   const color = lineColor(t?.number, t?.product?.class)
-  const mode = vehicleModeForLeg(leg)
   return (
     <Flex gap={3}>
       <Flex w="20px" justify="center" flexShrink={0}>
@@ -121,10 +127,7 @@ function RideRow({ leg, vehicle }: { leg: Leg; vehicle?: Parameters<typeof MiniT
           estimated={leg.origin.departureTimeEstimated}
           realtime={leg.isRealtimeControlled}
         />
-        {mode === 'train' && <MiniTrain vehicle={vehicle} fallback={legOccupancy(leg)} />}
-        {(mode === 'bus' || mode === 'lightrail' || mode === 'metro') && (
-          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} />
-        )}
+        <LoadIndicator leg={leg} vehicle={vehicle} />
       </Flex>
     </Flex>
   )
@@ -179,23 +182,72 @@ function WalkRow({ leg, final, toName, arrival }: { leg: Leg; final?: boolean; t
 export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number }) {
   const [confirmClear, setConfirmClear] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
-  const planned = summarize(trip.journey).depPlanned
-  const { data } = useTrips({
-    from: trip.fromId,
-    to: trip.toId,
-    mode: 'dep',
-    when: planned ? new Date(new Date(planned).getTime() - 60_000) : undefined,
-    excluded: {},
-    count: 4,
-  })
-  // Prefer the live version of the same trip so delays and platforms stay current.
-  const journey = data?.find((j) => tripKey(j) === tripKey(trip.journey)) ?? trip.journey
+  const [dismissed, setDismissed] = useState<string>()
+  const { minTransfer } = useSettings()
+
+  // One lookup per unfinished part of the trip (the original search, plus one per switch), all refreshed with the
+  // other live data every 15 seconds. Each leg is then swapped for its live copy, so delays and platforms stay current.
+  const minute = minuteFloor(now)
+  const segments = useMemo(() => trackSegments(trip, minute), [trip, minute])
+  // A departure followed from a station board is looked up on its own mode only, or the planner offers a faster line.
+  const firstRide = trip.journey.legs.find(isTransit)
+  const excluded = useMemo(
+    () => (trip.boardId ? exclusionParams([modeForClass(firstRide?.transportation?.product?.class).key]) : {}),
+    [trip.boardId, firstRide],
+  )
+  const { journeys: live } = useTripsMany(
+    segments.map((seg) => ({
+      from: seg.fromId,
+      to: trip.toId,
+      mode: 'dep' as const,
+      when: seg.when ? new Date(Date.parse(seg.when) - 60_000) : undefined,
+      excluded,
+      count: 4,
+    })),
+  )
+  // The station's departure board keeps a board-followed ride's time, platform and status live even when the
+  // planner doesn't return that exact service.
+  const { data: board } = useDepartures(trip.boardId ?? '', !!trip.boardId)
+  const boardLive = useMemo(() => (board ?? []).map(departureJourney), [board])
+  const journey = useMemo(() => withLiveLegs(trip.journey, [...live, ...boardLive]), [trip.journey, live, boardLive])
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey])
+
+  // Search for a better way to finish the trip from the next place the user could change plans.
+  const point = replanPoint(trip, journey, minute)
+  const { data: alternatives } = useTrips(
+    {
+      from: point?.stopId ?? '',
+      to: trip.toId,
+      mode: 'dep',
+      when: point ? new Date(minuteFloor(point.readyAt)) : undefined,
+      excluded: {},
+      count: 4,
+    },
+    !!point && point.readyAt - now < REPLAN_HORIZON_MS,
+    { keepPrevious: true },
+  )
+  const replan = point && alternatives ? findReplan(journey, point, alternatives, minTransfer) : undefined
+  const replanId =
+    replan && `${replan.reason}:${replan.route.legs.map((l) => l.transportation?.properties?.RealtimeTripId ?? '').join('|')}`
+  // For a board-followed ride the destination is just the end of the line, so only a broken plan is worth a prompt.
+  const offer = replan && replanId !== dismissed && !(trip.boardId && replan.reason === 'faster') ? replan : undefined
+  const banner = offer && (
+    <ReplanBanner
+      replan={offer}
+      onSwitch={() => {
+        currentTrip.set(applyReplan(trip, offer))
+        setDismissed(undefined)
+      }}
+      onDismiss={() => setDismissed(replanId)}
+    />
+  )
 
   const s = summarize(journey)
   const dep = s.depEstimated ?? s.depPlanned
   const arr = s.arrEstimated ?? s.arrPlanned
-  const expired = !!arr && new Date(arr).getTime() + EXPIRY_GRACE_MS < now
+  // A board-followed ride may have no arrival time; it then ends 90 minutes after leaving.
+  const endsAt = arr ? Date.parse(arr) : dep ? Date.parse(dep) + 90 * 60_000 : undefined
+  const expired = endsAt !== undefined && endsAt + EXPIRY_GRACE_MS < now
 
   useEffect(() => {
     if (expired) currentTrip.clear()
@@ -204,6 +256,12 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   if (expired) return null
 
   const steps = pendingSteps(buildSteps(journey.legs), now)
+  // Count down to the next boarding; once on the last ride, to the arrival instead.
+  const nextRide = journey.legs.find(
+    (l) => isTransit(l) && new Date(l.origin.departureTimeEstimated ?? l.origin.departureTimePlanned ?? 0).getTime() > now - 60_000,
+  )
+  const nextDep = nextRide && (nextRide.origin.departureTimeEstimated ?? nextRide.origin.departureTimePlanned)
+  const arriveMin = arr ? Math.max(0, Math.round((new Date(arr).getTime() - now) / 60_000)) : undefined
 
   return (
     <Box
@@ -241,20 +299,26 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
         <Text truncate fontWeight="medium">
           {trip.fromName.split(',')[0]} → {trip.toName.split(',')[0]}
         </Text>
-        <Text flexShrink={0}>{formatDuration(s.durationSec)}</Text>
+        {arr && <Text flexShrink={0}>{formatDuration(s.durationSec)}</Text>}
       </Flex>
       <Flex justify="space-between" align="center" gap={2} mt={1.5} mb={3}>
         <Text fontSize="2xl" fontWeight="bold" whiteSpace="nowrap">
-          {formatTime(dep)}{' '}
-          <Text as="span" color="fg.muted" fontWeight="normal">
-            →
-          </Text>{' '}
-          {formatTime(arr)}
+          {formatTime(dep)}
+          {arr && (
+            <>
+              {' '}
+              <Text as="span" color="fg.muted" fontWeight="normal">
+                →
+              </Text>{' '}
+              {formatTime(arr)}
+            </>
+          )}
         </Text>
         <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
-          {countdown(dep, now)}
+          {nextDep ? countdown(nextDep, now) : arriveMin ? `${arriveMin} min` : 'Arrived'}
         </Text>
       </Flex>
+      {banner && <Box mb={3}>{banner}</Box>}
 
       <Box>
         {steps.map((st, i) =>
@@ -281,6 +345,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
         vehicles={vehicles}
         vehiclesLoading={vehiclesLoading}
         isCurrent
+        banner={banner}
         onToggleCurrent={() => {
           setDetailOpen(false)
           currentTrip.clear()

@@ -1,13 +1,13 @@
 import { ChakraProvider } from '@chakra-ui/react'
 import { QueryClient, onlineManager } from '@tanstack/react-query'
-import { PersistQueryClientProvider, type Persister } from '@tanstack/react-query-persist-client'
-import { del, get, set } from 'idb-keyval'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { ThemeProvider } from 'next-themes'
-import { StrictMode, Suspense, lazy } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
-import { router } from './router'
+import { createCachePersister, shouldPersist } from './lib/cachePersister'
+import { preloadRoutes, router } from './router'
 import { system } from './theme'
 
 // iOS standalone PWAs are rarely cold-started, so check for a new service worker whenever the app is foregrounded.
@@ -20,12 +20,6 @@ registerSW({
     setInterval(check, 30 * 60_000)
   },
 })
-
-const Devtools = import.meta.env.DEV
-  ? lazy(() =>
-      import('@tanstack/react-query-devtools').then((m) => ({ default: () => <m.ReactQueryDevtools buttonPosition="bottom-right" /> })),
-    )
-  : () => null
 
 // The default listener trusts online/offline events only, so one missed event (PWA resume, flaky wifi handoff) leaves queries paused while online.
 // Re-read navigator.onLine whenever the app comes back to the foreground.
@@ -43,11 +37,10 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, gcTime: DAY, retry: 1 } },
 })
 
-const persister: Persister = {
-  persistClient: (c) => set('nextstop-cache', c),
-  restoreClient: () => get('nextstop-cache'),
-  removeClient: () => del('nextstop-cache'),
-}
+const persister = createCachePersister()
+
+// Fetch the other pages' code once the first screen is up, so switching tabs never waits on the network.
+preloadRoutes()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -58,13 +51,10 @@ createRoot(document.getElementById('root')!).render(
           persistOptions={{
             persister,
             maxAge: DAY,
-            dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.meta?.persist !== false },
+            dehydrateOptions: { shouldDehydrateQuery: shouldPersist },
           }}
         >
           <RouterProvider router={router} />
-          <Suspense fallback={null}>
-            <Devtools />
-          </Suspense>
         </PersistQueryClientProvider>
       </ChakraProvider>
     </ThemeProvider>

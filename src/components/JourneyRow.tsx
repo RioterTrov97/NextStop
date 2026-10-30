@@ -2,23 +2,26 @@ import { Box, Flex, HStack, Text } from '@chakra-ui/react'
 import { LuTriangleAlert } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import type { Journey } from '../api/types'
-import { isTransit, journeyAlerts, legOccupancy, platformOf, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
+import { isTransit, journeyAlerts, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
+import { isCancelled } from '../lib/replan'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { useSettings } from '../store/settings'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
-import { MiniTrain } from './MiniTrain'
-import { VehicleLoad } from './VehicleLoad'
+import { LoadIndicator } from './LoadIndicator'
+import { StopPlatform } from './PlatformPill'
 import { WalkBadge } from './WalkBadge'
 
 interface Props {
   journey: Journey
   now: number
   vehicles?: Map<string, VehicleInfo>
+  /** Replaces the departure station in the top line, e.g. "to Emu Plains" on a station's departure board. */
+  title?: string
   onClick?: () => void
 }
 
-export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
+export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
   const { walkPace } = useSettings()
   const s = summarize(journey)
   const dep = s.depEstimated ?? s.depPlanned
@@ -26,7 +29,6 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
   const alerts = journeyAlerts(journey).filter((a) => a.priority === 'high' || a.priority === 'veryHigh')
   const transit = journey.legs.filter(isTransit)
   const tailWalk = trailingWalk(journey, walkPace)
-  const platform = s.firstTransit ? platformOf(s.firstTransit) : undefined
   const origin = s.firstTransit?.origin
   const station = (origin?.disassembledName ?? origin?.name ?? '').split(',')[0].replace(/ (Station|Platform).*$/i, '')
   const railLeg = transit.find((l) => ['train', 'metro', 'bus', 'lightrail'].includes(vehicleModeForLeg(l) ?? ''))
@@ -46,19 +48,28 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
       _active={{ transform: 'scale(0.99)' }}
     >
       <Flex justify="space-between" align="center" gap={2} fontSize="sm" color="fg.muted">
-        <Text truncate fontWeight="medium">
-          {station} {platform && `- Platform ${platform}`}
-        </Text>
-        <Text flexShrink={0}>{formatDuration(s.durationSec)}</Text>
+        <HStack gap={2} minW={0}>
+          <Text truncate fontWeight="medium">
+            {title ?? station}
+          </Text>
+          <StopPlatform point={origin} transportation={s.firstTransit?.transportation} />
+        </HStack>
+        {/* A departure-board entry has no arrival yet, so no duration either. */}
+        {s.arrPlanned && <Text flexShrink={0}>{formatDuration(s.durationSec)}</Text>}
       </Flex>
 
       <Flex justify="space-between" align="center" gap={2} mt={1.5}>
         <Text fontSize="2xl" fontWeight="bold" whiteSpace="nowrap">
-          {formatTime(dep)}{' '}
-          <Text as="span" color="fg.muted" fontWeight="normal">
-            →
-          </Text>{' '}
-          {formatTime(arr)}
+          {formatTime(dep)}
+          {arr && (
+            <>
+              {' '}
+              <Text as="span" color="fg.muted" fontWeight="normal">
+                →
+              </Text>{' '}
+              {formatTime(arr)}
+            </>
+          )}
         </Text>
         <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
           {countdown(dep, now)}
@@ -80,7 +91,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
             planned={s.depPlanned}
             estimated={s.depEstimated}
             realtime={s.realtime}
-            cancelled={s.firstTransit?.properties?.isCancelled === true}
+            cancelled={!!s.firstTransit && isCancelled(s.firstTransit)}
           />
           {alerts.length > 0 && (
             <Box color="orange.500" aria-label="Service alert">
@@ -90,15 +101,7 @@ export function JourneyRow({ journey, now, vehicles, onClick }: Props) {
         </HStack>
         {railLeg && (
           <Box ml="auto">
-            {(() => {
-              const m = vehicleModeForLeg(railLeg)
-              const v = tripId ? vehicles?.get(tripId) : undefined
-              return m === 'bus' || m === 'lightrail' || m === 'metro' ? (
-                <VehicleLoad mode={m} vehicle={v} fallback={legOccupancy(railLeg)} />
-              ) : (
-                <MiniTrain vehicle={v} fallback={legOccupancy(railLeg)} />
-              )
-            })()}
+            <LoadIndicator leg={railLeg} vehicle={tripId ? vehicles?.get(tripId) : undefined} />
           </Box>
         )}
       </Flex>

@@ -12,7 +12,8 @@ const TP_VERSION = '10.2.1.42'
 const TP_ENDPOINTS: Record<string, { ttl: number; params: RegExp }> = {
   stop_finder: { ttl: 86400, params: /^(type_sf|name_sf|TfNSWSF|anyObjFilter_sf|anyMaxSizeHitList)$/ },
   trip: {
-    ttl: 10,
+    // Short enough that the 15s client refresh never reads a copy older than the 15s delay feed behind it.
+    ttl: 5,
     params:
       /^(depArrMacro|itdDate|itdTime|type_origin|name_origin|type_destination|name_destination|calcNumberOfTrips|TfNSWTR|excludedMeans|exclMOT_\d+|maxChanges|routeType|type_via|name_via|wheelchair|changeSpeed)$/,
   },
@@ -88,7 +89,7 @@ async function handleVehicles(url: URL, request: Request, env: Env, ctx: Executi
   const rail = mode === 'train' || mode === 'metro'
 
   const cacheReq = new Request(`${url.origin}/api/vehicles?mode=${mode}&trips=${rail ? '' : [...trips].sort().join(',')}`, request)
-  const res = await cached(cacheReq, ctx, 10, url.searchParams.has('fresh'), async () => {
+  const res = await cached(cacheReq, ctx, 5, url.searchParams.has('fresh'), async () => {
     const results = await Promise.all(
       feeds.map(async (path) => {
         const res = await fetch(API + path, {

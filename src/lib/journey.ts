@@ -27,6 +27,63 @@ export function trailingWalk(j: Journey, pace: WalkPace = 'normal'): { durationS
   return sec >= MIN_TAIL_WALK_SEC && !isTransit(last) ? { durationSec: sec, distanceM: metres, to: last.destination.name ?? '' } : undefined
 }
 
+/** A change must leave at least this long after the platform walk, even when the user allows very tight changes. */
+export const MIN_SPARE_SEC = 60
+
+export interface Transfer {
+  /** Station where the change happens. */
+  at: string
+  /** From the arriving ride's arrival to the next ride's departure, using live times when known. */
+  gapSec: number
+  /** Walking the planner expects in between: the in-station footpath plus any street walk legs. */
+  walkSec: number
+  /** Index of the ride being changed to. */
+  index: number
+}
+
+const footPathSec = (l: Leg) =>
+  Array.isArray(l.footPathInfo)
+    ? (l.footPathInfo as { position?: string; duration?: number }[])
+        .filter((f) => f?.position === 'AFTER')
+        .reduce((n, f) => n + (f.duration ?? 0), 0)
+    : 0
+
+/** Every change in a journey, with live timings, so delays that eat into a connection show up. */
+export function transfers(j: Journey): Transfer[] {
+  const out: Transfer[] = []
+  let prev: Leg | undefined
+  let walked = 0
+  for (const [index, l] of j.legs.entries()) {
+    if (!isTransit(l)) {
+      if (prev) walked += l.duration ?? 0
+      continue
+    }
+    if (prev) {
+      const arr = Date.parse(prev.destination.arrivalTimeEstimated ?? prev.destination.arrivalTimePlanned ?? '')
+      const dep = Date.parse(l.origin.departureTimeEstimated ?? l.origin.departureTimePlanned ?? '')
+      if (Number.isFinite(arr) && Number.isFinite(dep)) {
+        out.push({ at: stationName(prev.destination), gapSec: (dep - arr) / 1000, walkSec: walked + footPathSec(prev), index })
+      }
+    }
+    prev = l
+    walked = 0
+  }
+  return out
+}
+
+/** Shortest gap between one ride arriving and the next departing, walks included; undefined without a change. */
+export function shortestTransferSec(j: Journey): number | undefined {
+  const t = transfers(j)
+  return t.length ? Math.min(...t.map((x) => x.gapSec)) : undefined
+}
+
+/**
+ * Whether every change leaves at least `minutes` between rides and, after the planner's walk to the next platform,
+ * still a minute to spare. Live times are used, so a delayed first train can make a change stop fitting.
+ */
+export const transferFits = (j: Journey, minutes: number) =>
+  transfers(j).every((t) => t.gapSec >= minutes * 60 && t.gapSec - t.walkSec >= MIN_SPARE_SEC)
+
 export interface JourneySummary {
   firstTransit?: Leg
   depPlanned?: string
@@ -143,3 +200,84 @@ export const stripHtml = (s?: string) =>
         .replace(/\s+/g, ' ')
         .trim()
     : ''
+
+interface OptionStats {
+  dep: number
+  arr: number
+  changes: number
+  tailSec: number
+  spareSec: number
+}
+
+function optionStats(j: Journey, pace: WalkPace): OptionStats {
+  const s = summarize(j)
+  const spare = transfers(j).map((t) => t.gapSec - t.walkSec)
+  return {
+    dep: Date.parse(s.depEstimated ?? s.depPlanned ?? '') || 0,
+    arr: Date.parse(s.arrEstimated ?? s.arrPlanned ?? '') || Infinity,
+    changes: s.changes,
+    tailSec: trailingWalk(j, pace)?.durationSec ?? 0,
+    spareSec: spare.length ? Math.min(...spare) : Infinity,
+  }
+}
+
+/** A beats B when it leaves no earlier, arrives no later, with no more changes and no longer final walk. */
+function beats(a: OptionStats, b: OptionStats): boolean {
+  if (a.dep < b.dep || a.arr > b.arr || a.changes > b.changes || a.tailSec > b.tailSec) return false
+  const strictly = a.dep > b.dep || a.arr < b.arr || a.changes < b.changes || a.tailSec < b.tailSec
+  // Same trains changed at a different station: keep the roomier change.
+  return strictly || a.spareSec > b.spareSec
+}
+
+/**
+ * Drops options nobody should pick. Forcing routes via the city hubs returns the same two trains changed at
+ * Central and at Town Hall, or detours that leave with a direct train and arrive later; each is beaten by another option.
+ */
+export function bestOptions(journeys: Journey[], pace: WalkPace = 'normal'): Journey[] {
+  const stats = journeys.map((j) => optionStats(j, pace))
+  return journeys.filter((_, i) => !stats.some((o, k) => k !== i && (beats(o, stats[i]) || (k < i && sameStats(o, stats[i])))))
+}
+
+const sameStats = (a: OptionStats, b: OptionStats) =>
+  a.dep === b.dep && a.arr === b.arr && a.changes === b.changes && a.tailSec === b.tailSec && a.spareSec === b.spareSec
+
+export interface TripListOptions {
+  now: number
+  /** A chosen time shows trips around it even when they have left; "now" searches hide departed ones. */
+  when?: Date
+  mode: 'dep' | 'arr'
+  maxEndWalkMin: number
+  minTransferMin: number
+  pace: WalkPace
+}
+
+/**
+ * The search list: the user's walk and change limits applied, beaten options removed, best first. Hidden counts only
+ * include trips that would really have added an option, so the hints never advertise duplicates.
+ */
+export function tripList(journeys: Journey[], o: TripListOptions) {
+  const upcoming = journeys.filter((j) => {
+    if (o.when) return true
+    const s = summarize(j)
+    return Date.parse(s.depEstimated ?? s.depPlanned ?? '') > o.now - 60_000
+  })
+  const walkOk = (j: Journey) => (trailingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxEndWalkMin * 60
+  const changeOk = (j: Journey) => transferFits(j, o.minTransferMin)
+  const visible = bestOptions(
+    upcoming.filter((j) => walkOk(j) && changeOk(j)),
+    o.pace,
+  ).sort(journeyComparator(o.mode, o.when))
+  const shown = visible.map((j) => optionStats(j, o.pace))
+  const hidden = bestOptions(
+    upcoming.filter((j) => !walkOk(j) || !changeOk(j)),
+    o.pace,
+  ).filter((j) => {
+    const st = optionStats(j, o.pace)
+    return !shown.some((v) => beats(v, st) || sameStats(v, st))
+  })
+  return {
+    visible,
+    hiddenByWalk: hidden.filter((j) => !walkOk(j)).length,
+    hiddenByTransfer: hidden.filter((j) => walkOk(j) && !changeOk(j)).length,
+  }
+}

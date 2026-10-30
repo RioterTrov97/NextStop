@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Journey, StopPoint } from '../api/types'
-import { journeyComparator, platformAt } from './journey'
+import { journeyComparator, platformAt, shortestTransferSec, transferFits } from './journey'
 
 const trip = (dep: string, arr: string, legs = 1, stops = 5): Journey => ({
   legs: Array.from({ length: legs }, (_, i) => ({
@@ -56,5 +56,34 @@ describe('platformAt', () => {
   it('reads the platform from the stop name', () => {
     expect(platformAt({ name: 'Central Station, Platform 16' } as StopPoint)).toBe('16')
     expect(platformAt({ name: 'Lidcombe Station' } as StopPoint)).toBeUndefined()
+  })
+})
+
+describe('transfers', () => {
+  const ride = (dep: string, arr: string) => ({
+    origin: { departureTimePlanned: dep },
+    destination: { arrivalTimePlanned: arr },
+    transportation: { product: { class: 1 } },
+  })
+  const walk = { origin: {}, destination: {}, transportation: { product: { class: 99 } } }
+
+  it('measures the tightest change, walks included', () => {
+    const j: Journey = {
+      legs: [
+        ride('2026-01-01T00:00:00Z', '2026-01-01T00:10:00Z'),
+        walk,
+        ride('2026-01-01T00:12:00Z', '2026-01-01T00:20:00Z'),
+        ride('2026-01-01T00:25:00Z', '2026-01-01T00:30:00Z'),
+      ],
+    }
+    expect(shortestTransferSec(j)).toBe(120)
+    expect(transferFits(j, 2)).toBe(true)
+    expect(transferFits(j, 3)).toBe(false)
+  })
+
+  it('always fits without a change', () => {
+    const j: Journey = { legs: [walk, ride('2026-01-01T00:00:00Z', '2026-01-01T00:10:00Z'), walk] }
+    expect(shortestTransferSec(j)).toBeUndefined()
+    expect(transferFits(j, 6)).toBe(true)
   })
 })
