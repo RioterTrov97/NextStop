@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack, IconButton, Image, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, CloseButton, Dialog, Flex, HStack, IconButton, Image, Portal, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -242,7 +242,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                 <Text fontWeight="bold" truncate>
                   {trip.toName.split(',')[0]}
                 </Text>
-                <HStack fontSize="xs" color="fg.muted" gap={2} wrap="nowrap" overflow="hidden" mt={0.5}>
+                <HStack fontSize="xs" color="fg.muted" columnGap={2} rowGap={0.5} wrap="wrap" mt={0.5}>
                   <HStack gap={1} flexShrink={0}>
                     <LuClock aria-hidden />
                     <Text>{when}</Text>
@@ -265,7 +265,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                     <HStack gap={1} flexShrink={0} aria-label={`${maxEndWalk} minute walk`}>
                       {' · '}
                       <LuFootprints aria-hidden />
-                      <Text>{maxEndWalk}m</Text>
+                      <Text>{maxEndWalk} min</Text>
                     </HStack>
                   )}
                 </HStack>
@@ -274,8 +274,8 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
             <IconButton
               data-no-swipe
               aria-label="Edit trip"
-              aria-expanded={editing}
-              variant={editing ? 'subtle' : 'ghost'}
+              aria-haspopup="dialog"
+              variant="ghost"
               size="sm"
               color="fg.muted"
               flexShrink={0}
@@ -284,101 +284,119 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
               <LuEllipsisVertical />
             </IconButton>
           </Flex>
-          {editing && (
-            <Stack gap={3} px={4} pb={4} borderTopWidth="1px" borderBottomWidth={compact ? 0 : '1px'} pt={3} data-no-swipe>
-              <Box>
-                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
-                  Show this trip
-                </Text>
-                <HStack gap={1.5} wrap="wrap">
-                  {PERIODS.map((p) => (
-                    <Button
-                      key={p.key}
-                      size="xs"
-                      borderRadius="full"
-                      colorPalette="teal"
-                      variant={p.key === period.key ? 'solid' : 'outline'}
-                      aria-pressed={p.key === period.key}
-                      title={p.hours}
-                      onClick={() => {
-                        savedTrips.setPeriod(trip.id, p.key)
-                        setEditing(false)
-                      }}
-                    >
-                      {p.label}
-                    </Button>
-                  ))}
-                </HStack>
-                <Text fontSize="xs" color="fg.muted" mt={1.5}>
-                  {period.hours}
-                </Text>
-              </Box>
-              <Box>
-                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
-                  Transport modes
-                </Text>
-                <ModePicker
-                  hideWalk
-                  value={trip.modes}
-                  onChange={(m) => {
-                    savedTrips.setModes(trip.id, m)
-                    setEditing(false)
-                  }}
-                />
-              </Box>
-              <Box>
-                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
-                  Longest walk at the end
-                </Text>
-                <HStack gap={1.5} wrap="wrap">
-                  {END_WALK_OPTIONS.map((n) => (
-                    <Button
-                      key={n}
-                      size="xs"
-                      borderRadius="full"
-                      colorPalette="teal"
-                      variant={n === maxEndWalk ? 'solid' : 'outline'}
-                      aria-pressed={n === maxEndWalk}
-                      onClick={() => {
-                        savedTrips.setEndWalk(trip.id, n)
-                        setEditing(false)
-                      }}
-                    >
-                      {n === 0 ? 'None' : `${n}m`}
-                    </Button>
-                  ))}
-                </HStack>
-              </Box>
-              <HStack gap={2}>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  borderRadius="full"
-                  onClick={() => {
-                    savedTrips.reverse(trip.id)
-                    setEditing(false)
-                  }}
-                >
-                  <LuArrowUpDown /> Reverse
-                </Button>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  colorPalette="red"
-                  borderRadius="full"
-                  onClick={() => {
-                    setConfirmRemove(true)
-                    setEditing(false)
-                  }}
-                >
-                  <LuTrash2 /> Remove
-                </Button>
-              </HStack>
-            </Stack>
-          )}
           {!compact && <Upcoming trip={trip} now={now} />}
         </Box>
       </SwipeToRemove>
+      <Dialog.Root open={editing} placement="center" lazyMount onOpenChange={(e) => setEditing(e.open)}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content mx={4} borderRadius="2xl">
+              <Dialog.Header>
+                <Dialog.Title>
+                  {trip.fromName.split(',')[0]} → {trip.toName.split(',')[0]}
+                </Dialog.Title>
+              </Dialog.Header>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+              <Dialog.Body>
+                <Stack gap={4}>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                      Show this trip
+                    </Text>
+                    <HStack gap={1.5} wrap="wrap">
+                      {PERIODS.map((p) => (
+                        <Button
+                          key={p.key}
+                          size="xs"
+                          borderRadius="full"
+                          colorPalette="teal"
+                          variant={p.key === period.key ? 'solid' : 'outline'}
+                          aria-pressed={p.key === period.key}
+                          title={p.hours}
+                          onClick={() => {
+                            savedTrips.setPeriod(trip.id, p.key)
+                          }}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </HStack>
+                    <Text fontSize="xs" color="fg.muted" mt={1.5}>
+                      {period.hours}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                      Transport modes
+                    </Text>
+                    <ModePicker
+                      hideWalk
+                      value={trip.modes}
+                      onChange={(m) => {
+                        savedTrips.setModes(trip.id, m)
+                      }}
+                    />
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb={1.5}>
+                      Longest walk at the end
+                    </Text>
+                    <HStack gap={1.5} wrap="wrap">
+                      {END_WALK_OPTIONS.map((n) => (
+                        <Button
+                          key={n}
+                          size="xs"
+                          borderRadius="full"
+                          colorPalette="teal"
+                          variant={n === maxEndWalk ? 'solid' : 'outline'}
+                          aria-pressed={n === maxEndWalk}
+                          onClick={() => {
+                            savedTrips.setEndWalk(trip.id, n)
+                          }}
+                        >
+                          {n === 0 ? 'None' : `${n} min`}
+                        </Button>
+                      ))}
+                    </HStack>
+                  </Box>
+                  <HStack gap={2}>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderRadius="full"
+                      onClick={() => {
+                        savedTrips.reverse(trip.id)
+                      }}
+                    >
+                      <LuArrowUpDown /> Reverse
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      colorPalette="red"
+                      borderRadius="full"
+                      onClick={() => {
+                        setConfirmRemove(true)
+                        setEditing(false)
+                      }}
+                    >
+                      <LuTrash2 /> Remove
+                    </Button>
+                  </HStack>
+                </Stack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Dialog.ActionTrigger asChild>
+                  <Button>Done</Button>
+                </Dialog.ActionTrigger>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
       <ConfirmDialog
         open={confirmRemove}
         title={`Remove ${trip.fromName.split(',')[0]} → ${trip.toName.split(',')[0]}?`}

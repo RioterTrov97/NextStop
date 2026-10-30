@@ -27,6 +27,17 @@ const config = defineConfig({
     '.ns-sheet-backdrop[data-swiping]': { transition: 'none' },
     '.ns-sheet-backdrop[data-state=open]': { animation: 'ns-fade-in 0.3s ease-out' },
     '.ns-sheet-backdrop[data-state=closed]': { animation: 'ns-fade-out 0.28s ease-in' },
+    // Stacking, bottom to top: page header 10, trip sheet 1300-1400, dialogs 1500, dimmed header strip 1550, full-screen map 2000.
+    // Dialogs stay mounted after their first use (lazyMount), so without their own layer a dialog could end up under a
+    // sheet opened later, with equal z-index and an earlier place in the page.
+    '[data-scope=dialog][data-part=backdrop]': { zIndex: '1500 !important' },
+    '[data-scope=dialog][data-part=positioner]': {
+      zIndex: '1510 !important',
+      // Keep centred dialogs clear of the header band (the dimmed header is drawn above them) and the home indicator.
+      paddingTop: 'calc(env(safe-area-inset-top) + 72px)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+    },
+    '[data-scope=dialog][data-part=content]': { maxHeight: '100%', overflowY: 'auto' },
     // Live-data refresh button.
     '.ns-refresh-spin': { animation: 'ns-refresh-turn 1.4s linear infinite' },
     '.ns-refresh-arc': { animation: 'ns-refresh-dash 1.4s ease-in-out infinite' },
