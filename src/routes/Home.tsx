@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack, IconButton, Image, Skeleton, Stack, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Flex, HStack, IconButton, Image, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -525,10 +525,9 @@ export function Home() {
               <Text fontSize="xl" fontWeight="bold">
                 Save your first trip
               </Text>
-              <VStack gap={0} maxW="300px">
-                <Text color="fg.muted">Search a trip you take often, like Lidcombe to Wynyard,</Text>
-                <Text color="fg.muted">then tap Save to Home. It'll live here with live departures.</Text>
-              </VStack>
+              <Text color="fg.muted" maxW="300px">
+                Your everyday trips, live at a glance.
+              </Text>
               <Button mt="4" asChild colorPalette="teal" size="lg" borderRadius="xl">
                 <Link to="/plan">
                   <LuSearch /> Plan a trip

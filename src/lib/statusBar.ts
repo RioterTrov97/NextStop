@@ -60,3 +60,30 @@ export function useStatusBarFollowsBackdrops() {
     }
   }, [])
 }
+
+const isInstalledIphoneApp = () =>
+  (matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true) &&
+  /iPhone|iPad|iPod/.test(navigator.userAgent)
+
+/**
+ * iOS 27 decides whether to blur the area under the status bar when the page is first composited, before React has
+ * drawn the header, and doesn't look again until something forces a recomposite (developers saw the blur vanish
+ * after opening a menu or pulling the page). Briefly showing an invisible full-screen layer after the app has drawn,
+ * and whenever it comes back to the foreground, makes iOS re-check and see the opaque header and strip.
+ */
+export function repaintStatusBarArea() {
+  if (!isInstalledIphoneApp()) return
+  const nudge = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const veil = document.createElement('div')
+        veil.setAttribute('aria-hidden', 'true')
+        veil.style.cssText = 'position:fixed;inset:0;z-index:2147483645;background:rgba(255,255,255,0.01);pointer-events:none'
+        document.body.appendChild(veil)
+        setTimeout(() => veil.remove(), 400)
+      }),
+    )
+  if (document.readyState === 'complete') nudge()
+  else window.addEventListener('load', nudge, { once: true })
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && nudge())
+}

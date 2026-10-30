@@ -6,7 +6,9 @@ const SHEET_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 
 const config = defineConfig({
   globalCss: {
-    'html, body, #root': { height: '100vh' },
+    // dvh, not vh: in the installed iPhone app 100vh is the whole screen (932px on a 15 Pro Max) while the visible area
+    // below the status bar is 59px shorter, which made even an empty page scroll.
+    'html, body, #root': { height: '100dvh' },
     // iOS applies the rubber-band to the root element, so it must be disabled there too.
     // The canvas must also match the body, or content taller than the viewport spills onto a different colour.
     'html, body': { overscrollBehavior: 'none', bg: 'bg' },

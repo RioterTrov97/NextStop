@@ -29,10 +29,36 @@
       html.dark {
         background: #09090b;
       }
+      /*
+        Installed iPhone app only. iOS 27 draws a blur and dark gradient under the status bar unless an opaque element
+        is painted there from the first frame; a header rendered later by React is too late. This strip covers the
+        status bar in the header colour (invisible against it), lets taps through, and dims with sheets.
+      */
+      #ns-status-strip {
+        display: none;
+      }
+      @media (display-mode: standalone) {
+        #ns-status-strip {
+          display: block;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: max(11px, env(safe-area-inset-top));
+          background: %THEME_COLOR%;
+          z-index: 2147483646;
+          pointer-events: none;
+          transition: background-color 0.3s ease-out;
+        }
+        html[data-overlay] #ns-status-strip {
+          background: var(--ns-header-dim);
+        }
+      }
     </style>
     <title>NextStop</title>
   </head>
   <body>
+    <div id="ns-status-strip" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

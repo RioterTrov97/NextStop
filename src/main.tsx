@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import { createCachePersister, shouldPersist } from './lib/cachePersister'
+import { repaintStatusBarArea } from './lib/statusBar'
 import { preloadRoutes, router } from './router'
 import { system } from './theme'
 
@@ -41,6 +42,9 @@ const persister = createCachePersister()
 
 // Fetch the other pages' code once the first screen is up, so switching tabs never waits on the network.
 preloadRoutes()
+
+// Installed iPhone app: make iOS 27 re-check the status bar area once the header exists (see statusBar.ts).
+repaintStatusBarArea()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
