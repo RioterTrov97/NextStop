@@ -34,7 +34,7 @@ import { PageHeader } from '../components/PageHeader'
 import { WalkBadge } from '../components/WalkBadge'
 import { RefreshButton } from '../components/RefreshButton'
 import { SaveTripChip } from '../components/SaveTrip'
-import { LoadIndicator } from '../components/LoadIndicator'
+import { LoadIndicator, loadIndicatorWidth } from '../components/LoadIndicator'
 import { useNow } from '../lib/hooks'
 import { isTransit, summarize, trailingWalk, tripList } from '../lib/journey'
 import { exclusionParams, MODES } from '../lib/lines'
@@ -74,6 +74,14 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   const shown = upcoming.slice(0, 3)
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(
     selectedJourney && !shown.includes(selectedJourney) ? [...shown, selectedJourney] : shown,
+  )
+  // One load column per card, as wide as its widest icon, so the line badges get everything else.
+  const loadWidth = Math.max(
+    0,
+    ...shown.flatMap((j) => {
+      const leg = j.legs.find(isTransit)
+      return leg ? [loadIndicatorWidth(leg, vehicles.get(leg.transportation?.properties?.RealtimeTripId ?? ''))] : []
+    }),
   )
   const isCurrent = !!selectedJourney && !!current && tripKey(selectedJourney) === tripKey(current.journey)
 
@@ -148,8 +156,8 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
                   </Text>
                 )}
               </Box>
-              {/* Fixed-width column, as wide as the longest (train) strip, so the icons line up row under row. */}
-              <Flex w="82px" flexShrink={0} justify="center">
+              {/* As wide as the widest icon on show, so the icons line up row under row without taking space from the badges. */}
+              <Flex w={`${loadWidth}px`} flexShrink={0} justify="center">
                 {transit[0] && (
                   <LoadIndicator leg={transit[0]} vehicle={vehicles.get(transit[0].transportation?.properties?.RealtimeTripId ?? '')} />
                 )}
@@ -221,40 +229,33 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
   const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
   // No filter, or every mode picked, means no icons are needed.
   const shownModes = trip.modes.length && trip.modes.length < MODES.length ? MODES.filter((m) => trip.modes.includes(m.key)) : []
-  const when = period.key === 'all' ? period.label : `${period.label} (${period.hours.replace(/ – /g, '-')})`
+  const hours = period.key === 'all' ? undefined : `(${period.hours.replace(/ – /g, '-')})`
 
   return (
     <>
       <SwipeToRemove confirm onRemove={() => setConfirmRemove(true)}>
-        <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" overflow="hidden">
-          <Flex align="center" p={4} pb={compact ? 4 : 2} gap={3}>
+        <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" overflow="hidden" css={{ containerType: 'inline-size' }}>
+          <Flex align="center" p={4} pb={compact ? 4 : 2} gap={2}>
             {handle}
             <Flex direction="column" align="center" gap="3px" mt={1.5} alignSelf="flex-start" flexShrink={0} aria-hidden>
               <Box boxSize="9px" borderRadius="full" borderWidth="2px" borderColor="teal.solid" />
               <Box w="2px" h="14px" borderRadius="full" bg="border.emphasized" />
               <Box boxSize="9px" borderRadius="full" bg="teal.solid" />
             </Flex>
-            <Box asChild flex={1} minW={0}>
+            {/* Takes what the time slot leaves. The names add nothing to the column's natural width (w=0, minW=full), so it never gets narrower than the widest item of the modes/walk line, and that line wraps only when the column is squeezed below its full width. */}
+            <Box asChild flex="1 1 0">
               <Link to={tripPath(trip)}>
-                <Text fontWeight="bold" truncate>
+                <Text fontWeight="bold" truncate w={0} minW="full">
                   {trip.fromName.split(',')[0]}
                 </Text>
-                <Text fontWeight="bold" truncate>
+                <Text fontWeight="bold" truncate w={0} minW="full">
                   {trip.toName.split(',')[0]}
                 </Text>
                 <HStack fontSize="xs" color="fg.muted" columnGap={2} rowGap={0.5} wrap="wrap" mt={0.5}>
-                  <HStack gap={1} flexShrink={0}>
-                    <LuClock aria-hidden />
-                    <Text>{when}</Text>
-                  </HStack>
                   {shownModes.length === 0 ? (
-                    <HStack gap={1} flexShrink={0}>
-                      {' · '}
-                      <Text>All modes</Text>
-                    </HStack>
+                    <Text flexShrink={0}>All modes</Text>
                   ) : (
                     <HStack gap={1} flexShrink={0} aria-label={shownModes.map((m) => m.label).join(', ')}>
-                      {' · '}
                       {shownModes.map((m) => {
                         const Icon = MODE_ICONS[m.key]
                         return <Icon key={m.key} title={m.label} />
@@ -262,14 +263,33 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                     </HStack>
                   )}
                   {maxEndWalk > 0 && (
-                    <HStack gap={1} flexShrink={0} aria-label={`${maxEndWalk} minute walk`}>
-                      {' · '}
-                      <LuFootprints aria-hidden />
-                      <Text>{maxEndWalk} min</Text>
-                    </HStack>
+                    <>
+                      <Text aria-hidden>·</Text>
+                      <HStack gap={1} flexShrink={0} aria-label={`${maxEndWalk} minute walk`}>
+                        <LuFootprints aria-hidden />
+                        <Text>{maxEndWalk} min</Text>
+                      </HStack>
+                    </>
                   )}
                 </HStack>
               </Link>
+            </Box>
+            {/* Stacked (label over hours) as wide as its longest word; one line when the card is wide enough for that and the names. */}
+            <Box
+              display="flex"
+              flexDirection="column"
+              flexShrink={0}
+              color="fg.muted"
+              fontSize="xs"
+              lineHeight="short"
+              whiteSpace="nowrap"
+              css={{ '@container (min-width: 460px)': { flexDirection: 'row', alignItems: 'center', columnGap: '4px' } }}
+            >
+              <HStack gap={1}>
+                <LuClock aria-hidden />
+                <Text>{period.label}</Text>
+              </HStack>
+              {hours && <Text>{hours}</Text>}
             </Box>
             <IconButton
               data-no-swipe

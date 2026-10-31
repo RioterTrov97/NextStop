@@ -9,6 +9,16 @@ import { VehicleBody } from './VehicleBody'
 
 const NO_DATA = occupancyFromEnum(undefined)
 
+/** Width of the shape `LoadIndicator` draws (px), so a list can size one shared column to its widest row. */
+export function loadIndicatorWidth(leg: Leg, vehicle?: VehicleInfo): number {
+  const mode = vehicleModeForLeg(leg)
+  if (mode === 'train' || mode === 'metro') {
+    if (rideLoad(leg, vehicle)?.carriages) return mode === 'train' ? 82 : 67
+    return mode === 'train' ? 74 : 58
+  }
+  return mode === 'bus' ? 48 : 58
+}
+
 /**
  * The small occupancy shape cards show for a ride: carriages for trains and metro that report them, otherwise the
  * whole vehicle. A tiny caption says when the figure is a forecast, covers the whole train only, or is missing.
