@@ -46,6 +46,11 @@ const TransitLeg = memo(function TransitLeg({ leg, vehicles, vehiclesLoading, pa
   const stops = leg.stopSequence ?? []
   const color = lineColor(t?.number, t?.product?.class)
 
+  // Trains and buses are tracked from their first stop, usually well under 20 minutes before they reach this one.
+  const now = useNow(60_000)
+  const dep = Date.parse(leg.origin.departureTimeEstimated ?? leg.origin.departureTimePlanned ?? '')
+  const notStarted = Number.isFinite(dep) && dep - now > 20 * 60_000
+
   return (
     <Box
       bg="bg.subtle"
@@ -85,13 +90,13 @@ const TransitLeg = memo(function TransitLeg({ leg, vehicles, vehiclesLoading, pa
 
       {!past && (mode === 'train' || mode === 'metro') && (
         <Box mt={2}>
-          <CarriageStrip mode={mode} vehicle={vehicle} loading={isLoading} fallback={legOccupancy(leg)} />
+          <CarriageStrip mode={mode} vehicle={vehicle} loading={isLoading} fallback={legOccupancy(leg)} notStarted={notStarted} />
         </Box>
       )}
 
       {!past && (mode === 'bus' || (mode === 'lightrail' && (vehicle?.occupancy !== undefined || legOccupancy(leg)))) && (
         <Box mt={2} bg="bg.muted" borderRadius="xl" p={3}>
-          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} loading={isLoading} size="md" />
+          <VehicleLoad mode={mode} vehicle={vehicle} fallback={legOccupancy(leg)} loading={isLoading} notStarted={notStarted} size="md" />
         </Box>
       )}
 

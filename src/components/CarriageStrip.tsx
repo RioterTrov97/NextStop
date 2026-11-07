@@ -12,18 +12,19 @@ interface Props {
   mode?: 'train' | 'metro'
   vehicle?: VehicleInfo
   loading?: boolean
+  notStarted?: boolean
   /** Fallback textual occupancy from the trip planner leg */
   fallback?: OccupancyLevel
 }
 
-export function CarriageStrip({ mode = 'train', vehicle, loading, fallback }: Props) {
+export function CarriageStrip({ mode = 'train', vehicle, loading, fallback, notStarted }: Props) {
   const cars = reportedCarriages(vehicle?.carriages)
   const anyUnknown = cars.some((c) => c.occupancy === undefined)
 
   if (!cars.length) {
     return (
       <Box bg="bg.muted" borderRadius="xl" p={3}>
-        <VehicleLoad mode={mode} vehicle={vehicle} fallback={fallback} loading={loading} size="md" />
+        <VehicleLoad mode={mode} vehicle={vehicle} fallback={fallback} loading={loading} notStarted={notStarted} size="md" />
       </Box>
     )
   }

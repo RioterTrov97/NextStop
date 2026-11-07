@@ -87,7 +87,6 @@ interface Props {
 export function PlatformFilter({ groups, counts, total, value, onChange }: Props) {
   const active = groups.find(([kind]) => kind === value?.kind)
   const platforms = active?.[1] ?? []
-  const kindColor = active ? PLATFORM_KINDS[active[0]].color : undefined
 
   return (
     <Box role="group" aria-label="Filter departures">
@@ -142,7 +141,7 @@ export function PlatformFilter({ groups, counts, total, value, onChange }: Props
                 transition="background-color 0.15s, color 0.15s"
                 bg={selected ? undefined : 'bg.muted'}
                 color={selected ? 'white' : 'fg'}
-                style={selected ? { background: kindColor } : undefined}
+                style={selected && active ? { background: PLATFORM_KINDS[active[0]].color } : undefined}
                 aria-pressed={selected}
                 title={p?.detail ? `${p.long}, ${p.detail}` : p?.long}
                 onClick={() => onChange(p ? { kind: active[0], key: p.key } : { kind: active[0] })}

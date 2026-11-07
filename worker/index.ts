@@ -1,7 +1,7 @@
 import type { VehicleInfo, VehicleMode } from '../shared/vehicles'
 import { decodeVehiclePositions } from './vehicles'
 
-interface Env {
+export interface Env {
   TFNSW_API_KEY: string
   ASSETS: Fetcher
 }
@@ -53,10 +53,58 @@ async function cached(request: Request, ctx: ExecutionContext, ttl: number, bypa
   return res
 }
 
-function upstreamError(status: number) {
-  if (status === 401 || status === 403) return json({ error: 'Upstream rejected the API key' }, 502)
-  if (status === 429) return json({ error: 'Rate limited by Transport for NSW, try again shortly' }, 429, { 'retry-after': '10' })
-  return json({ error: `Upstream error ${status}` }, 502)
+/** Why TfNSW refused a call: its gateway names the limit in `X-Error-Detail` ("Account Over Rate Limit" / "... Quota Limit"). */
+export type Refusal = 'rate' | 'quota' | 'key' | undefined
+
+export function refusalOf(status: number, detail: string | null): Refusal {
+  if (status !== 403 && status !== 429 && status !== 401) return undefined
+  if (/quota/i.test(detail ?? '')) return 'quota'
+  if (/rate/i.test(detail ?? '') || status === 429) return 'rate'
+  return 'key'
+}
+
+class UpstreamError extends Error {
+  constructor(
+    readonly status: number,
+    readonly refusal: Refusal,
+  ) {
+    super(`Upstream ${status}`)
+  }
+}
+
+/** Waits before each retry of a call refused for the 5 requests/second limit; the limit counts per second. */
+const RATE_RETRY_MS = [400, 1100]
+
+/**
+ * Every call to TfNSW goes through here. The API key allows 5 requests/second across all users, and each phone only
+ * spaces its own requests, so two people opening the app together can go over it: such calls wait and retry. One log
+ * line per call (event "upstream") lets Workers Logs count daily usage against the 60,000/day quota.
+ */
+export async function upstream(path: string, env: Env, accept: string, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
+  for (let attempt = 0; ; attempt++) {
+    const started = Date.now()
+    const res = await fetch(API + path, { headers: { Authorization: `apikey ${env.TFNSW_API_KEY}`, Accept: accept } })
+    const refusal = res.ok ? undefined : refusalOf(res.status, res.headers.get('x-error-detail'))
+    // eslint-disable-next-line no-console -- the usage log Workers Logs counts
+    console.log(
+      JSON.stringify({ event: 'upstream', api: path.split('?')[0], status: res.status, refusal, attempt, ms: Date.now() - started }),
+    )
+    if (res.ok) return res
+    if (refusal === 'rate' && attempt < RATE_RETRY_MS.length) {
+      await res.body?.cancel()
+      await sleep(RATE_RETRY_MS[attempt])
+      continue
+    }
+    throw new UpstreamError(res.status, refusal)
+  }
+}
+
+function upstreamError(e: unknown) {
+  if (!(e instanceof UpstreamError)) return json({ error: 'Proxy failure' }, 502)
+  if (e.refusal === 'rate') return json({ error: 'Transport for NSW is busy, trying again shortly' }, 429, { 'retry-after': '5' })
+  if (e.refusal === 'quota') return json({ error: "Today's Transport for NSW data limit is used up" }, 429, { 'retry-after': '600' })
+  if (e.refusal === 'key') return json({ error: 'Upstream rejected the API key' }, 502)
+  return json({ error: `Upstream error ${e.status}` }, 502)
 }
 
 function handleTp(endpoint: string, url: URL, request: Request, env: Env, ctx: ExecutionContext) {
@@ -73,9 +121,15 @@ function handleTp(endpoint: string, url: URL, request: Request, env: Env, ctx: E
   target.searchParams.set('version', TP_VERSION)
 
   const cacheReq = new Request(target.toString().replace(API, url.origin), request)
-  return cached(cacheReq, ctx, cfg.ttl, url.searchParams.has('fresh'), async () => {
-    const res = await fetch(target, { headers: { Authorization: `apikey ${env.TFNSW_API_KEY}`, Accept: 'application/json' } })
-    return res.ok ? new Response(res.body, { headers: { 'content-type': 'application/json' } }) : upstreamError(res.status)
+  // Via-city searches refresh once a minute (VIA_MS in the app), so other users can share them for as long.
+  const ttl = endpoint === 'trip' && url.searchParams.has('name_via') ? 55 : cfg.ttl
+  return cached(cacheReq, ctx, ttl, url.searchParams.has('fresh'), async () => {
+    try {
+      const res = await upstream(target.toString().slice(API.length), env, 'application/json')
+      return new Response(res.body, { headers: { 'content-type': 'application/json' } })
+    } catch (e) {
+      return upstreamError(e)
+    }
   })
 }
 
@@ -90,17 +144,17 @@ async function handleVehicles(url: URL, request: Request, env: Env, ctx: Executi
 
   const cacheReq = new Request(`${url.origin}/api/vehicles?mode=${mode}&trips=${rail ? '' : [...trips].sort().join(',')}`, request)
   const res = await cached(cacheReq, ctx, 5, url.searchParams.has('fresh'), async () => {
-    const results = await Promise.all(
-      feeds.map(async (path) => {
-        const res = await fetch(API + path, {
-          headers: { Authorization: `apikey ${env.TFNSW_API_KEY}`, Accept: 'application/x-google-protobuf' },
-        })
-        if (!res.ok) throw res.status
-        return decodeVehiclePositions(new Uint8Array(await res.arrayBuffer()), rail ? undefined : wanted)
-      }),
-    ).catch((status: unknown) => (typeof status === 'number' ? status : 500))
-    if (typeof results === 'number') return upstreamError(results)
-    return json({ vehicles: results.flat() })
+    try {
+      const results = await Promise.all(
+        feeds.map(async (path) => {
+          const res = await upstream(path, env, 'application/x-google-protobuf')
+          return decodeVehiclePositions(new Uint8Array(await res.arrayBuffer()), rail ? undefined : wanted)
+        }),
+      )
+      return json({ vehicles: results.flat() })
+    } catch (e) {
+      return upstreamError(e)
+    }
   })
   if (!rail || !wanted || !res.ok) return res
   const { vehicles } = (await res.json()) as { vehicles: VehicleInfo[] }

@@ -1,7 +1,7 @@
 import { Box, Button, Flex, HStack, Text } from '@chakra-ui/react'
 import { LuArrowRightLeft, LuTriangleAlert, LuZap } from 'react-icons/lu'
 import { isTransit } from '../lib/journey'
-import type { Replan } from '../lib/replan'
+import { staysOn, type Replan } from '../lib/replan'
 import { formatTime } from '../lib/time'
 import { LineBadge } from './LineBadge'
 import { StopPlatform } from './PlatformPill'
@@ -10,6 +10,19 @@ const HEADLINES = {
   cancelled: (stop: string) => `A ride on your trip is cancelled. Best option from ${stop}:`,
   missed: (stop: string) => `Delays mean you'll likely miss your change at ${stop}. Best option:`,
   faster: (stop: string) => `Faster route from ${stop}:`,
+}
+
+/** While riding, the stop is just the train's next one: say whether to stay on or get off there. */
+const RIDING = {
+  cancelled: (stop: string) => `A ride on your trip is cancelled. Best option from ${stop}:`,
+  missed: (stop: string) => `Delays mean you'll likely miss your next change. Best option from ${stop}:`,
+  faster: (stop: string, stay: boolean) => (stay ? `Faster: stay on past ${stop}, then change:` : `Faster: get off at ${stop} and change:`),
+}
+
+function headline(replan: Replan): string {
+  const stop = replan.point.stopName
+  if (!replan.point.ride) return HEADLINES[replan.reason](stop)
+  return replan.reason === 'faster' ? RIDING.faster(stop, staysOn(replan.point, replan.route)) : RIDING[replan.reason](stop)
 }
 
 interface Props {
@@ -43,7 +56,7 @@ export function ReplanBanner({ replan, onSwitch, onDismiss }: Props) {
           {urgent ? <LuTriangleAlert /> : <LuZap />}
         </Box>
         <Text fontSize="sm" fontWeight="semibold">
-          {HEADLINES[replan.reason](replan.point.stopName)}
+          {headline(replan)}
         </Text>
       </HStack>
       <Flex align="center" gap={1.5} wrap="wrap" mt={2}>

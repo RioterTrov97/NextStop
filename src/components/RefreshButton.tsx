@@ -1,6 +1,6 @@
 import { Box, Button, Flex } from '@chakra-ui/react'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { LuCheck } from 'react-icons/lu'
 import { requestFresh } from '../api/client'
 import { REALTIME_MS, isTimetableKey } from '../api/hooks'
@@ -30,12 +30,33 @@ export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
     if (!fetching) setDoneAt(now)
   }
 
-  const msLeft = getNextRefreshAt() - now
+  const nextAt = getNextRefreshAt()
+  const msLeft = nextAt - now
   // At the end of the countdown the refresh is already underway, so never show 0.
   const refreshing = fetching || msLeft <= 0
   const done = !refreshing && now - doneAt < DONE_MS
   const seconds = Math.min(REALTIME_MS / 1000, Math.max(1, Math.ceil(msLeft / 1000)))
   const fraction = Math.min(1, Math.max(0, msLeft / REALTIME_MS))
+
+  // The ring drains in one continuous animation from where it is now to empty, rather than following the 250ms
+  // re-renders (which moved it in visible steps, and in jumps once reduced motion turned the smoothing transition off).
+  // It restarts only when the countdown does. A slow linear drain is a progress indicator, so it runs under reduced
+  // motion too.
+  const ringRef = useRef<SVGCircleElement>(null)
+  const draining = !refreshing && !done
+  useLayoutEffect(() => {
+    const ring = ringRef.current
+    if (!draining || !ring?.animate) return
+    const left = nextAt - Date.now()
+    if (left <= 0) return
+    const from = C * (1 - Math.min(1, left / REALTIME_MS))
+    const drain = ring.animate([{ strokeDashoffset: from }, { strokeDashoffset: C }], {
+      duration: left,
+      easing: 'linear',
+      fill: 'forwards',
+    })
+    return () => drain.cancel()
+  }, [nextAt, draining])
 
   return (
     <Button
@@ -81,6 +102,7 @@ export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
             </g>
           ) : (
             <circle
+              ref={ringRef}
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={R}
@@ -89,10 +111,11 @@ export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
               strokeWidth={2.5}
               strokeLinecap="round"
               strokeDasharray={C}
+              // The resting position; while draining, the animation above drives it.
               strokeDashoffset={C * (1 - (done ? 1 : fraction))}
               transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-              // Linear over the 250ms tick, so the ring drains in one continuous motion; refilling eases back.
-              style={{ transition: fraction > 0.97 || done ? 'stroke-dashoffset 0.45s ease-out' : 'stroke-dashoffset 0.25s linear' }}
+              // Refilling for the tick eases back.
+              style={{ transition: done ? 'stroke-dashoffset 0.45s ease-out' : 'none' }}
             />
           )}
         </svg>

@@ -70,9 +70,11 @@ export default function Settings() {
             </Text>
           </Flex>
           <Stack gap={3} fontSize="sm" borderTopWidth="1px" pt={3}>
-            <AboutRow label="Data">Transport for NSW Open Data , licensed CC BY 4.0</AboutRow>
+            <AboutRow label="Data">Transport for NSW Open Data, licensed CC BY 4.0</AboutRow>
             <AboutRow label="Maps">MapTiler and OpenStreetMap contributors</AboutRow>
-            <AboutRow label="Carriage loads">Available for Sydney Trains and Metro services currently running</AboutRow>
+            <AboutRow label="Carriage loads">
+              Live for Waratah trains and Metro while running. Other services show the trip planner's forecast, marked "est."
+            </AboutRow>
           </Stack>
           <Text fontSize="xs" color="fg.muted" borderTopWidth="1px" pt={3}>
             An independent app, not affiliated with or endorsed by Transport for NSW.

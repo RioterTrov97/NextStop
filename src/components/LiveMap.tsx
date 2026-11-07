@@ -90,10 +90,7 @@ function MapView({ legs, vehicles, mode, height = 220, fullscreen }: Props & { f
           key={i}
           positions={l.coords!}
           pathOptions={{
-            color:
-              dark && !isTransit(l)
-                ? '#ffffff'
-                : lineColor(l.transportation?.number, l.transportation?.product?.class),
+            color: dark && !isTransit(l) ? '#ffffff' : lineColor(l.transportation?.number, l.transportation?.product?.class),
             weight: 5,
             dashArray: !isTransit(l) ? '2 8' : undefined,
           }}
