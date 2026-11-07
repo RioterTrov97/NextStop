@@ -14,8 +14,8 @@ export const resetRefreshTimer = () => {
 /** A sheet being dragged: refreshing then would re-render under the finger and make the drag stutter. */
 const isDragging = () => !!document.querySelector('[data-scope="drawer"][data-part="content"][data-dragging]')
 
-const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => number }) =>
-  isRealtimeKey(q.queryKey) && q.getObserversCount() > 0
+const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => number; meta?: Record<string, unknown> }) =>
+  isRealtimeKey(q.queryKey) && q.getObserversCount() > 0 && !q.meta?.['past']
 
 /** A via-city search refreshed within the last minute: the timer leaves it alone (see `VIA_MS`). */
 const viaFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
@@ -58,8 +58,9 @@ export function useRealtimeScheduler() {
     }
     // Any trip or departure query starting to fetch (new route, changed modes, ...) restarts the countdown. Vehicle
     // refreshes don't, or their shorter cycle would keep pushing the trip refresh back forever.
+    // Past (historical) queries are excluded: they're not live, so they shouldn't disturb the countdown.
     const unsubscribe = qc.getQueryCache().subscribe((e) => {
-      if (e.type === 'updated' && e.action.type === 'fetch' && isTimetableKey(e.query.queryKey)) resetRefreshTimer()
+      if (e.type === 'updated' && e.action.type === 'fetch' && isTimetableKey(e.query.queryKey) && !e.query.meta?.['past']) resetRefreshTimer()
     })
     const id = setInterval(tick, 500)
     document.addEventListener('visibilitychange', tick)

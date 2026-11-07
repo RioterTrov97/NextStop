@@ -121,7 +121,7 @@ export default function TripResults() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pastBase, pastChunks, from, to, modes.join(',')],
   )
-  const earlier = useTripsMany(pastQueries)
+  const earlier = useTripsMany(pastQueries, false, true)
   const past = pastFrom
     ? tripList([...new Map(earlier.journeys.map((j) => [tripKey(j), j])).values()], {
         now,

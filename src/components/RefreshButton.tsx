@@ -20,7 +20,7 @@ const DONE_MS = 900
 export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
   const qc = useQueryClient()
   const now = useNow(250)
-  const fetching = useIsFetching({ predicate: (q) => isTimetableKey(q.queryKey) }) > 0
+  const fetching = useIsFetching({ predicate: (q) => isTimetableKey(q.queryKey) && !q.meta?.['past'] }) > 0
 
   // Note when a refresh finishes, in the same render, so the tick replaces the spinner with no countdown flash between.
   const [doneAt, setDoneAt] = useState(0)

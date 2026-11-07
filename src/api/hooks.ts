@@ -58,13 +58,16 @@ export const isTimetableKey = (key: readonly unknown[]) => isRealtimeKey(key) &&
 
 type TripPart = 'direct' | 'via'
 
-function tripsQuery(query: TripQuery, walkPace: TripQuery['walkPace'], part: TripPart, enabled = true) {
+function tripsQuery(query: TripQuery, walkPace: TripQuery['walkPace'], part: TripPart, enabled = true, past = false) {
   const q = { ...query, walkPace }
   return {
     queryKey: ['trips', q.from, q.to, q.mode, q.when?.getTime() ?? 'now', q.count ?? 6, q.excluded, walkPace, part] as const,
     queryFn: ({ signal }: { signal: AbortSignal }) => (part === 'direct' ? fetchTripsDirect(q, signal) : fetchTripsVia(q, signal)),
     enabled: enabled && (part === 'direct' || viaHubsFor(q).length > 0),
     staleTime: part === 'via' ? VIA_MS : REALTIME_MS,
+    // Past queries are static historical snapshots: exclude them from the realtime refresh cycle and
+    // the refresh-button spinner so only the live "upcoming" queries drive those indicators.
+    ...(past && { meta: { past: true } }),
   }
 }
 
@@ -105,12 +108,12 @@ export function useTrips(query: TripQuery, enabled = true, { keepPrevious = fals
 }
 
 /** Several trip searches at once, flattened: used to keep every segment of a followed trip live. */
-export function useTripsMany(queries: TripQuery[], directOnly = false) {
+export function useTripsMany(queries: TripQuery[], directOnly = false, past = false) {
   const { walkPace } = useSettings()
   return useQueries({
     queries: queries.flatMap((q) =>
       (directOnly ? (['direct'] as const) : (['direct', 'via'] as const)).map((part) => ({
-        ...tripsQuery(q, walkPace, part),
+        ...tripsQuery(q, walkPace, part, true, past),
         placeholderData: keepPreviousData,
       })),
     ),
