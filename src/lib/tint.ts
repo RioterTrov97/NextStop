@@ -116,6 +116,8 @@ export interface Tint {
   card: string
   /** The edge of a tinted card. */
   cardEdge: string
+  /** A soft glow at the top of a page, in the line colour. */
+  glow: string
 }
 
 /**
@@ -146,6 +148,7 @@ export function makeTint(lineHex: string, mode: ColourMode): Tint {
       glassSolid: adjust(base, { s: (s) => Math.min(s, 0.4), l: () => 0.14 }),
       card: rgba(base, 0.1),
       cardEdge: rgba(base, 0.28),
+      glow: rgba(base, 0.24),
     }
   }
   const wash = adjust(base, { s: (s) => Math.min(s, 0.7), l: () => 0.91 })
@@ -163,6 +166,7 @@ export function makeTint(lineHex: string, mode: ColourMode): Tint {
     glassSolid: adjust(base, { s: (s) => Math.min(s, 0.6), l: () => 0.96 }),
     card: rgba(base, 0.07),
     cardEdge: rgba(base, 0.22),
+    glow: rgba(base, 0.18),
   }
 }
 

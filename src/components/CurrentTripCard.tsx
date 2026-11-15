@@ -1,7 +1,7 @@
 import { Badge, Box, Button, Flex, HStack, IconButton, Text } from '@chakra-ui/react'
 import { useEffect, useMemo, useState } from 'react'
 import { LuFootprints, LuX } from 'react-icons/lu'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDepartures, useJourneyVehicles, useTrips, useTripsMany } from '../api/hooks'
 import { stationIdOf, withRideAhead } from '../lib/ride'
 import { departureJourney } from '../lib/departure'
@@ -182,7 +182,16 @@ function WalkRow({ leg, final, toName, arrival }: { leg: Leg; final?: boolean; t
 
 export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number }) {
   const [confirmClear, setConfirmClear] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
+  // The followed-trip bar above the tab bar opens the trip here.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [detailOpen, setDetailOpen] = useState(() => !!(location.state as { openCurrent?: boolean } | null)?.openCurrent)
+  useEffect(() => {
+    if ((location.state as { openCurrent?: boolean } | null)?.openCurrent) {
+      setDetailOpen(true)
+      navigate('.', { replace: true, state: null })
+    }
+  }, [location.state, navigate])
   const [dismissed, setDismissed] = useState<string>()
   const { minTransfer } = useSettings()
 

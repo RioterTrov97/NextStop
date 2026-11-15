@@ -45,6 +45,7 @@ import { platformInfo } from '../lib/platforms'
 import { isCancelled } from '../lib/replan'
 import { countdown, formatTime } from '../lib/time'
 import { useFareData } from '../lib/useFares'
+import { useJourneyTint } from '../lib/useTint'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { SwipeToRemove } from '../components/SwipeToRemove'
 import { dedupeRoutes, history, routeKey, useSearchHistory, useTripHistory } from '../store/history'
@@ -520,6 +521,7 @@ export function Home() {
   const trips = useSavedTrips()
   const current = useCurrentTrip()
   const now = useNow(1000)
+  const glow = useJourneyTint(current?.journey ?? undefined)?.first.glow
   const { expandUpTo } = useSettings()
   const period = periodAt(now)
   const active = trips.filter((t) => period && t.period && t.period !== 'all' && t.period === period)
@@ -545,7 +547,19 @@ export function Home() {
           </>
         }
       />
-      <Stack gap={3} p={4} pt={6}>
+      {/* A faint glow in the followed trip's line colour, like Sangeet's now-playing glow: gone well before the fold. */}
+      {glow && (
+        <Box
+          aria-hidden
+          position="absolute"
+          left={0}
+          right={0}
+          h="300px"
+          pointerEvents="none"
+          style={{ background: `linear-gradient(180deg, ${glow} 0%, transparent 100%)` }}
+        />
+      )}
+      <Stack gap={3} p={4} pt={6} position="relative">
         {current && <CurrentTripCard trip={current} now={now} />}
         <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
