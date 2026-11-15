@@ -103,7 +103,7 @@ const TransitLeg = memo(function TransitLeg({ leg, vehicles, vehiclesLoading, pa
 
       {stops.length > 2 && (
         <Box mt={2}>
-          <Box as="button" fontSize="sm" color="teal.500" onClick={() => setShowStops((s) => !s)}>
+          <Box as="button" fontSize="sm" color="brand.fg" onClick={() => setShowStops((s) => !s)}>
             {showStops ? 'Hide stops' : 'Show stops'}
           </Box>
           {showStops && (
@@ -333,7 +333,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
                     <Button
                       size="sm"
                       borderRadius="full"
-                      colorPalette="teal"
+                      colorPalette="brand"
                       variant={isCurrent ? 'solid' : 'outline'}
                       onClick={onToggleCurrent}
                     >

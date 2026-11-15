@@ -31,10 +31,10 @@ export default function Alerts() {
       <Stack gap={3} p={4}>
         {trips.length > 0 && (
           <HStack gap={2}>
-            <Button size="sm" borderRadius="full" colorPalette="teal" variant={!all ? 'solid' : 'outline'} onClick={() => setAll(false)}>
+            <Button size="sm" borderRadius="full" colorPalette="brand" variant={!all ? 'solid' : 'outline'} onClick={() => setAll(false)}>
               My trips
             </Button>
-            <Button size="sm" borderRadius="full" colorPalette="teal" variant={all ? 'solid' : 'outline'} onClick={() => setAll(true)}>
+            <Button size="sm" borderRadius="full" colorPalette="brand" variant={all ? 'solid' : 'outline'} onClick={() => setAll(true)}>
               Everything
             </Button>
           </HStack>

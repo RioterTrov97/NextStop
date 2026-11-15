@@ -39,8 +39,8 @@ export function ErrorFallback() {
           h={20}
           borderRadius="full"
           bgGradient="to-br"
-          gradientFrom="teal.600"
-          gradientTo="teal.700"
+          gradientFrom="brand.600"
+          gradientTo="brand.800"
           color="white"
           fontSize="4xl"
           boxShadow="lg"
@@ -55,7 +55,7 @@ export function ErrorFallback() {
         </Text>
 
         <Flex gap={3} wrap="wrap" justify="center">
-          <Button colorPalette="teal" onClick={hardReload}>
+          <Button colorPalette="brand" onClick={hardReload}>
             <LuRefreshCw /> Reload app
           </Button>
           <Button variant="outline" onClick={() => window.location.assign(BASE)}>

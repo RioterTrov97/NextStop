@@ -14,10 +14,10 @@ export function EmptyState({ icon: Icon, title, children, action }: Props) {
   return (
     <Stack align="center" textAlign="center" gap={3} py={10} px={6}>
       <Box position="relative">
-        <Box display="grid" placeItems="center" w="88px" h="88px" borderRadius="full" bg="teal.subtle" color="teal.fg">
+        <Box display="grid" placeItems="center" w="88px" h="88px" borderRadius="full" bg="brand.subtle" color="brand.fg">
           <Icon size={40} />
         </Box>
-        <Box position="absolute" top="-2px" right="-6px" color="teal.solid">
+        <Box position="absolute" top="-2px" right="-6px" color="brand.solid">
           <LuSparkles size={20} />
         </Box>
       </Box>

@@ -32,7 +32,7 @@ export function ModePicker({ value, onChange, size = 'sm', hideWalk, endWalk }: 
             size={size}
             borderRadius="full"
             variant={on ? 'solid' : 'outline'}
-            colorPalette="teal"
+            colorPalette="brand"
             aria-pressed={on}
             onClick={() => toggle(m.key)}
           >

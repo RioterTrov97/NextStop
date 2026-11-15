@@ -93,7 +93,7 @@ export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint,
               leave in
             </Text>
           )}
-          <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+          <Text fontSize="2xl" fontWeight="bold" color="brand.fg" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
             {arr && Date.parse(arr) <= now ? 'Ended' : countdown(start.countTo, now)}
           </Text>
         </Flex>

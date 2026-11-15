@@ -2,7 +2,7 @@ import { Box, Button, HStack, Stack, Text } from '@chakra-ui/react'
 import { END_WALK_OPTIONS, START_WALK_OPTIONS, TRANSFER_OPTIONS, WALK_PACES, settings, useSettings } from '../store/settings'
 
 const chip = (on: boolean) =>
-  ({ size: 'sm', borderRadius: 'full', variant: on ? 'solid' : 'outline', colorPalette: 'teal', 'aria-pressed': on }) as const
+  ({ size: 'sm', borderRadius: 'full', variant: on ? 'solid' : 'outline', colorPalette: 'brand', 'aria-pressed': on }) as const
 
 /** The global walking and changing preferences, shared by Settings and the shortcut dialog. */
 export function WalkOptions({

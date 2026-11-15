@@ -18,24 +18,32 @@ const alphaOf = (bg: string) => {
   return parts && parts.length >= 4 ? Number(parts[3]) : parts ? 1 : 0
 }
 
+/** The header colour of the current theme and screen: the page colour, or a station board's tint. */
+export function headerColor(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--ns-header-bg').trim()
+}
+
 /**
- * Keeps the iPhone status bar dimmed along with the page while a sheet or dialog is open.
+ * Keeps the iPhone status bar the colour of the page header: the page colour of the current theme, a screen's tint,
+ * and dimmed along with the page while a sheet or dialog is open.
  *
  * iOS 26+ Safari (and home-screen apps) paint the status bar from the opaque sticky bar at the top of the page,
- * ignoring translucent overlays, so the dark backdrop alone left a bright orange strip above a dimmed page. While a
+ * ignoring translucent overlays, so the dark backdrop alone left a bright strip above a dimmed page. While a
  * backdrop is open this marks <html data-overlay> and sets --ns-header-dim to the header colour as seen through it;
- * PageHeader then paints itself in that colour above the backdrop, which iOS samples. theme-color is updated too,
- * for browsers that still use it.
+ * PageHeader then paints itself in that colour above the backdrop, which iOS samples. theme-color follows too, for
+ * browsers that still use it. The header colour itself is --ns-header-bg (index.html), which changes with the theme
+ * (the "dark" class) and with tinted screens (an inline style on <html>), so both are watched.
  */
 export function useStatusBarFollowsBackdrops() {
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     if (!meta) return
-    const base = meta.content
+    const original = meta.content
     let frame = 0
     const update = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
+        const base = headerColor() || original
         let keep = 1
         for (const el of document.querySelectorAll('[data-part="backdrop"][data-state="open"]')) {
           // The resting colour, not the current opacity: the fade-in has only just started when this runs.
@@ -45,17 +53,21 @@ export function useStatusBarFollowsBackdrops() {
         if (meta.content !== next) meta.content = next
         const root = document.documentElement
         if (keep < 1) {
-          root.style.setProperty('--ns-header-dim', next)
+          if (root.style.getPropertyValue('--ns-header-dim') !== next) root.style.setProperty('--ns-header-dim', next)
           root.dataset.overlay = 'open'
         } else delete root.dataset.overlay
       })
     }
+    update()
     const observer = new MutationObserver(update)
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-state'] })
+    const rootObserver = new MutationObserver(update)
+    rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
     return () => {
       observer.disconnect()
+      rootObserver.disconnect()
       cancelAnimationFrame(frame)
-      meta.content = base
+      meta.content = original
       delete document.documentElement.dataset.overlay
     }
   }, [])

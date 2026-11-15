@@ -17,7 +17,7 @@ const DONE_MS = 900
  * The live-data countdown: a ring that drains until the next shared refresh, a spinning arc while it refreshes,
  * then a brief tick once fresh data is in. Tapping it refreshes everything now.
  */
-export function RefreshButton({ color = 'white' }: { color?: string } = {}) {
+export function RefreshButton({ color = 'inherit' }: { color?: string } = {}) {
   const qc = useQueryClient()
   const now = useNow(250)
   const fetching = useIsFetching({ predicate: (q) => isTimetableKey(q.queryKey) && !q.meta?.['past'] }) > 0

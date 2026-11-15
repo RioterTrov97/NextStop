@@ -2,7 +2,7 @@ import { Box, Flex, Heading, IconButton } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { LuChevronLeft, LuWifiOff } from 'react-icons/lu'
 import { useNavigate } from 'react-router-dom'
-import { useOnline } from '../lib/hooks'
+import { useOnline, useScrolled } from '../lib/hooks'
 
 interface Props {
   title: string
@@ -17,6 +17,7 @@ interface Props {
 export function PageHeader({ title, subtitle, back, backTo, action, children }: Props) {
   const navigate = useNavigate()
   const online = useOnline()
+  const scrolled = useScrolled()
 
   return (
     <>
@@ -24,17 +25,20 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
         position="sticky"
         top={0}
         zIndex="docked"
-        // Solid, not a gradient: iOS 26+ colours a home-screen app's status bar by sampling the opaque sticky strip at the top.
-        bg="teal.600"
-        color="white"
+        // Solid, never glass: iOS 26+ colours a home-screen app's status bar by sampling the opaque sticky strip at the top,
+        // and iOS 27 blurs the status bar unless something opaque is painted there. The page colour by default, so the
+        // header reads as part of the page; tinted screens (station boards) set --ns-header-bg and --ns-header-fg.
+        bg="var(--ns-header-bg)"
+        color="var(--ns-header-fg)"
         px={4}
-        pb={4}
+        pb={3}
         // The full status bar height, uncapped: iOS 27 blurs anything in that zone, so the title must start below it
         // (59px on Dynamic Island iPhones). The solid sticky header behind the status bar is also what stops the blur.
         pt="calc(8px + env(safe-area-inset-top))"
-        // Below only: the "md" token adds a 1px outline on every side, which drew a line under the iPhone status bar.
-        boxShadow="0 4px 10px rgba(0, 0, 0, 0.18)"
-        transition="background-color 0.3s ease-out"
+        // A hairline below, once the page has scrolled under the header. Below only: Chakra's "md" shadow adds a 1px
+        // outline on every side, which drew a line under the iPhone status bar.
+        boxShadow={scrolled ? '0 1px 0 var(--chakra-colors-border)' : 'none'}
+        transition="background-color 0.3s ease-out, color 0.3s ease-out, box-shadow 0.2s"
         // While a sheet or dialog is open: the header's colour as seen through the backdrop, drawn above it, so iOS
         // (which samples this bar for the status bar) dims the status bar too. Taps fall through to the backdrop.
         css={{
@@ -52,7 +56,7 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
             <IconButton
               aria-label="Back"
               variant="ghost"
-              color="white"
+              color="inherit"
               size="sm"
               ms={-2}
               onClick={() => (backTo ? navigate(backTo, { replace: true }) : navigate(-1))}
@@ -61,11 +65,11 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
             </IconButton>
           )}
           <Box flex={1} minW={0}>
-            <Heading size="lg" truncate>
+            <Heading size="xl" fontWeight="bold" letterSpacing="-0.02em" truncate>
               {title}
             </Heading>
             {subtitle && (
-              <Box fontSize="sm" opacity={0.85} truncate>
+              <Box fontSize="sm" opacity={0.72} truncate>
                 {subtitle}
               </Box>
             )}

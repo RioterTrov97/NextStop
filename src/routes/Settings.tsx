@@ -95,7 +95,7 @@ export default function Settings() {
                 key={k}
                 size="sm"
                 borderRadius="full"
-                colorPalette="teal"
+                colorPalette="brand"
                 variant={theme === k ? 'solid' : 'outline'}
                 onClick={() => setTheme(k)}
               >
@@ -129,7 +129,7 @@ export default function Settings() {
                 key={f.key}
                 size="sm"
                 borderRadius="full"
-                colorPalette="teal"
+                colorPalette="brand"
                 variant={fareType === f.key ? 'solid' : 'outline'}
                 aria-pressed={fareType === f.key}
                 onClick={() => settings.set({ fareType: f.key })}
@@ -156,7 +156,7 @@ export default function Settings() {
                 key={n}
                 size="sm"
                 borderRadius="full"
-                colorPalette="teal"
+                colorPalette="brand"
                 variant={expandUpTo === n ? 'solid' : 'outline'}
                 aria-pressed={expandUpTo === n}
                 onClick={() => settings.set({ expandUpTo: n })}
@@ -178,7 +178,7 @@ export default function Settings() {
                 key={n}
                 size="sm"
                 borderRadius="full"
-                colorPalette="teal"
+                colorPalette="brand"
                 variant={historyLimit === n ? 'solid' : 'outline'}
                 aria-pressed={historyLimit === n}
                 onClick={() => {

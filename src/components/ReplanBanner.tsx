@@ -44,14 +44,14 @@ export function ReplanBanner({ replan, onSwitch, onDismiss }: Props) {
     <Box
       role="status"
       aria-live="polite"
-      bg={urgent ? 'red.subtle' : 'teal.subtle'}
+      bg={urgent ? 'red.subtle' : 'brand.subtle'}
       borderWidth="1px"
-      borderColor={urgent ? 'red.muted' : 'teal.muted'}
+      borderColor={urgent ? 'red.muted' : 'brand.muted'}
       borderRadius="xl"
       p={3}
       onClick={(e) => e.stopPropagation()}
     >
-      <HStack gap={2} align="flex-start" color={urgent ? 'red.fg' : 'teal.fg'}>
+      <HStack gap={2} align="flex-start" color={urgent ? 'red.fg' : 'brand.fg'}>
         <Box pt="2px" flexShrink={0}>
           {urgent ? <LuTriangleAlert /> : <LuZap />}
         </Box>
@@ -75,14 +75,14 @@ export function ReplanBanner({ replan, onSwitch, onDismiss }: Props) {
       <Text fontSize="sm" mt={1}>
         Arrive <b>{formatTime(arrives)}</b>
         {savedMin > 0 && (
-          <Text as="span" color={urgent ? undefined : 'teal.fg'} fontWeight="semibold">
+          <Text as="span" color={urgent ? undefined : 'brand.fg'} fontWeight="semibold">
             {' '}
             · {savedMin} min sooner
           </Text>
         )}
       </Text>
       <Flex gap={2} mt={3}>
-        <Button size="sm" colorPalette={urgent ? 'red' : 'teal'} borderRadius="full" onClick={onSwitch}>
+        <Button size="sm" colorPalette={urgent ? 'red' : 'brand'} borderRadius="full" onClick={onSwitch}>
           <LuArrowRightLeft /> Switch to this
         </Button>
         <Button size="sm" variant="ghost" borderRadius="full" onClick={onDismiss}>

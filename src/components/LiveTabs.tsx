@@ -10,7 +10,7 @@ const ITEMS = [
 export function LiveTabs() {
   const { pathname } = useLocation()
   return (
-    <Flex mt={3} p="3px" bg="blackAlpha.300" borderRadius="full" role="tablist">
+    <Flex mt={3} p="3px" bg="bg.muted" borderRadius="full" role="tablist">
       {ITEMS.map(({ to, label }) => {
         const active = pathname.startsWith(to)
         return (
@@ -21,8 +21,10 @@ export function LiveTabs() {
               borderRadius="full"
               fontSize="sm"
               fontWeight="semibold"
-              bg={active ? 'white' : 'transparent'}
-              color={active ? 'teal.700' : 'whiteAlpha.900'}
+              bg={active ? 'bg.panel' : 'transparent'}
+              color={active ? 'fg' : 'fg.muted'}
+              shadow={active ? 'xs' : undefined}
+              transition="background-color 0.2s, color 0.2s"
             >
               {label}
             </Flex>

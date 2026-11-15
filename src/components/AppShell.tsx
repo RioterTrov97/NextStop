@@ -56,7 +56,7 @@ export function AppShell() {
             const target = to === '/' ? (isActive ? '/' : lastTrips) : to
             return (
               <Link key={to} to={target} style={{ flex: 1 }} aria-current={isActive ? 'page' : undefined}>
-                <Flex direction="column" align="center" gap="2px" py={4} color={isActive ? 'teal.500' : 'fg.muted'}>
+                <Flex direction="column" align="center" gap="2px" py={4} color={isActive ? 'brand.fg' : 'fg.muted'}>
                   <Icon size={22} />
                   <Text fontSize="xs" fontWeight={isActive ? 'semibold' : 'normal'}>
                     {label}

@@ -48,7 +48,7 @@ function TripDetails({ entry }: { entry: HistoryEntry }) {
           </Flex>
         )
       })}
-      <Button asChild size="xs" variant="subtle" colorPalette="teal" alignSelf="flex-start" mt={1}>
+      <Button asChild size="xs" variant="subtle" colorPalette="brand" alignSelf="flex-start" mt={1}>
         <Link to={tripPath({ ...entry, modes: [] })}>See live times for this route</Link>
       </Button>
     </Stack>
@@ -130,7 +130,7 @@ export default function History() {
   return (
     <>
       <PageHeader title="History" subtitle="Trips you followed and routes you searched">
-        <Flex mt={3} p="3px" bg="blackAlpha.300" borderRadius="full" role="tablist">
+        <Flex mt={3} p="3px" bg="bg.muted" borderRadius="full" role="tablist">
           {(
             [
               ['trips', 'Trips'],
@@ -147,8 +147,10 @@ export default function History() {
               borderRadius="full"
               fontSize="sm"
               fontWeight="semibold"
-              bg={tab === k ? 'white' : 'transparent'}
-              color={tab === k ? 'teal.700' : 'whiteAlpha.900'}
+              bg={tab === k ? 'bg.panel' : 'transparent'}
+              color={tab === k ? 'fg' : 'fg.muted'}
+              shadow={tab === k ? 'xs' : undefined}
+              transition="background-color 0.2s, color 0.2s"
               cursor="pointer"
               onClick={() => setTab(k)}
             >

@@ -80,7 +80,10 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
       const dy = y - startY
       if (!dragging) {
         // Upwards or already scrolled: abandon and let the browser handle it normally.
-        if (dy < -4 || window.scrollY > 0) { startY = undefined; return }
+        if (dy < -4 || window.scrollY > 0) {
+          startY = undefined
+          return
+        }
         // Not yet enough movement to commit to a pull gesture — let it through so the
         // browser can still start a scroll if the user is just scrolling down.
         if (dy <= ACTIVATE) return

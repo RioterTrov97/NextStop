@@ -80,7 +80,7 @@ function ActionRow({ kind, action }: { kind: 'board' | 'alight'; action: Action 
   return (
     <Flex justify="space-between" align="center" gap={2}>
       <HStack gap={2}>
-        <Badge colorPalette={kind === 'board' ? 'teal' : 'orange'} variant="subtle">
+        <Badge colorPalette={kind === 'board' ? 'brand' : 'orange'} variant="subtle">
           {kind === 'board' ? 'Board' : 'Get off'}
         </Badge>
         <StopPlatform point={action.point} transportation={action.leg.transportation} fallback="Platform TBC" />
@@ -96,7 +96,7 @@ function StopRow({ step, divider }: { step: Extract<Step, { type: 'stop' }>; div
   return (
     <Flex gap={3} pt={divider ? 2 : 0}>
       <Flex w="20px" justify="center" pt="5px" flexShrink={0}>
-        <Box w="14px" h="14px" borderRadius="full" borderWidth="3px" borderColor="teal.500" bg="bg.panel" />
+        <Box w="14px" h="14px" borderRadius="full" borderWidth="3px" borderColor="brand.fg" bg="bg.panel" />
       </Flex>
       <Box flex={1} minW={0} pb={1}>
         <Text fontWeight="bold" truncate>
@@ -281,7 +281,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
       bg="bg.panel"
       borderRadius="2xl"
       borderWidth="2px"
-      borderColor="teal.500"
+      borderColor="brand.fg"
       p={4}
       mb={2}
       cursor="pointer"
@@ -291,7 +291,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
       }}
     >
       <Flex align="center" justify="space-between" mb={1}>
-        <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="teal.500">
+        <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="brand.fg">
           CURRENT TRIP
         </Text>
         <IconButton aria-label="Clear current trip" size="xs" variant="ghost" onClick={() => setConfirmClear(true)}>
@@ -327,7 +327,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
             </>
           )}
         </Text>
-        <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+        <Text fontSize="2xl" fontWeight="bold" color="brand.fg" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
           {nextDep ? countdown(nextDep, now) : arriveMin ? `${arriveMin} min` : 'Arrived'}
         </Text>
       </Flex>
@@ -348,7 +348,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
         )}
       </Box>
 
-      <Button asChild size="xs" variant="ghost" colorPalette="teal" mt={2}>
+      <Button asChild size="xs" variant="ghost" colorPalette="brand" mt={2}>
         <Link to={tripPath({ fromId: trip.fromId, toId: trip.toId, fromName: trip.fromName, toName: trip.toName, modes: [] })}>
           See other trips
         </Link>

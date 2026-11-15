@@ -40,7 +40,7 @@ export function SavedPlacesEditor() {
             )
           return (
             <Flex key={key} align="center" gap={3} p={3} bg="bg.panel" borderWidth="1px" borderRadius="xl">
-              <Box color={place ? 'teal.500' : 'fg.muted'}>
+              <Box color={place ? 'brand.fg' : 'fg.muted'}>
                 <PlaceIcon place={{ id: key }} />
               </Box>
               <Box flex={1} minW={0}>

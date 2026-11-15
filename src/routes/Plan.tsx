@@ -83,7 +83,7 @@ export default function Plan() {
                 Recent searches
               </Text>
               {searches.length > 3 && (
-                <Button size="xs" variant="ghost" colorPalette="teal" onClick={() => setShowAll((v) => !v)}>
+                <Button size="xs" variant="ghost" colorPalette="brand" onClick={() => setShowAll((v) => !v)}>
                   <LuHistory /> {showAll ? 'Show less' : 'History'}
                 </Button>
               )}
@@ -135,7 +135,7 @@ export default function Plan() {
                 size="sm"
                 borderRadius="full"
                 variant={when === k ? 'solid' : 'outline'}
-                colorPalette="teal"
+                colorPalette="brand"
                 onClick={() => setWhen(k)}
               >
                 {label}
@@ -145,7 +145,7 @@ export default function Plan() {
           {when !== 'now' && <Input mt={2} type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />}
         </Box>
 
-        <Button mt="2" size="lg" colorPalette="teal" borderRadius="xl" disabled={!from || !to} onClick={go}>
+        <Button mt="2" size="lg" colorPalette="brand" borderRadius="xl" disabled={!from || !to} onClick={go}>
           Show trips
         </Button>
       </Stack>

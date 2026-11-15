@@ -176,7 +176,7 @@ export default function TripResults() {
         action={
           <>
             <RefreshButton />
-            <IconButton aria-label="Swap direction" variant="ghost" color="white" onClick={swap}>
+            <IconButton aria-label="Swap direction" variant="ghost" color="inherit" onClick={swap}>
               <LuArrowLeftRight />
             </IconButton>
             <SaveTripChip route={{ fromId: from, fromName, toId: to, toName, modes }} onHeader removable />

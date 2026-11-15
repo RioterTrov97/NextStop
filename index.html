@@ -20,14 +20,22 @@
         var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
         if (dark) document.documentElement.classList.add('dark')
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        // The status bar takes the header colour, which is the page colour of the theme.
+        if (dark) document.querySelector('meta[name="theme-color"]').content = '%PAGE_DARK%'
       } catch (e) {}
     </script>
     <style>
-      html {
-        background: #fff;
+      /* The page colour, shared by the solid page header and the iPhone status bar. Screens with a tinted header
+         (station boards) set --ns-header-bg on <html>. */
+      :root {
+        --ns-page: %PAGE_LIGHT%;
+        --ns-header-bg: var(--ns-page);
+        --ns-header-fg: %INK_LIGHT%;
+        background: var(--ns-page);
       }
       html.dark {
-        background: #09090b;
+        --ns-page: %PAGE_DARK%;
+        --ns-header-fg: %INK_DARK%;
       }
       /*
         Installed iPhone app only. iOS 27 draws a blur and dark gradient under the status bar unless an opaque element
@@ -45,7 +53,7 @@
           left: 0;
           right: 0;
           height: max(11px, env(safe-area-inset-top));
-          background: %THEME_COLOR%;
+          background: var(--ns-header-bg);
           z-index: 2147483646;
           pointer-events: none;
           transition: background-color 0.3s ease-out;

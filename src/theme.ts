@@ -1,5 +1,7 @@
-import { brand } from '../shared/brand'
+import { brand, ink, page, panel, sageGray } from '../shared/brand'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
+
+const scale = (s: Record<string | number, string>) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, { value: v }]))
 
 // iOS-style sheet easing: quick start, long soft settle.
 const SHEET_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
@@ -81,15 +83,50 @@ const config = defineConfig({
       'ns-refresh-fade': { '0%, 80%, 100%': { opacity: 0.35 }, '40%': { opacity: 1 } },
     },
     tokens: {
-      // The "teal" palette name is kept so existing colorPalette="teal" usages pick up the accent colour.
       colors: {
-        teal: {
-          ...Object.fromEntries(Object.entries(brand).map(([k, v]) => [k, { value: v }])),
-        },
+        brand: scale(brand),
+        // Every grey leans slightly sage, so neutrals sit with the eucalyptus accent.
+        gray: scale(sageGray),
       },
       fonts: {
         heading: { value: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif" },
         body: { value: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif" },
+      },
+      radii: {
+        // Rounder, iOS-like corners: cards 2xl (18px), sheets 3xl (26px), pills full.
+        xl: { value: '14px' },
+        '2xl': { value: '18px' },
+        '3xl': { value: '26px' },
+      },
+    },
+    semanticTokens: {
+      colors: {
+        bg: {
+          DEFAULT: { value: { _light: page.light, _dark: page.dark } },
+          panel: { value: { _light: panel.light, _dark: panel.dark } },
+          subtle: { value: { _light: '{colors.gray.50}', _dark: '#121815' } },
+          muted: { value: { _light: '{colors.gray.100}', _dark: '#1D2622' } },
+          emphasized: { value: { _light: '{colors.gray.200}', _dark: '#28322D' } },
+        },
+        fg: {
+          DEFAULT: { value: { _light: ink.light, _dark: ink.dark } },
+          muted: { value: { _light: '{colors.gray.600}', _dark: '{colors.gray.400}' } },
+        },
+        border: {
+          DEFAULT: { value: { _light: '{colors.gray.200}', _dark: '#26302B' } },
+          muted: { value: { _light: '{colors.gray.100}', _dark: '#1E2723' } },
+        },
+        // colorPalette="brand": light mode uses the deep eucalyptus with white text, dark mode the pale sage with dark text.
+        brand: {
+          solid: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.300}' } },
+          contrast: { value: { _light: 'white', _dark: '{colors.brand.950}' } },
+          fg: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.300}' } },
+          muted: { value: { _light: '{colors.brand.200}', _dark: '{colors.brand.800}' } },
+          subtle: { value: { _light: '{colors.brand.100}', _dark: '{colors.brand.900}' } },
+          emphasized: { value: { _light: '{colors.brand.300}', _dark: '{colors.brand.700}' } },
+          focusRing: { value: { _light: '{colors.brand.500}', _dark: '{colors.brand.400}' } },
+          border: { value: { _light: '{colors.brand.200}', _dark: '{colors.brand.800}' } },
+        },
       },
     },
   },

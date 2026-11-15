@@ -174,7 +174,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
               </Flex>
               {/* Minutes to go with the running status tucked right under it, as one unit. */}
               <Flex w="56px" flexShrink={0} direction="column" align="flex-end" whiteSpace="nowrap">
-                <Text fontSize="sm" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" lineHeight="1.2">
+                <Text fontSize="sm" fontWeight="bold" color="brand.fg" fontVariantNumeric="tabular-nums" lineHeight="1.2">
                   {countdown(start.countTo, now)}
                 </Text>
                 <DelayText
@@ -248,9 +248,9 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
           <Flex align="center" p={4} pb={compact ? 4 : 2} gap={2}>
             {handle}
             <Flex direction="column" align="center" gap="3px" mt={1.5} alignSelf="flex-start" flexShrink={0} aria-hidden>
-              <Box boxSize="9px" borderRadius="full" borderWidth="2px" borderColor="teal.solid" />
+              <Box boxSize="9px" borderRadius="full" borderWidth="2px" borderColor="brand.solid" />
               <Box w="2px" h="14px" borderRadius="full" bg="border.emphasized" />
-              <Box boxSize="9px" borderRadius="full" bg="teal.solid" />
+              <Box boxSize="9px" borderRadius="full" bg="brand.solid" />
             </Flex>
             {/* Takes what the time slot leaves. The names add nothing to the column's natural width (w=0, minW=full), so it never gets narrower than the widest item of the modes/walk line, and that line wraps only when the column is squeezed below its full width. */}
             <Box asChild flex="1 1 0">
@@ -342,7 +342,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                           key={p.key}
                           size="xs"
                           borderRadius="full"
-                          colorPalette="teal"
+                          colorPalette="brand"
                           variant={p.key === period.key ? 'solid' : 'outline'}
                           aria-pressed={p.key === period.key}
                           title={p.hours}
@@ -380,7 +380,7 @@ function SavedTripCard({ trip, now, compact, handle }: { trip: SavedTrip; now: n
                           key={n}
                           size="xs"
                           borderRadius="full"
-                          colorPalette="teal"
+                          colorPalette="brand"
                           variant={n === maxEndWalk ? 'solid' : 'outline'}
                           aria-pressed={n === maxEndWalk}
                           onClick={() => {
@@ -554,7 +554,7 @@ export function Home() {
                 icon={LuBookmarkPlus}
                 title="No saved trips yet"
                 action={
-                  <Button asChild colorPalette="teal" borderRadius="xl">
+                  <Button asChild colorPalette="brand" borderRadius="xl">
                     <Link to="/plan">
                       <LuSearch /> Plan a trip
                     </Link>
@@ -576,7 +576,7 @@ export function Home() {
               <Text color="fg.muted" maxW="300px">
                 Your everyday trips, live at a glance.
               </Text>
-              <Button mt="4" asChild colorPalette="teal" size="lg" borderRadius="xl">
+              <Button mt="4" asChild colorPalette="brand" size="lg" borderRadius="xl">
                 <Link to="/plan">
                   <LuSearch /> Plan a trip
                 </Link>
@@ -606,7 +606,7 @@ export function Home() {
                   ))}
                 </Text>
               </Box>
-              <Button asChild size="sm" variant="subtle" colorPalette="teal" borderRadius="full" flexShrink={0}>
+              <Button asChild size="sm" variant="subtle" colorPalette="brand" borderRadius="full" flexShrink={0}>
                 <Link to="/plan">
                   <LuSearch /> Plan
                 </Link>
@@ -615,8 +615,8 @@ export function Home() {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               {active.length > 0 && (
                 <>
-                  <Flex align="center" gap={2} px={1} color="teal.fg">
-                    <Box boxSize="8px" borderRadius="full" bg="teal.solid" aria-hidden />
+                  <Flex align="center" gap={2} px={1} color="brand.fg">
+                    <Box boxSize="8px" borderRadius="full" bg="brand.solid" aria-hidden />
                     <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider">
                       Active now
                     </Text>

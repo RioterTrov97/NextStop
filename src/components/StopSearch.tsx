@@ -134,7 +134,7 @@ export function StopSearch({ label, value, onChange, stopsOnly = false, hideSave
           onChange(undefined)
         }}
       >
-        <Box color="teal.500">
+        <Box color="brand.fg">
           <PlaceIcon place={value} />
         </Box>
         <Box minW={0}>
@@ -213,7 +213,7 @@ export function StopSearch({ label, value, onChange, stopsOnly = false, hideSave
         >
           <Flex gap={2} wrap="wrap" role="group" aria-label="Quick picks">
             {!stopsOnly && (
-              <Button size="sm" variant="outline" colorPalette="teal" borderRadius="full" disabled={locating} onClick={useLocation}>
+              <Button size="sm" variant="outline" colorPalette="brand" borderRadius="full" disabled={locating} onClick={useLocation}>
                 {locating ? <Spinner size="xs" /> : <LuLocateFixed />} {locating ? 'Finding you…' : 'Current location'}
               </Button>
             )}

@@ -18,7 +18,7 @@ export function EndWalkSetting({ endWalk }: { endWalk?: { value: number; onChang
           size="xs"
           borderRadius="full"
           variant={maxEndWalk > 0 || walkPace !== 'normal' || minTransfer !== DEFAULT_SETTINGS.minTransfer ? 'solid' : 'outline'}
-          colorPalette="teal"
+          colorPalette="brand"
         >
           <LuFootprints />
         </IconButton>

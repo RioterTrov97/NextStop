@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { darken } from './statusBar'
 
 describe('darken', () => {
-  it('matches the brand orange seen through the 36% sheet backdrop', () => {
+  it('matches the header colour seen through the 36% sheet backdrop', () => {
     expect(darken('#EA6A12', 0.36)).toBe('#96440c')
   })
 

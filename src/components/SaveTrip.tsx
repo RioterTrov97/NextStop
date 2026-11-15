@@ -8,7 +8,7 @@ type Route = Pick<SavedTrip, 'fromId' | 'toId' | 'fromName' | 'toName' | 'modes'
 
 interface Props {
   route: Route
-  /** White, for the coloured page header. */
+  /** In the page header: takes the header's text colour. */
   onHeader?: boolean
   /** Let "Saved" be tapped to take the trip off Home again, after a confirmation. */
   removable?: boolean
@@ -30,10 +30,10 @@ export function SaveTripChip({ route, onHeader, removable }: Props) {
         size="xs"
         borderRadius="full"
         variant={saved ? 'plain' : 'outline'}
-        colorPalette="teal"
-        color={onHeader ? 'white' : undefined}
-        borderColor={onHeader && !saved ? 'whiteAlpha.700' : undefined}
-        _hover={onHeader ? { bg: 'whiteAlpha.200' } : undefined}
+        colorPalette="brand"
+        color={onHeader ? 'inherit' : undefined}
+        borderColor={onHeader && !saved ? 'currentColor/40' : undefined}
+        _hover={onHeader ? { bg: 'currentColor/10' } : undefined}
         flexShrink={0}
         disabled={locked}
         _disabled={{ opacity: 1, cursor: 'default' }}
