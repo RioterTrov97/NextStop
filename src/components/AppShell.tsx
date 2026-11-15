@@ -1,4 +1,5 @@
 import { useRealtimeScheduler } from '../api/realtime'
+import { useSolidSurfaces } from '../lib/appearance'
 import { useStatusBarFollowsBackdrops } from '../lib/statusBar'
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { useEffect } from 'react'
@@ -25,6 +26,7 @@ let lastTrips = '/'
 export function AppShell() {
   useRealtimeScheduler()
   useStatusBarFollowsBackdrops()
+  useSolidSurfaces()
   const { pathname, search } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)

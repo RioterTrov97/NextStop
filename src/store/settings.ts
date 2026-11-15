@@ -29,6 +29,10 @@ export interface Settings {
   historyLimit: number
   /** Which Opal fares trip details estimate. */
   fareType: FareType
+  /** Solid surfaces instead of glass (iPhone Safari doesn't pass the iOS Reduce Transparency setting to web pages). */
+  reduceTransparency: boolean
+  /** Colour trip screens, the followed trip and search results by their line. */
+  tintByLine: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -40,6 +44,8 @@ export const DEFAULT_SETTINGS: Settings = {
   minTransfer: 3,
   historyLimit: 25,
   fareType: 'adult',
+  reduceTransparency: false,
+  tintByLine: true,
 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
 export const START_WALK_OPTIONS = [5, 10, 15, 20, 30]
@@ -71,6 +77,8 @@ function read(): Settings {
         ? { maxStartWalk: parsed.maxStartWalk }
         : {}),
       ...(FARE_TYPES.some((f) => f.key === parsed.fareType) ? { fareType: parsed.fareType } : {}),
+      ...(typeof parsed.reduceTransparency === 'boolean' ? { reduceTransparency: parsed.reduceTransparency } : {}),
+      ...(typeof parsed.tintByLine === 'boolean' ? { tintByLine: parsed.tintByLine } : {}),
       ...(typeof parsed.minTransfer === 'number' && TRANSFER_OPTIONS.includes(parsed.minTransfer)
         ? { minTransfer: parsed.minTransfer }
         : {}),

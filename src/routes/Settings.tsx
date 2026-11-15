@@ -47,7 +47,7 @@ export default function Settings() {
   const saved = useSavedTrips()
   const tripHistory = useTripHistory()
   const searchHistory = useSearchHistory()
-  const { expandUpTo, preferredModes, historyLimit, fareType } = useSettings()
+  const { expandUpTo, preferredModes, historyLimit, fareType, reduceTransparency, tintByLine } = useSettings()
   const [confirm, setConfirm] = useState<'trips' | 'cache' | 'reset' | 'tripHistory' | 'searchHistory'>()
   const [backupMsg, setBackupMsg] = useState<string>()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -98,6 +98,58 @@ export default function Settings() {
                 colorPalette="brand"
                 variant={theme === k ? 'solid' : 'outline'}
                 onClick={() => setTheme(k)}
+              >
+                {label}
+              </Button>
+            ))}
+          </HStack>
+          <Text fontWeight="medium" fontSize="sm" mt={4}>
+            Glass
+          </Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            The tab bar, trip details and other floating panels are see-through. Solid panels are easier to read.
+          </Text>
+          <HStack gap={2}>
+            {(
+              [
+                [false, 'See-through'],
+                [true, 'Solid'],
+              ] as const
+            ).map(([solid, label]) => (
+              <Button
+                key={label}
+                size="sm"
+                borderRadius="full"
+                colorPalette="brand"
+                variant={reduceTransparency === solid ? 'solid' : 'outline'}
+                aria-pressed={reduceTransparency === solid}
+                onClick={() => settings.set({ reduceTransparency: solid })}
+              >
+                {label}
+              </Button>
+            ))}
+          </HStack>
+          <Text fontWeight="medium" fontSize="sm" mt={4}>
+            Line colours
+          </Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            Trip details, the trip you're following, search results and station boards take the colour of their line.
+          </Text>
+          <HStack gap={2}>
+            {(
+              [
+                [true, 'Colour by line'],
+                [false, 'Plain'],
+              ] as const
+            ).map(([on, label]) => (
+              <Button
+                key={label}
+                size="sm"
+                borderRadius="full"
+                colorPalette="brand"
+                variant={tintByLine === on ? 'solid' : 'outline'}
+                aria-pressed={tintByLine === on}
+                onClick={() => settings.set({ tintByLine: on })}
               >
                 {label}
               </Button>

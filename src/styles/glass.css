@@ -1,0 +1,56 @@
+/*
+  Glass, like iOS 26: for floating things only (tab bar, followed-trip card, sheets, dialogs, map buttons, sticky
+  filter rows). Never on the page header, which must stay opaque for the iPhone status bar, and never glass on glass.
+  A translucent fill, a blur that also lifts the colour behind it, a bright top edge and a soft shadow.
+
+  --ns-glass-tint / --ns-glass-solid-tint let a tinted screen colour the glass (see src/lib/tint.ts).
+*/
+:root {
+  --ns-glass-bg: rgba(255, 255, 255, 0.66);
+  --ns-glass-solid: #ffffff;
+  --ns-glass-edge: rgba(18, 24, 21, 0.08);
+  --ns-glass-shine: rgba(255, 255, 255, 0.9);
+  --ns-glass-shadow: 0 10px 30px rgba(15, 26, 22, 0.12), 0 2px 6px rgba(15, 26, 22, 0.06);
+}
+.dark {
+  --ns-glass-bg: rgba(30, 39, 35, 0.62);
+  --ns-glass-solid: #1d2622;
+  --ns-glass-edge: rgba(255, 255, 255, 0.09);
+  --ns-glass-shine: rgba(255, 255, 255, 0.13);
+  --ns-glass-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.ns-glass {
+  background: var(--ns-glass-tint, var(--ns-glass-bg));
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 0.5px solid var(--ns-glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ns-glass-shine),
+    var(--ns-glass-shadow);
+}
+/* The same material without the drop shadow, for glass that sits flush with something (sheets, sticky rows). */
+.ns-glass.ns-glass-flat {
+  box-shadow: inset 0 1px 0 var(--ns-glass-shine);
+}
+
+/* Solid fallbacks: the Settings switch, browsers without backdrop-filter, and the system contrast and transparency
+   preferences where the browser passes them on. */
+html[data-solid] .ns-glass {
+  background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ns-glass {
+    background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
+  }
+}
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .ns-glass {
+    background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: var(--chakra-colors-border-emphasized);
+  }
+}

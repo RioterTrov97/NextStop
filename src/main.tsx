@@ -10,6 +10,7 @@ import { createCachePersister, shouldPersist } from './lib/cachePersister'
 import { repaintStatusBarArea } from './lib/statusBar'
 import { preloadRoutes, router } from './router'
 import { system } from './theme'
+import './styles/glass.css'
 
 // iOS standalone PWAs are rarely cold-started, so check for a new service worker whenever the app is foregrounded.
 registerSW({
