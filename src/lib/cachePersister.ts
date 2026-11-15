@@ -17,6 +17,8 @@ export function shouldPersist(q: Pick<Query, 'queryKey' | 'state' | 'meta'>): bo
 
 const slimStop = (p: StopPoint): StopPoint => ({
   id: p.id,
+  // Bus, light rail and ferry fares are worked out from the straight line between where a ride starts and ends.
+  coord: p.coord,
   name: p.name,
   disassembledName: p.disassembledName,
   parent: p.parent,
@@ -36,7 +38,8 @@ function slimLeg(full: Leg): Leg {
     ...leg,
     origin: slimStop(leg.origin),
     destination: slimStop(leg.destination),
-    stopSequence: leg.stopSequence?.map(slimStop),
+    // Intermediate stops only need their times; their coordinates are map geometry.
+    stopSequence: leg.stopSequence?.map((p) => ({ ...slimStop(p), coord: undefined })),
     // Only the walk time between platforms is used, for transfer checks.
     footPathInfo: (leg.footPathInfo as { position?: string; duration?: number }[] | undefined)?.map(({ position, duration }) => ({
       position,

@@ -37,11 +37,13 @@ import { SaveTripChip } from '../components/SaveTrip'
 import { LoadIndicator, loadIndicatorWidth } from '../components/LoadIndicator'
 import { useNow } from '../lib/hooks'
 import { isTransit, setOff, summarize, trailingWalk, tripList } from '../lib/journey'
+import { estimateFare, formatFare } from '../lib/fares'
 import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { platformInfo } from '../lib/platforms'
 import { isCancelled } from '../lib/replan'
 import { countdown, formatTime } from '../lib/time'
+import { useFareData } from '../lib/useFares'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { SwipeToRemove } from '../components/SwipeToRemove'
 import { dedupeRoutes, history, routeKey, useSearchHistory, useTripHistory } from '../store/history'
@@ -49,7 +51,8 @@ import { PERIODS, periodAt, savedTrips, useSavedTrips, type SavedTrip } from '..
 import { END_WALK_OPTIONS, useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer } = useSettings()
+  const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer, fareType } = useSettings()
+  const fares = useFareData()
   const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
@@ -113,7 +116,9 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
         const start = setOff(j, walkPace, now)
         const platform = transit[0] && platformInfo(transit[0].origin, transit[0].transportation)?.long
         // With a walk first, the time column says when to leave, so the ride's own time goes on the platform line.
-        const boardAt = start.walk ? [platform, `train ${formatTime(dep)}`].filter(Boolean).join(' · ') : platform
+        // The estimated Opal fare closes the line: three rows a card, so recomputing them every second is cheap.
+        const fare = fares && estimateFare(fares, j, fareType)
+        const boardAt = [platform, start.walk && `train ${formatTime(dep)}`, fare && formatFare(fare.cents)].filter(Boolean).join(' · ')
         return (
           // Two options can share a departure (a direct train and one that changes), so the whole route is the key.
           <Fragment key={tripKey(j)}>
@@ -154,7 +159,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
                   ))}
                   {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size="sm" />}
                 </HStack>
-                {/* Secondary line, like "arrives …": the platform or stand the first ride leaves from. */}
+                {/* Secondary line, like "arrives …": the platform or stand the first ride leaves from, then the fare. */}
                 {boardAt && (
                   <Text color="fg.muted" fontSize="2xs" mt={1} textAlign="start" truncate>
                     {boardAt}

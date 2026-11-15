@@ -35,7 +35,7 @@ export interface FareData {
   intercity: string[]
 }
 
-type FareMode = 'rail' | 'bus' | 'lightrail' | 'ferry'
+export type FareMode = 'rail' | 'bus' | 'lightrail' | 'ferry'
 
 /** Cents, [peak, off-peak] per band, from "Opal Fare Values 29 June 2026". Ferries have no off-peak discount. */
 const ADULT: Record<FareMode, [number, number][]> = {
@@ -212,9 +212,30 @@ function bandFor(mode: Exclude<FareMode, 'rail'>, distance: number): number {
   return (i < 0 ? limits.length : i) + 1
 }
 
+/** One fare charged on the way: consecutive rides of the same mode, which Opal charges as one. */
+export interface FarePart {
+  mode: FareMode
+  /** The rides it covers, in order. */
+  legs: Leg[]
+  /** Fare band (1 is the shortest) and its distance range, e.g. "10-20 km". */
+  band: number
+  distance: string
+  peak: boolean
+  /** The full fare for this part, in cents, before the transfer discount. */
+  cents: number
+  /** Taken off this part for changing from another mode, in cents. */
+  discount: number
+  /** Over an hour after the previous part: Opal starts a new journey, with no transfer discount. */
+  newJourney: boolean
+}
+
 export interface FareEstimate {
   /** Total in cents, discounts, caps and the airport fee included. */
   cents: number
+  /** Each fare charged on the way, for the breakdown in trip details. */
+  parts: FarePart[]
+  /** Taken off by the daily cap, in cents. */
+  capOff: number
   type: FareType
   /** Some of it is charged at peak fares. */
   peak: boolean
@@ -245,8 +266,15 @@ function segments(legs: Leg[]): Segment[] | undefined {
   return out
 }
 
+/** "10-20 km" for a band. */
+function bandRange(mode: FareMode, band: number): string {
+  const limits = mode === 'rail' ? [10, 20, 35, 65] : BAND_KM[mode]
+  const lo = band > 1 ? limits[band - 2] : 0
+  return band > limits.length ? `over ${lo} km` : `${lo}-${limits[band - 1]} km`
+}
+
 /** One segment's fare in cents before transfer discounts, or undefined when it can't be worked out. */
-function segmentFare(data: FareData, s: Segment, type: FareType): { cents: number; peak: boolean; fee: number } | undefined {
+function segmentFare(data: FareData, s: Segment, type: FareType): { cents: number; band: number; peak: boolean; fee: number } | undefined {
   const first = s.legs[0]
   const table = (type === 'adult' ? ADULT : REDUCED)[s.mode]
   if (s.mode === 'rail') {
@@ -256,7 +284,7 @@ function segmentFare(data: FareData, s: Segment, type: FareType): { cents: numbe
     const band = railBand(data, from, to)
     if (!band) return undefined
     const peak = isPeak(depart(first), data.intercity.includes(from))
-    return { cents: table[band - 1][peak ? 0 : 1], peak, fee: airportFee(from, to, type) }
+    return { cents: table[band - 1][peak ? 0 : 1], band, peak, fee: airportFee(from, to, type) }
   }
   // The band of the furthest stop reached from where the segment started.
   let band = 0
@@ -266,7 +294,7 @@ function segmentFare(data: FareData, s: Segment, type: FareType): { cents: numbe
     band = Math.max(band, bandFor(s.mode, d))
   }
   const peak = s.mode !== 'ferry' && isPeak(depart(first))
-  return { cents: table[band - 1][peak ? 0 : 1], peak, fee: 0 }
+  return { cents: table[band - 1][peak ? 0 : 1], band, peak, fee: 0 }
 }
 
 /**
@@ -282,14 +310,15 @@ export function estimateFare(data: FareData, journey: Journey, type: FareType): 
   let total = 0
   let fees = 0
   let discount = 0
+  let capOff = 0
   let peak = false
-  let capped = false
+  const parts: FarePart[] = []
   // Journeys restart after a gap over an hour: no discount across it, and each has its own cap (an estimate per day).
   let journeyTotal = 0
   let journeyStart = depart(segs[0].legs[0])
   const close = () => {
     const cap = DAILY_CAP[type][isWorkday(local(journeyStart - 4 * 3600_000)) ? 0 : 1]
-    if (journeyTotal > cap) capped = true
+    capOff += Math.max(0, journeyTotal - cap)
     total += Math.min(journeyTotal, cap)
   }
   for (let i = 0; i < segs.length; i++) {
@@ -297,7 +326,8 @@ export function estimateFare(data: FareData, journey: Journey, type: FareType): 
     if (!f) return undefined
     peak ||= f.peak
     fees += f.fee
-    let cents = f.cents
+    let off = 0
+    let newJourney = false
     const prev = segs[i - 1]
     if (prev) {
       const gap = depart(segs[i].legs[0]) - arrive(prev.legs[prev.legs.length - 1])
@@ -305,17 +335,27 @@ export function estimateFare(data: FareData, journey: Journey, type: FareType): 
         close()
         journeyTotal = 0
         journeyStart = depart(segs[i].legs[0])
+        newJourney = true
       } else {
         // A change of mode, since same-mode rides within the window are already one segment.
-        const off = Math.min(cents, TRANSFER_DISCOUNT[type])
-        cents -= off
+        off = Math.min(f.cents, TRANSFER_DISCOUNT[type])
         discount += off
       }
     }
-    journeyTotal += cents
+    journeyTotal += f.cents - off
+    parts.push({
+      mode: segs[i].mode,
+      legs: segs[i].legs,
+      band: f.band,
+      distance: bandRange(segs[i].mode, f.band),
+      peak: f.peak,
+      cents: f.cents,
+      discount: off,
+      newJourney,
+    })
   }
   close()
-  return { cents: total + fees, type, peak, discount, airportFee: fees, capped }
+  return { cents: total + fees, parts, capOff, type, peak, discount, airportFee: fees, capped: capOff > 0 }
 }
 
 export const formatFare = (cents: number) => `$${(cents / 100).toFixed(2)}`

@@ -35,5 +35,8 @@ describe('slimClient', () => {
     expect(slim.footPathInfo).toEqual([{ position: 'AFTER', duration: 120 }])
     expect(slim.transportation).toEqual({ number: 'T1' })
     expect((slim.origin as Record<string, unknown>).departureTimePlanned).toBe('t1')
+    // Ride ends keep their position for bus, light rail and ferry fares; stops along the way don't need it.
+    expect((slim.origin as Record<string, unknown>).coord).toEqual([1, 2])
+    expect((slim.stopSequence as Record<string, unknown>[])[0].coord).toBeUndefined()
   })
 })

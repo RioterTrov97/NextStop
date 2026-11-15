@@ -78,6 +78,24 @@ describe('estimateFare', () => {
     expect(fare(legs, 'concession')).toMatchObject({ cents: 269 + 224 - 100, discount: 100 })
   })
 
+  it('breaks the fare down by part, with the discount on the part after each change', () => {
+    const legs = [train(LIDCOMBE, CENTRAL, TUE_9AM), walk(plus(TUE_9AM, 20)), bus([-33.88, 151.2], [-33.93, 151.2], plus(TUE_9AM, 25))]
+    const f = fare(legs)!
+    expect(
+      f.parts.map(({ mode, cents, discount, distance, peak, newJourney }) => ({ mode, cents, discount, distance, peak, newJourney })),
+    ).toEqual([
+      { mode: 'rail', cents: 538, discount: 0, distance: '10-20 km', peak: true, newJourney: false },
+      { mode: 'bus', cents: 449, discount: 200, distance: '3-8 km', peak: true, newJourney: false },
+    ])
+    expect(f.parts[1].legs).toEqual([legs[2]])
+    expect(f.parts.reduce((n, p) => n + p.cents - p.discount, 0) - f.capOff + f.airportFee).toBe(f.cents)
+  })
+
+  it('names the top band by its lower limit', () => {
+    const ferry = ride(9, 'Sydney Ferries Network', [-33.861, 151.211], [-33.8, 151.284], FRI_9AM, 30)
+    expect(fare([ferry])?.parts[0].distance).toBe('over 9 km')
+  })
+
   it('charges buses in one go by the furthest point reached from the first stop', () => {
     // 5.6km then on to 11.1km from the first stop: band 3 off-peak for the whole journey.
     const legs = [bus([-33.8, 151.2], [-33.85, 151.2], FRI_9AM), bus([-33.85, 151.2], [-33.9, 151.2], plus(FRI_9AM, 20))]
@@ -90,6 +108,7 @@ describe('estimateFare', () => {
   it('starts a new journey after more than an hour', () => {
     const legs = [train(LIDCOMBE, CENTRAL, FRI_9AM), bus([-33.88, 151.2], [-33.93, 151.2], plus(FRI_9AM, 90))]
     expect(fare(legs)).toMatchObject({ cents: 376 + 314, discount: 0 })
+    expect(fare(legs)?.parts.map((p) => p.newJourney)).toEqual([false, true])
   })
 
   it('has no off-peak discount on Sydney Ferries', () => {
@@ -112,7 +131,7 @@ describe('estimateFare', () => {
       ride(9, 'Sydney Ferries Network', [-33.8, 151.284], [-33.861, 151.211], SAT_9AM, 30),
       train(CENTRAL, LIDCOMBE, plus(SAT_9AM, 40)),
     ]
-    expect(fare(legs)).toMatchObject({ cents: 965, capped: true })
+    expect(fare(legs)).toMatchObject({ cents: 965, capped: true, capOff: 920 + 376 - 200 - 965 })
   })
 
   it('gives no fare when a ride is not an Opal fare or can not be placed', () => {
