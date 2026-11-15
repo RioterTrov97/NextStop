@@ -28,6 +28,9 @@ behaviour is removed, and the layouts recorded in [AGENTS.md](../AGENTS.md) keep
 
 ## Phases
 
+All done (November 2026). Phase 7 was checked in the iOS Simulator as an installed Home Screen app: status bar opaque
+and following the header (eucalyptus page, and a line-tinted station board), glass tab bar, live data, new icon.
+
 0. This document, a feature checklist, a baseline of every screen's controls.
 1. Colour and type tokens (`shared/brand.ts`, `src/theme.ts`), `teal` palette renamed `brand`, manifest and status strip.
 2. Glass building blocks and the Reduce transparency setting.
