@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { FARE_TYPES, type FareType } from '../lib/fares'
 import { MODES } from '../lib/lines'
 
 export type WalkPace = 'fast' | 'normal' | 'slow'
@@ -26,6 +27,8 @@ export interface Settings {
   minTransfer: number
   /** How many followed trips and searches are kept, each. */
   historyLimit: number
+  /** Which Opal fares trip details estimate. */
+  fareType: FareType
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   walkPace: 'normal',
   minTransfer: 3,
   historyLimit: 25,
+  fareType: 'adult',
 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
 export const START_WALK_OPTIONS = [5, 10, 15, 20, 30]
@@ -66,6 +70,7 @@ function read(): Settings {
       ...(typeof parsed.maxStartWalk === 'number' && START_WALK_OPTIONS.includes(parsed.maxStartWalk)
         ? { maxStartWalk: parsed.maxStartWalk }
         : {}),
+      ...(FARE_TYPES.some((f) => f.key === parsed.fareType) ? { fareType: parsed.fareType } : {}),
       ...(typeof parsed.minTransfer === 'number' && TRANSFER_OPTIONS.includes(parsed.minTransfer)
         ? { minTransfer: parsed.minTransfer }
         : {}),

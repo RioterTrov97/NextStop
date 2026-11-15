@@ -9,7 +9,7 @@ A mobile-first PWA for Sydney public transport, installed on iPhones as a home-s
 - `src/` client app. Routes in `src/routes`, shared UI in `src/components`, pure logic in `src/lib` (keep logic here and unit-test it).
 - `worker/` Cloudflare Worker: trip planner proxy with edge caching, GTFS-realtime vehicle decoding.
 - `shared/` code used by both (vehicle types, brand colours).
-- `src/data/stations.json` and `src/data/network.json` are generated; never edit them by hand (see Commands). Regenerate after timetable changes.
+- `src/data/stations.json`, `src/data/network.json` and `src/data/fares.json` are generated; never edit them by hand (see Commands). Regenerate after timetable or fare changes.
 
 ## Commands
 
@@ -21,6 +21,7 @@ npm run typecheck    # tsc -b across app, worker and node configs
 npm run lint         # oxlint
 npm run build        # typecheck + production build
 npm run stations     # regenerate src/data/stations.json and network.json from the TfNSW GTFS timetables
+npm run fares        # regenerate src/data/fares.json (train fare bands) from the TfNSW Opal Fares open dataset
 ```
 
 Run test, typecheck, lint and build before calling work done. `src/components/LiveMap.tsx` has a pre-existing Prettier warning; leave it unless you are changing that file.
@@ -73,6 +74,14 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - Buses report a whole-vehicle load only. Light rail reports nothing.
 - The planner's forecast is in `origin.properties.occupancy` ("MANY_SEATS" etc.). Label it as predicted, not live.
 
+### Opal fares (estimated on the device, `src/lib/fares.ts`)
+
+- The trip planner stopped returning fares in October 2023 (`fare.tickets` is always empty), so fares are worked out from TfNSW's "Opal Fares" open dataset: the business rules PDF and the "Opal Distance Tables and Opal Fare Values" spreadsheet. Checked to the cent against transportnsw.info's trip planner (which still shows fares, and takes `from`, `to` and `departureDateTime=YYYYMMDDHHmm` in its URL) for trains, metro, the airport, buses, light rail, Sydney Ferries and mixed trips.
+- Train and metro: band from the official over-the-track distance between first and last station (`fares.json`, about 5KB gzipped, loaded lazily). Changing trains, or train and metro, is one trip. Trackwork replacement buses are charged as the train trip. Bus, light rail and ferry: straight-line distance; same-mode rides within 60 minutes cost the band of the furthest point from the first stop.
+- Off-peak (30%) all day Friday to Sunday and public holidays, and Monday to Thursday outside 6:30-10am and 3-7pm (Intercity stations from 6am). Ferries have no off-peak. $2 off ($1 reduced fares) per change of mode within 60 minutes. Airport station access fee on top; the daily cap limits a journey.
+- Private ferries (product "Private ferry and fast ferry services", e.g. Manly Fast Ferry) use OpalPay with their own fares, so they show no estimate, although transportnsw.info shows the Opal fare for them. The Stockton ferry (product "Newcastle Ferries") uses bus fares. Coaches and regional trains are not Opal.
+- Fares change most Julys: update `FARES_FROM`, the fare tables and the public holiday list in `fares.ts` from the newest "Opal Fare Values" sheet, and run `npm run fares`.
+
 ### Service alerts (`/v1/tp/add_info`)
 
 - `properties.announcementType === 'trackwork'` marks planned work. Line-level alerts usually list no stops, so the weekend check plans each saved trip for Saturday/Sunday and looks for replacement-bus legs, then matches alerts by station names in the text and validity window.
@@ -90,6 +99,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - **Weekend notice.** Thursday to Sunday, Home warns once per weekend about replacement buses on saved trips (first 6 trips, planned at the trip's usual time of day). Dismissal is per weekend.
 - **Station search** answers the first 3 matches from the bundled station list instantly, then merges stop finder results below a loader, grouped as Stations, Stops, and Addresses and places. The stop finder alone ranks badly for partial words ("chats" finds no station). Empty, it offers Current location, Home and Work, then recent stations. The departure board's search (`stopsOnly`) leaves out addresses.
 - **Trip details sheet** (`JourneySheet`) uses the Ark UI drawer: drag from anywhere (maps are `data-no-drag`), closes at a quarter of its height or a flick, stops a little below the page header so the header and its countdown stay visible. The sheet shows its own countdown only when the page header behind it has none.
+- **Opal fare** shows only in trip details (`FareRow`, after the rides), as an estimate for the fare type set in Settings; never on the cards.
 - **Refresh button**: draining ring with seconds, spinning arc with three soft dots while refreshing, a brief tick when fresh data lands. Respects reduced motion.
 
 ## iPhone PWA specifics

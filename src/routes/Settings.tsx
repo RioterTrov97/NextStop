@@ -9,6 +9,7 @@ import { WalkOptions } from '../components/WalkOptions'
 import { PageHeader } from '../components/PageHeader'
 import { SavedPlacesEditor } from '../components/SavedPlacesEditor'
 import { exportBackup, importBackup } from '../lib/backup'
+import { FARE_TYPES, FARES_FROM } from '../lib/fares'
 import { history, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
 import { EXPAND_OPTIONS, HISTORY_OPTIONS, settings, useSettings } from '../store/settings'
@@ -46,7 +47,7 @@ export default function Settings() {
   const saved = useSavedTrips()
   const tripHistory = useTripHistory()
   const searchHistory = useSearchHistory()
-  const { expandUpTo, preferredModes, historyLimit } = useSettings()
+  const { expandUpTo, preferredModes, historyLimit, fareType } = useSettings()
   const [confirm, setConfirm] = useState<'trips' | 'cache' | 'reset' | 'tripHistory' | 'searchHistory'>()
   const [backupMsg, setBackupMsg] = useState<string>()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -114,6 +115,32 @@ export default function Settings() {
         </Box>
 
         <WalkOptions />
+
+        <Box>
+          <Text fontWeight="semibold">Opal fare</Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            Trip details estimate the fare for this card type, with an Opal card or contactless card.
+          </Text>
+          <HStack gap={2} wrap="wrap">
+            {FARE_TYPES.map((f) => (
+              <Button
+                key={f.key}
+                size="sm"
+                borderRadius="full"
+                colorPalette="teal"
+                variant={fareType === f.key ? 'solid' : 'outline'}
+                aria-pressed={fareType === f.key}
+                onClick={() => settings.set({ fareType: f.key })}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </HStack>
+          <Text fontSize="xs" color="fg.muted" mt={2}>
+            Worked out on this phone from Transport for NSW fares from {FARES_FROM}. What you're charged can differ, for example after
+            earlier trips today or once you reach the weekly cap.
+          </Text>
+        </Box>
 
         <Box>
           <Text fontWeight="semibold">Saved trip cards</Text>

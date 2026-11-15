@@ -13,6 +13,7 @@ import { formatDuration, formatTime } from '../lib/time'
 import { AlertCard, toAlertProps } from './AlertCard'
 import { CarriageStrip } from './CarriageStrip'
 import { DelayBadge } from './DelayBadge'
+import { FareRow } from './FareRow'
 import { LineBadge } from './LineBadge'
 import { StopPlatform } from './PlatformPill'
 import { RefreshButton } from './RefreshButton'
@@ -348,6 +349,7 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
                       </Stack>
                     )}
                     {ahead.map((x) => renderLeg(x))}
+                    {shown && <FareRow journey={shown} />}
                     {previous.length > 0 && (
                       <Box>
                         <Box

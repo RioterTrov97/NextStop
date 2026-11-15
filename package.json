@@ -15,6 +15,7 @@
     "format:check": "prettier --check .",
     "icons": "node scripts/generate-logo.ts && pwa-assets-generator",
     "stations": "node scripts/generate-stations.ts",
+    "fares": "node scripts/generate-fares.ts",
     "deploy": "npm run build && wrangler deploy"
   },
   "keywords": [],
