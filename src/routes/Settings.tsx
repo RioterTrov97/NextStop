@@ -1,8 +1,9 @@
-import { Box, Button, Flex, HStack, Image, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, Flex, HStack, Stack, Text } from '@chakra-ui/react'
 import { clear as clearCache } from 'idb-keyval'
 import { useTheme } from 'next-themes'
 import { useRef, useState, type ReactNode } from 'react'
 import { LuEraser, LuTriangleAlert } from 'react-icons/lu'
+import { BrandMark } from '../components/BrandMark'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/ModePicker'
 import { WalkOptions } from '../components/WalkOptions'
@@ -58,7 +59,7 @@ export default function Settings() {
       <Stack gap={6} p={4}>
         <Stack gap={4} p={4} bg="bg.panel" borderWidth="1px" borderRadius="2xl" shadow="xs">
           <Flex align="center" gap={3}>
-            <Image src="/logo-mark-light.svg" alt="" h="40px" />
+            <BrandMark size={56} aria-hidden />
             <Box flex={1}>
               <Text fontWeight="bold" lineHeight="short">
                 NextStop

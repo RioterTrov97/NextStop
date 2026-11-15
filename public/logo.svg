@@ -1,24 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NextStop">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#EA6A12"/>
-      <stop offset="1" stop-color="#C2570C"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5A8573"/>
+      <stop offset="1" stop-color="#2F5446"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <ellipse cx="256" cy="452" rx="120" ry="12" fill="#000" fill-opacity=".14"/>
-  <mask id="body-dark">
-    <rect x="100" y="40" width="312" height="380" fill="#fff"/>
-    <rect x="164" y="138" width="184" height="122" rx="34" fill="#000"/>
-  </mask>
-  <path d="M196 396L156 448M316 396L356 448" stroke="#fff" stroke-opacity=".9" stroke-width="16" stroke-linecap="round"/>
-  <path d="M176 426h160" stroke="#fff" stroke-opacity=".5" stroke-width="12" stroke-linecap="round"/>
-  <rect x="132" y="72" width="248" height="324" rx="72" fill="#fff" mask="url(#body-dark)"/>
-  <rect x="206" y="100" width="100" height="18" rx="9" fill="#FED7AA"/>
-  <rect x="164" y="286" width="184" height="10" rx="5" fill="#FED7AA"/>
-  <circle cx="202" cy="338" r="22" fill="#F97316"/>
-  <circle cx="310" cy="338" r="22" fill="#F97316"/>
-  <circle cx="202" cy="338" r="9" fill="#fff" fill-opacity="0.85"/>
-  <circle cx="310" cy="338" r="9" fill="#fff" fill-opacity="0.85"/>
-
+  <g transform="translate(52 44) scale(1.7)">
+  <defs>
+    <mask id="icon-pin" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
+      <path d="M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z" fill="#fff"/>
+      <rect x="92" y="58" width="56" height="62" rx="16" fill="#000"/>
+      <rect x="100" y="67" width="40" height="22" rx="6" fill="#fff"/>
+      <circle cx="106" cy="105" r="5" fill="#fff"/>
+      <circle cx="134" cy="105" r="5" fill="#fff"/>
+      <path d="M104 124L98 134M136 124L142 134" stroke="#000" stroke-width="5" stroke-linecap="round"/>
+      <path d="M225 120A105 34 0 0 1 15 120" transform="rotate(-18 120 120)" fill="none" stroke="#000" stroke-width="17"/>
+    </mask>
+    <mask id="icon-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
+      <rect width="240" height="240" fill="#fff"/>
+      <path d="M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z" fill="#000"/>
+    </mask>
+  </defs>
+  <path d="M15 120A105 34 0 0 1 225 120" transform="rotate(-18 120 120)" fill="none" stroke="#C9DDD2" stroke-width="7" stroke-linecap="round" mask="url(#icon-back)"/>
+  <path d="M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z" fill="#fff" mask="url(#icon-pin)"/>
+  <g transform="rotate(-18 120 120)">
+    <path d="M225 120A105 34 0 0 1 15 120" fill="none" stroke="#C9DDD2" stroke-width="7" stroke-linecap="round"/>
+    
+  </g>
+  </g>
 </svg>

@@ -1,4 +1,4 @@
-import { Box, Button, CloseButton, Dialog, Flex, HStack, IconButton, Image, Portal, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, CloseButton, Dialog, Flex, HStack, IconButton, Portal, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -22,6 +22,7 @@ import {
 import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
 import { REALTIME_MS, useTrips, useJourneyVehicles } from '../api/hooks'
+import { BrandMark } from '../components/BrandMark'
 import { EmptyState } from '../components/EmptyState'
 import { JourneySheet } from '../components/JourneySheet'
 import { DelayText } from '../components/DelayBadge'
@@ -540,7 +541,7 @@ export function Home() {
         action={
           <>
             {current && <RefreshButton />}
-            <Image src="/logo-mark.svg" alt="" h="34px" />
+            <BrandMark size={40} aria-hidden />
           </>
         }
       />
@@ -569,7 +570,7 @@ export function Home() {
         ) : trips.length === 0 ? (
           <>
             <Stack align="center" textAlign="center" py={16} gap={3}>
-              <Image src="/logo.svg" alt="" boxSize="72px" />
+              <BrandMark size={150} vehicles aria-hidden />
               <Text fontSize="xl" fontWeight="bold">
                 Save your first trip
               </Text>
