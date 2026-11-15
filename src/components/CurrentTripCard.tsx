@@ -15,6 +15,7 @@ import { countdown, formatDuration, formatTime } from '../lib/time'
 import { applyReplan, findReplan, replanPoint, trackSegments, withLiveLegs } from '../lib/replan'
 import { currentTrip, type CurrentTrip } from '../store/currentTrip'
 import { useSettings } from '../store/settings'
+import { legColour, useTint } from '../lib/useTint'
 import { JourneySheet } from './JourneySheet'
 import { DelayBadge } from './DelayBadge'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -96,7 +97,14 @@ function StopRow({ step, divider }: { step: Extract<Step, { type: 'stop' }>; div
   return (
     <Flex gap={3} pt={divider ? 2 : 0}>
       <Flex w="20px" justify="center" pt="5px" flexShrink={0}>
-        <Box w="14px" h="14px" borderRadius="full" borderWidth="3px" borderColor="brand.fg" bg="bg.panel" />
+        <Box
+          w="14px"
+          h="14px"
+          borderRadius="full"
+          borderWidth="3px"
+          borderColor="var(--ns-tint-accent, var(--chakra-colors-brand-fg))"
+          bg="bg.panel"
+        />
       </Flex>
       <Box flex={1} minW={0} pb={1}>
         <Text fontWeight="bold" truncate>
@@ -275,6 +283,13 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   const endsAt = arr ? Date.parse(arr) : dep ? Date.parse(dep) + 90 * 60_000 : undefined
   const expired = endsAt !== undefined && endsAt + EXPIRY_GRACE_MS < now
 
+  // The card takes the colour of the next ride to board, or the last one once all are under way.
+  const rides = journey.legs.filter(isTransit)
+  const tintRide =
+    rides.find((l) => Date.parse(l.origin.departureTimeEstimated ?? l.origin.departureTimePlanned ?? '') > now - 60_000) ??
+    rides[rides.length - 1]
+  const tint = useTint(tintRide ? legColour(tintRide) : undefined)
+
   useEffect(() => {
     if (expired) currentTrip.clear()
   }, [expired])
@@ -294,8 +309,11 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
       bg="bg.panel"
       borderRadius="2xl"
       borderWidth="2px"
-      borderColor="brand.fg"
+      borderColor="var(--ns-tint-accent, var(--chakra-colors-brand-fg))"
+      shadow="sm"
       p={4}
+      // In the colour of the line being ridden or boarded next: border, countdown and stops, over a faint wash.
+      style={tint && { ...tint.vars, backgroundImage: tint.card }}
       mb={2}
       cursor="pointer"
       onClick={(e) => {
@@ -304,7 +322,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
       }}
     >
       <Flex align="center" justify="space-between" mb={1}>
-        <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="brand.fg">
+        <Text fontSize="xs" fontWeight="bold" letterSpacing="wider" color="var(--ns-tint-accent, var(--chakra-colors-brand-fg))">
           CURRENT TRIP
         </Text>
         <IconButton aria-label="Clear current trip" size="xs" variant="ghost" onClick={() => setConfirmClear(true)}>
@@ -340,7 +358,13 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
             </>
           )}
         </Text>
-        <Text fontSize="2xl" fontWeight="bold" color="brand.fg" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+        <Text
+          fontSize="2xl"
+          fontWeight="bold"
+          color="var(--ns-tint-accent, var(--chakra-colors-brand-fg))"
+          fontVariantNumeric="tabular-nums"
+          whiteSpace="nowrap"
+        >
           {nextDep ? countdown(nextDep, now) : arriveMin ? `${arriveMin} min` : 'Arrived'}
         </Text>
       </Flex>

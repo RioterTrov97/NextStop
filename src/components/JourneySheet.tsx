@@ -8,6 +8,7 @@ import type { InfoLink, Journey, Leg } from '../api/types'
 import { journeyAlerts, isTransit, legOccupancy, stationName, vehicleModeForLeg } from '../lib/journey'
 import { lineColor } from '../lib/lines'
 import { useNow } from '../lib/hooks'
+import { useJourneyTint } from '../lib/useTint'
 import { isMapExpanded } from '../lib/mapState'
 import { formatDuration, formatTime } from '../lib/time'
 import { AlertCard, toAlertProps } from './AlertCard'
@@ -241,6 +242,8 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
     ) : (
       <WalkLeg key={i} leg={l} isFinal={i === legs.length - 1} past={past} />
     )
+  // The sheet takes the colour of the trip's line: a wash at the top fading into the glass.
+  const tint = useJourneyTint(shown)
   const alerts = shown ? journeyAlerts(shown) : []
   const important = alerts.filter(isImportant)
   const minor = alerts.filter((a) => !isImportant(a))
@@ -265,20 +268,35 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
           <Flex position="fixed" insetX={0} bottom={0} zIndex="modal" justify="center" pointerEvents="none">
             <ArkDrawer.Content asChild>
               <Flex
-                className="ns-sheet"
+                // Glass, like iOS 26 sheets. Flat: the backdrop already sets it apart from the page.
+                className="ns-sheet ns-glass ns-glass-flat ns-glass-surface"
                 direction="column"
                 w="full"
                 maxW="640px"
                 // Stops a little below the page header, so its title and refresh countdown stay in view.
                 maxH={SHEET_MAX_H}
-                bg="bg.panel"
                 borderTopRadius="3xl"
-                shadow="lg"
+                borderBottomWidth={0}
                 pb="env(safe-area-inset-bottom)"
                 pointerEvents="auto"
                 outline="none"
                 position="relative"
+                overflow="hidden"
+                style={tint?.vars}
               >
+                {tint && (
+                  <Box
+                    aria-hidden
+                    position="absolute"
+                    top={0}
+                    left={0}
+                    right={0}
+                    h="220px"
+                    zIndex={-1}
+                    pointerEvents="none"
+                    style={{ background: `linear-gradient(180deg, ${tint.first.glow} 0%, transparent 100%)` }}
+                  />
+                )}
                 <ArkDrawer.Grabber asChild>
                   <Flex justify="center" pt={2} pb={1} cursor="grab" touchAction="none">
                     <ArkDrawer.GrabberIndicator asChild>
@@ -336,6 +354,13 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
                       colorPalette="brand"
                       variant={isCurrent ? 'solid' : 'outline'}
                       onClick={onToggleCurrent}
+                      // In the line's colour on a tinted sheet.
+                      style={
+                        tint &&
+                        (isCurrent
+                          ? { background: tint.first.solid, color: tint.first.onSolid, borderColor: tint.first.solid }
+                          : { color: tint.first.accent, borderColor: tint.first.accent })
+                      }
                     >
                       {isCurrent ? <LuPinOff /> : <LuPin />}
                       {isCurrent ? 'Following' : 'Follow'}

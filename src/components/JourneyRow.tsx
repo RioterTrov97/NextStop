@@ -7,6 +7,7 @@ import { isCancelled } from '../lib/replan'
 import { formatFare } from '../lib/fares'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { useFare } from '../lib/useFares'
+import { useJourneyTint } from '../lib/useTint'
 import { useSettings } from '../store/settings'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
@@ -44,6 +45,8 @@ export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint,
   const tileSize = transit.length > 2 ? 'sm' : 'md'
   // Departure-board entries have no arrival, so no fare either; details explain the estimate.
   const fare = useFare(s.arrPlanned ? journey : undefined)
+  // A faint wash of the line colour from the left (first line into last), and the countdown in the line's colour.
+  const tint = useJourneyTint(journey)
 
   return (
     <Box
@@ -53,9 +56,12 @@ export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint,
       bg="bg.panel"
       borderRadius="2xl"
       borderWidth="1px"
+      shadow="xs"
       p={4}
       onClick={onClick}
-      _active={{ transform: 'scale(0.99)' }}
+      transition="transform 0.15s"
+      _active={{ transform: 'scale(0.985)' }}
+      style={tint && { backgroundImage: tint.card, borderColor: tint.first.cardEdge }}
     >
       <Flex justify="space-between" align="center" gap={2} fontSize="sm" color="fg.muted">
         <HStack gap={2} minW={0}>
@@ -93,7 +99,14 @@ export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint,
               leave in
             </Text>
           )}
-          <Text fontSize="2xl" fontWeight="bold" color="brand.fg" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+          <Text
+            fontSize="2xl"
+            fontWeight="bold"
+            color="brand.fg"
+            fontVariantNumeric="tabular-nums"
+            whiteSpace="nowrap"
+            style={tint && { color: tint.first.accent }}
+          >
             {arr && Date.parse(arr) <= now ? 'Ended' : countdown(start.countTo, now)}
           </Text>
         </Flex>

@@ -119,20 +119,20 @@ function MapButton({ label, onClick, children, top }: { label: string; onClick: 
       type="button"
       aria-label={label}
       onClick={onClick}
+      // A small glass button over the map, matching the zoom buttons (styled in glass.css).
+      className="ns-glass"
       style={{
         position: 'absolute',
         top,
         right: 10,
         zIndex: 1,
-        width: 32,
-        height: 32,
+        width: 36,
+        height: 36,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#fff',
-        color: '#0f172a',
-        border: '2px solid rgba(0,0,0,.2)',
-        borderRadius: 4,
+        color: 'var(--chakra-colors-fg)',
+        borderRadius: 12,
         cursor: 'pointer',
       }}
     >

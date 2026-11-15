@@ -1,4 +1,4 @@
-import { Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Box, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useDepartureJourney, useDepartures, useJourneyVehicles } from '../api/hooks'
@@ -12,7 +12,9 @@ import { RefreshButton } from '../components/RefreshButton'
 import { departureJourney, departureKey } from '../lib/departure'
 import { useNow } from '../lib/hooks'
 import { isTransit } from '../lib/journey'
-import { comparePlatforms, platformInfo, type PlatformInfo, type PlatformKind } from '../lib/platforms'
+import { useHeaderTint } from '../lib/appearance'
+import { comparePlatforms, PLATFORM_KINDS, platformInfo, type PlatformInfo, type PlatformKind } from '../lib/platforms'
+import { useTint } from '../lib/useTint'
 import { currentTrip, useCurrentTrip } from '../store/currentTrip'
 import { history } from '../store/history'
 
@@ -53,6 +55,10 @@ export default function StationBoard() {
     return c
   }, [items])
 
+  // The header and the top of the board take the colour of the chosen transport.
+  const tint = useTint(filter ? PLATFORM_KINDS[filter.kind].color : undefined)
+  useHeaderTint(tint?.first)
+
   const shown = items.filter(({ platform }) => !filter || (platform?.kind === filter.kind && (!filter.key || platform.key === filter.key)))
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(shown.map((i) => i.journey))
 
@@ -71,7 +77,18 @@ export default function StationBoard() {
   return (
     <>
       <PageHeader title={stationName} subtitle="Next departures" back action={<RefreshButton />} />
-      <Stack gap={3} p={4}>
+      {tint && (
+        <Box
+          aria-hidden
+          position="absolute"
+          left={0}
+          right={0}
+          h="260px"
+          pointerEvents="none"
+          style={{ background: `linear-gradient(180deg, ${tint.first.wash} 0%, transparent 100%)` }}
+        />
+      )}
+      <Stack gap={3} p={4} position="relative">
         {groups.length > 0 && (groups.length > 1 || groups[0][1].length > 1) && (
           <PlatformFilter groups={groups} counts={counts} total={items.length} value={filter} onChange={setFilter} />
         )}
