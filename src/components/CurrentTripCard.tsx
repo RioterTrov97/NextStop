@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { LuFootprints, LuX } from 'react-icons/lu'
 import { Link } from 'react-router-dom'
 import { useDepartures, useJourneyVehicles, useTrips, useTripsMany } from '../api/hooks'
+import { stationIdOf, withRideAhead } from '../lib/ride'
 import { departureJourney } from '../lib/departure'
 import { exclusionParams, modeForClass } from '../lib/lines'
 import type { Leg, StopPoint } from '../api/types'
@@ -209,23 +210,35 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   // planner doesn't return that exact service.
   const { data: board } = useDepartures(trip.boardId ?? '', !!trip.boardId)
   const boardLive = useMemo(() => (board ?? []).map(departureJourney), [board])
-  const journey = useMemo(() => withLiveLegs(trip.journey, [...live, ...boardLive]), [trip.journey, live, boardLive])
-  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey])
+  const tracked = useMemo(() => withLiveLegs(trip.journey, [...live, ...boardLive]), [trip.journey, live, boardLive])
 
-  // Search for a better way to finish the trip from the next place the user could change plans.
-  const point = replanPoint(trip, journey, minute)
+  // Search for a better way to finish the trip from the next place the user could change plans. While riding that is
+  // the train's next stop, and the same lookup returns the train itself from there, with live times and the load
+  // forecast the planner no longer sends for a service that has started its run.
+  const point = replanPoint(trip, tracked, minute)
+  // From mid-ride, a little before the train gets there, so the lookups still include it.
+  const lookupAt = point ? new Date(minuteFloor(point.readyAt - (point.ride ? 60_000 : 0))) : undefined
   const { data: alternatives } = useTrips(
-    {
-      from: point?.stopId ?? '',
-      to: trip.toId,
-      mode: 'dep',
-      when: point ? new Date(minuteFloor(point.readyAt)) : undefined,
-      excluded: {},
-      count: 4,
-    },
+    { from: point?.stopId ?? '', to: trip.toId, mode: 'dep', when: lookupAt, excluded: {}, count: 4 },
     !!point && point.readyAt - now < REPLAN_HORIZON_MS,
     { keepPrevious: true },
   )
+  // The planner drops the user's own train from that lookup when something else from the same stop gets there as
+  // soon (e.g. the train they would change to at the next interchange also calls there), so ask for the ride itself up
+  // to where it ends too. For a direct train that is the same query as above and shares its request.
+  const ride = point?.ride ? tracked.legs[point.ride.leg] : undefined
+  const rideEnd = ride ? stationIdOf(ride.destination) : ''
+  const { data: rideAhead } = useTrips(
+    { from: point?.stopId ?? '', to: rideEnd, mode: 'dep', when: lookupAt, excluded: {}, count: 4 },
+    !!rideEnd,
+    { keepPrevious: true, directOnly: rideEnd !== trip.toId },
+  )
+  const journey = useMemo(() => {
+    const ahead = [...live, ...(alternatives ?? []), ...(rideAhead ?? [])]
+    return withRideAhead(withLiveLegs(tracked, alternatives ?? []), ahead)
+  }, [tracked, live, alternatives, rideAhead])
+  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey])
+
   const replan = point && alternatives ? findReplan(journey, point, alternatives, minTransfer) : undefined
   const replanId =
     replan && `${replan.reason}:${replan.route.legs.map((l) => l.transportation?.properties?.RealtimeTripId ?? '').join('|')}`

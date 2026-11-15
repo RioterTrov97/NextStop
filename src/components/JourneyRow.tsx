@@ -21,9 +21,13 @@ interface Props {
   /** Replaces the departure station in the top line, e.g. "to Emu Plains" on a station's departure board. */
   title?: string
   onClick?: () => void
+  /** Caption for a missing load, e.g. telling users an earlier trip shows its load once followed or opened. */
+  noLoadHint?: string
+  /** Hide the load entirely, for rides that have finished. */
+  hideLoad?: boolean
 }
 
-export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
+export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint, hideLoad }: Props) {
   const { walkPace } = useSettings()
   const s = summarize(journey)
   const dep = s.depEstimated ?? s.depPlanned
@@ -90,7 +94,7 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
             </Text>
           )}
           <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
-            {countdown(start.countTo, now)}
+            {arr && Date.parse(arr) <= now ? 'Ended' : countdown(start.countTo, now)}
           </Text>
         </Flex>
       </Flex>
@@ -119,9 +123,9 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
             </Box>
           )}
         </HStack>
-        {railLeg && (
+        {railLeg && !hideLoad && (
           <Box ml="auto">
-            <LoadIndicator leg={railLeg} vehicle={tripId ? vehicles?.get(tripId) : undefined} />
+            <LoadIndicator leg={railLeg} vehicle={tripId ? vehicles?.get(tripId) : undefined} noDataHint={noLoadHint} />
           </Box>
         )}
       </Flex>

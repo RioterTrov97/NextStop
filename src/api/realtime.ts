@@ -1,6 +1,6 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { REALTIME_MS, VEHICLES_MS, isRealtimeKey, isTimetableKey } from './hooks'
+import { REALTIME_MS, VEHICLES_MS, VIA_MS, isRealtimeKey, isTimetableKey } from './hooks'
 
 let nextAt = Date.now() + REALTIME_MS
 let nextVehiclesAt = Date.now() + VEHICLES_MS
@@ -14,14 +14,24 @@ export const resetRefreshTimer = () => {
 /** A sheet being dragged: refreshing then would re-render under the finger and make the drag stutter. */
 const isDragging = () => !!document.querySelector('[data-scope="drawer"][data-part="content"][data-dragging]')
 
-const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => number }) =>
-  isRealtimeKey(q.queryKey) && q.getObserversCount() > 0
+const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => number; meta?: Record<string, unknown> }) =>
+  isRealtimeKey(q.queryKey) && q.getObserversCount() > 0 && !q.meta?.['past']
 
-/** Refetches every on-screen realtime query together and restarts the shared countdown. */
-export function refreshRealtime(qc: QueryClient) {
+/**
+ * An extra via or split search refreshed within the last minute: the timer leaves it alone (see `VIA_MS`). The part is
+ * at index 8 of the trips key (settings and address ends follow it), as the cache persister also reads it.
+ */
+const viaFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
+  q.queryKey[0] === 'trips' && q.queryKey[8] === 'via' && Date.now() - q.state.dataUpdatedAt < VIA_MS - 1000
+
+/**
+ * Refetches every on-screen realtime query together and restarts the shared countdown. The timer's own refreshes
+ * (`scheduled`) skip via-city searches that are under a minute old; the refresh button and route changes don't.
+ */
+export function refreshRealtime(qc: QueryClient, { scheduled = false } = {}) {
   nextAt = Date.now() + REALTIME_MS
   nextVehiclesAt = Date.now() + VEHICLES_MS
-  return qc.refetchQueries({ predicate: isLive }).finally(() => {
+  return qc.refetchQueries({ predicate: (q) => isLive(q) && !(scheduled && viaFresh(q)) }).finally(() => {
     nextAt = Date.now() + REALTIME_MS
   })
 }
@@ -42,7 +52,7 @@ export function useRealtimeScheduler() {
       }
       // Hidden, or mid-drag: wait. A due refresh then runs on the first tick after the finger lifts.
       if (document.visibilityState !== 'visible' || isDragging()) return
-      if (Date.now() >= nextAt) void refreshRealtime(qc)
+      if (Date.now() >= nextAt) void refreshRealtime(qc, { scheduled: true })
       else if (Date.now() >= nextVehiclesAt) {
         // Positions and carriage loads move faster than delays do, so they get an extra refresh between full ones.
         nextVehiclesAt = Date.now() + VEHICLES_MS
@@ -51,8 +61,10 @@ export function useRealtimeScheduler() {
     }
     // Any trip or departure query starting to fetch (new route, changed modes, ...) restarts the countdown. Vehicle
     // refreshes don't, or their shorter cycle would keep pushing the trip refresh back forever.
+    // Past (historical) queries are excluded: they're not live, so they shouldn't disturb the countdown.
     const unsubscribe = qc.getQueryCache().subscribe((e) => {
-      if (e.type === 'updated' && e.action.type === 'fetch' && isTimetableKey(e.query.queryKey)) resetRefreshTimer()
+      if (e.type === 'updated' && e.action.type === 'fetch' && isTimetableKey(e.query.queryKey) && !e.query.meta?.['past'])
+        resetRefreshTimer()
     })
     const id = setInterval(tick, 500)
     document.addEventListener('visibilitychange', tick)

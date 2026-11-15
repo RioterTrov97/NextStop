@@ -38,13 +38,18 @@ const config = defineConfig({
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
     },
     '[data-scope=dialog][data-part=content]': { maxHeight: '100%', overflowY: 'auto' },
-    // Live-data refresh button.
-    '.ns-refresh-spin': { animation: 'ns-refresh-turn 1.4s linear infinite' },
-    '.ns-refresh-arc': { animation: 'ns-refresh-dash 1.4s ease-in-out infinite' },
-    '.ns-refresh-dot': { animation: 'ns-refresh-wave 1s ease-in-out infinite' },
-    '.ns-refresh-pop': { animation: 'ns-refresh-pop 0.35s ease-out' },
-    '.ns-refresh-tick': { display: 'inline-block', animation: 'ns-refresh-digit 0.25s ease-out' },
-    '.ns-refresh *': { _motionReduce: { animation: 'none !important', transition: 'none !important' } },
+    // Live-data refresh button. With reduced motion the decorative motion stops (ring easing, tick pop, digit slide),
+    // but the loading indicator keeps going, as the system spinners on iOS and Windows do: a frozen spinner reads as a
+    // hung app. It turns at a steady, slower pace with a fixed arc, and the dots fade instead of bouncing.
+    '.ns-refresh-spin': {
+      animation: 'ns-refresh-turn 1.4s linear infinite',
+      _motionReduce: { animationDuration: '2s' },
+    },
+    '.ns-refresh-arc': { animation: 'ns-refresh-dash 1.4s ease-in-out infinite', _motionReduce: { animation: 'none' } },
+    '.ns-refresh-dot': { animation: 'ns-refresh-wave 1s ease-in-out infinite', _motionReduce: { animationName: 'ns-refresh-fade' } },
+    '.ns-refresh-pop': { animation: 'ns-refresh-pop 0.35s ease-out', _motionReduce: { animation: 'none' } },
+    '.ns-refresh-tick': { display: 'inline-block', animation: 'ns-refresh-digit 0.25s ease-out', _motionReduce: { animation: 'none' } },
+    '.ns-refresh *': { _motionReduce: { transition: 'none !important' } },
   },
   theme: {
     keyframes: {
@@ -72,6 +77,8 @@ const config = defineConfig({
         '0%, 80%, 100%': { opacity: 0.35, transform: 'translateY(0)' },
         '40%': { opacity: 1, transform: 'translateY(-1.5px)' },
       },
+      // Reduced motion: the same rhythm as the wave, as a fade only.
+      'ns-refresh-fade': { '0%, 80%, 100%': { opacity: 0.35 }, '40%': { opacity: 1 } },
     },
     tokens: {
       // The "teal" palette name is kept so existing colorPalette="teal" usages pick up the accent colour.

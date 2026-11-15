@@ -19,22 +19,73 @@ export function modeForClass(cls?: number): ModeInfo {
   return MODES.find((m) => cls !== undefined && m.classes.includes(cls)) ?? WALK
 }
 
-const TRAIN_LINES: Record<string, string> = {
+/**
+ * Line colours from the TfNSW Transport Network Colour Chart
+ * (https://opendata.transport.nsw.gov.au/developers/resources#TNCC, checked 2026-11-07). Brand rules: use these
+ * exact values, unmodified. Lines not listed (buses, private ferries, regional services) use their mode colour.
+ */
+export const LINE_COLOURS: Record<string, string> = {
+  M1: '#168388',
   T1: '#F99D1C',
   T2: '#0098CD',
   T3: '#F37021',
   T4: '#005AA3',
   T5: '#C4258F',
-  T6: '#456CAC',
+  T6: '#7C3E21',
   T7: '#6F818E',
   T8: '#00954C',
   T9: '#D11F2F',
+  // Intercity
+  BMT: '#F99D1C',
+  CCN: '#D11F2F',
+  HUN: '#833134',
+  SCO: '#005AA3',
+  SHL: '#00954C',
+  // Sydney Ferries (the chart notes F10 may change) and Newcastle's Stockton ferry
+  F1: '#00774B',
+  F2: '#144734',
+  F3: '#648C3C',
+  F4: '#BFD730',
+  F5: '#286142',
+  F6: '#00AB51',
+  F7: '#00B189',
+  F8: '#55622B',
+  F9: '#65B32E',
+  F10: '#5AB031',
+  STKN: '#5AB031',
+  // Light rail
+  L1: '#BE1622',
+  L2: '#DD1E25',
+  L3: '#781140',
+  L4: '#BB2043',
+  NLR: '#EE343F',
 }
 
-/** Compact line label for tiles: "T2 Inner West & Leppington Line" -> "T2". */
+// The planner names intercity lines in full ("Blue Mountains Line"), with the code only in `disassembledName`.
+const INTERCITY_NAMES: [RegExp, string][] = [
+  [/^blue mountains\b/i, 'BMT'],
+  [/^central coast\b/i, 'CCN'],
+  [/^hunter\b/i, 'HUN'],
+  [/^south coast\b/i, 'SCO'],
+  [/^southern highlands\b/i, 'SHL'],
+]
+
+/** The official code of a line with a colour in the chart ("T2 Inner West & Leppington Line" -> "T2"), if any. */
+export function lineCode(number?: string): string | undefined {
+  const raw = number?.trim()
+  if (!raw) return undefined
+  const named = INTERCITY_NAMES.find(([re]) => re.test(raw))?.[1]
+  if (named) return named
+  const code = raw.match(/^([A-Z]{1,4}\d{0,2})\b/i)?.[1].toUpperCase()
+  return code && LINE_COLOURS[code] ? code : undefined
+}
+
+/** Compact line label for tiles: "T2 Inner West & Leppington Line" -> "T2", "Blue Mountains Line" -> "BMT". */
 export function shortLineName(number?: string): string {
   const raw = number?.trim()
   if (!raw) return '·'
+  const official = lineCode(raw)
+  if (official) return official
   const code = raw.match(/^[A-Z]{1,3}\d{1,2}\b/i)?.[0]
   if (code) return code.toUpperCase()
   const words = raw.split(/\s+/).filter((w) => w.toLowerCase() !== 'line')
@@ -45,13 +96,9 @@ export function shortLineName(number?: string): string {
     .join('')
 }
 
-const LIGHT_RAIL: Record<string, string> = { L1: '#BE1622', L2: '#DD1E25', L3: '#781140', L4: '#E4022D' }
-
 export function lineColor(number: string | undefined, cls?: number): string {
-  const key = number?.toUpperCase().match(/^[TLM]\d+/)?.[0]
-  if (key && TRAIN_LINES[key]) return TRAIN_LINES[key]
-  if (key && LIGHT_RAIL[key]) return LIGHT_RAIL[key]
-  return modeForClass(cls).color
+  const code = lineCode(number)
+  return (code && LINE_COLOURS[code]) || modeForClass(cls).color
 }
 
 /** Mode filter keys -> trip planner "excluded means" params. */

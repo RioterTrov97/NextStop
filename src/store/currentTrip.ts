@@ -48,12 +48,15 @@ window.addEventListener('storage', (e) => {
   listeners.forEach((l) => l())
 })
 
-/** Drop the map geometry so the snapshot stays small enough for localStorage. */
+/**
+ * Drop the map geometry so the snapshot stays small enough for localStorage. Ride stops are kept (without their
+ * coordinates): a followed trip needs them to find the next stop ahead while riding.
+ */
 export const slim = (j: Journey): Journey => ({
   ...j,
   legs: j.legs.map(({ coords: _coords, footPathInfo: _foot, stopSequence, ...leg }) => ({
     ...leg,
-    stopSequence: stopSequence?.slice(0, 1),
+    stopSequence: stopSequence?.map(({ coord: _coord, ...stop }) => stop),
   })),
 })
 

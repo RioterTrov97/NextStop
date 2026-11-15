@@ -3,6 +3,8 @@
   "name": "nextstop",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  // Workers Logs: keeps the worker's log lines, including one per TfNSW call ({"event":"upstream"}), for counting usage.
+  "observability": { "enabled": true },
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],

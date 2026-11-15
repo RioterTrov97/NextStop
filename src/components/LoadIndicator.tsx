@@ -23,11 +23,13 @@ export function loadIndicatorWidth(leg: Leg, vehicle?: VehicleInfo): number {
  * The small occupancy shape cards show for a ride: carriages for trains and metro that report them, otherwise the
  * whole vehicle. A tiny caption says when the figure is a forecast, covers the whole train only, or is missing.
  */
-export function LoadIndicator({ leg, vehicle }: { leg: Leg; vehicle?: VehicleInfo }) {
+export function LoadIndicator({ leg, vehicle, noDataHint }: { leg: Leg; vehicle?: VehicleInfo; noDataHint?: string }) {
   const mode = vehicleModeForLeg(leg)
   if (mode !== 'train' && mode !== 'metro' && mode !== 'bus' && mode !== 'lightrail') return null
   const load = rideLoad(leg, vehicle)
-  const { caption, detail } = loadCaption(mode, load)
+  const base = loadCaption(mode, load)
+  const caption = !load && noDataHint ? noDataHint : base.caption
+  const detail = !load && noDataHint ? `${noDataHint}.` : base.detail
 
   return (
     <Flex direction="column" align="center" gap="3px" flexShrink={0} role="img" aria-label={detail} title={detail}>

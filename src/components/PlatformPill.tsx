@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react'
 import type { StopPoint, Transportation } from '../api/types'
+import { lineColor } from '../lib/lines'
 import { PLATFORM_KINDS, platformInfo, type PlatformInfo } from '../lib/platforms'
 
 interface Props {
@@ -8,13 +9,16 @@ interface Props {
   fallback?: string
   /** Just the number or letter, for tight spots such as filter chips. */
   compact?: boolean
+  /** The ride leaving from here: the pill then takes its line badge's colour. */
+  transportation?: Transportation
 }
 
 /**
- * Where to stand, coloured by what leaves from there: train orange, metro teal, light rail red, bus blue, and a
- * darker blue for the temporary buses that replace trains.
+ * Where to stand: "Platform 3", "Stand A2". With the ride known, the pill is the colour of its line badge (T8 green,
+ * Metro teal, ...) so the two match; otherwise the colour of the kind of stop (train, metro, bus, ...). Both are
+ * darkened where needed so the white text stays readable.
  */
-export function PlatformPill({ info, fallback, compact }: Props) {
+export function PlatformPill({ info, fallback, compact, transportation }: Props) {
   if (!info) {
     return fallback ? (
       <Box as="span" fontSize="xs" fontWeight="semibold" color="fg.muted" whiteSpace="nowrap">
@@ -22,7 +26,7 @@ export function PlatformPill({ info, fallback, compact }: Props) {
       </Box>
     ) : null
   }
-  const { color, label } = PLATFORM_KINDS[info.kind]
+  const { label } = PLATFORM_KINDS[info.kind]
   const text = compact ? info.label : info.kind === 'replacement' ? `${info.long} · replacement bus` : info.long
   return (
     <Box
@@ -32,12 +36,16 @@ export function PlatformPill({ info, fallback, compact }: Props) {
       px={1.5}
       h="20px"
       borderRadius="md"
-      color="white"
       fontSize="xs"
       fontWeight="bold"
       whiteSpace="nowrap"
       flexShrink={0}
-      style={{ background: color }}
+      color="white"
+      style={{
+        background: transportation
+          ? lineColor(transportation.number ?? transportation.disassembledName, transportation.product?.class)
+          : PLATFORM_KINDS[info.kind].color,
+      }}
       title={info.detail ? `${info.long}, ${info.detail}` : `${info.long} (${label.toLowerCase()})`}
     >
       {text}
@@ -55,5 +63,5 @@ export function StopPlatform({
   transportation?: Transportation
   fallback?: string
 }) {
-  return <PlatformPill info={platformInfo(point, transportation)} fallback={fallback} />
+  return <PlatformPill info={platformInfo(point, transportation)} fallback={fallback} transportation={transportation} />
 }

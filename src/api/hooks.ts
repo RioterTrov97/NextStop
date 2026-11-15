@@ -5,7 +5,9 @@ import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
 import { departureLeg } from '../lib/departure'
-import { isTransit, vehicleModeForLeg } from '../lib/journey'
+import { isTransit, legOccupancy, vehicleModeForLeg } from '../lib/journey'
+import { stationIdOf, stopAhead, tripIdOf, withRideAhead } from '../lib/ride'
+import { useNow } from '../lib/hooks'
 import { exclusionParams, modeForClass } from '../lib/lines'
 import {
   fetchAlerts,
@@ -45,6 +47,11 @@ export function useStopSearch(text: string) {
 // on their own shorter cycle in between.
 export const REALTIME_MS = 15_000
 export const VEHICLES_MS = 10_000
+/**
+ * The extra via and split-at-interchange searches only add alternative routes, which rarely change, so the shared timer
+ * refreshes them once a minute instead of every 15s (the API key allows 5 requests/second for everyone).
+ */
+export const VIA_MS = 60_000
 const REALTIME_KEYS = new Set(['trips', 'departures', 'vehicles'])
 export const isRealtimeKey = (key: readonly unknown[]) => REALTIME_KEYS.has(key[0] as string)
 /** Trips and departures: the data the 15s countdown tracks. Vehicles refresh on their own shorter cycle. */
@@ -70,7 +77,20 @@ interface TripSettings {
 /** Whether the extra searches need the direct answer first: an address end is planned from where its trips board. */
 const needsDirect = (q: TripQuery, places: SavedPlaces) => isAddressId(resolved(q.from, places)) || isAddressId(resolved(q.to, places))
 
-function tripsQuery(query: TripQuery, settings: TripSettings, part: TripPart, enabled = true, ends?: { from?: string; to?: string }) {
+interface TripsQueryOptions {
+  /** The stations an address end's trips board and leave at, for the extra searches. */
+  ends?: { from?: string; to?: string }
+  /** A static historical snapshot: left out of the realtime refresh cycle and the refresh-button spinner. */
+  past?: boolean
+}
+
+function tripsQuery(
+  query: TripQuery,
+  settings: TripSettings,
+  part: TripPart,
+  enabled = true,
+  { ends, past = false }: TripsQueryOptions = {},
+) {
   const { walkPace, minTransfer, places } = settings
   const q = { ...query, walkPace }
   // Split trips are stitched with the user's minimum change time, so only the 'via' part depends on it. The part stays
@@ -94,7 +114,8 @@ function tripsQuery(query: TripQuery, settings: TripSettings, part: TripPart, en
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       part === 'direct' ? fetchTripsDirect(q, signal) : fetchTripsVia(q, minTransfer, signal, ends),
     enabled,
-    staleTime: REALTIME_MS,
+    staleTime: part === 'via' ? VIA_MS : REALTIME_MS,
+    ...(past && { meta: { past: true } }),
   }
 }
 
@@ -124,7 +145,7 @@ export function useTrips(query: TripQuery, enabled = true, { keepPrevious = fals
   const addressEnd = needsDirect(query, places)
   const ends = useMemo(() => (addressEnd && direct.data ? railEnds(direct.data) : undefined), [addressEnd, direct.data])
   const via = useQuery({
-    ...tripsQuery(query, settings, 'via', enabled && !directOnly && (!addressEnd || !!ends), ends),
+    ...tripsQuery(query, settings, 'via', enabled && !directOnly && (!addressEnd || !!ends), { ends }),
     placeholderData,
   })
   const data = useMemo(() => direct.data && mergeTrips(direct.data, via.data ?? []), [direct.data, via.data])
@@ -143,7 +164,7 @@ export function useTrips(query: TripQuery, enabled = true, { keepPrevious = fals
 }
 
 /** Several trip searches at once, flattened: used to keep every segment of a followed trip live. */
-export function useTripsMany(queries: TripQuery[]) {
+export function useTripsMany(queries: TripQuery[], directOnly = false, past = false) {
   const { walkPace, minTransfer } = useSettings()
   const places = useSavedPlaces()
   const settings = { walkPace, minTransfer, places }
@@ -151,11 +172,41 @@ export function useTripsMany(queries: TripQuery[]) {
   return useQueries({
     queries: queries.flatMap((q) =>
       (['direct', 'via'] as const)
-        .filter((part) => part === 'direct' || !needsDirect(q, places))
-        .map((part) => ({ ...tripsQuery(q, settings, part), placeholderData: keepPreviousData })),
+        .filter((part) => part === 'direct' || (!directOnly && !needsDirect(q, places)))
+        .map((part) => ({ ...tripsQuery(q, settings, part, true, { past }), placeholderData: keepPreviousData })),
     ),
     combine: combineTrips,
   })
+}
+
+/**
+ * The planner stops forecasting a service's load once it has left its first stop, so a running train shows "No data".
+ * Planning from a stop it has yet to reach still returns the service with its forecast and live times: look that up
+ * (one call per running ride, up to `max`) and fill them in.
+ */
+export function useRunningForecasts(journeys: Journey[], max = 4): Journey[] {
+  const now = useNow(60_000)
+  const wanted = useMemo(() => {
+    const out: { from: string; to: string; when: number }[] = []
+    for (const j of journeys) {
+      for (const l of j.legs) {
+        if (out.length >= max || !isTransit(l) || !tripIdOf(l) || legOccupancy(l)) continue
+        const dep = Date.parse(l.origin.departureTimeEstimated ?? l.origin.departureTimePlanned ?? '')
+        const arr = Date.parse(l.destination.arrivalTimeEstimated ?? l.destination.arrivalTimePlanned ?? '')
+        if (!(dep <= now) || !(arr > now)) continue
+        const ahead = stopAhead(l, now)
+        // A little before the train gets there, so the lookup still includes it.
+        if (ahead)
+          out.push({ from: ahead.stationId, to: stationIdOf(l.destination), when: Math.floor((ahead.at - 60_000) / 60_000) * 60_000 })
+      }
+    }
+    return out
+  }, [journeys, now, max])
+  const { journeys: found } = useTripsMany(
+    wanted.map((w) => ({ from: w.from, to: w.to, mode: 'dep' as const, when: new Date(w.when), excluded: {}, count: 4 })),
+    true,
+  )
+  return useMemo(() => (found.length ? journeys.map((j) => withRideAhead(j, found)) : journeys), [journeys, found])
 }
 
 // Module-level so React Query can reuse the combined result between renders while the data is unchanged.

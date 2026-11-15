@@ -10,6 +10,8 @@ interface Props {
   vehicle?: VehicleInfo
   fallback?: OccupancyLevel
   loading?: boolean
+  /** The service is too far off to be running yet, so a missing reading is expected. */
+  notStarted?: boolean
   /** `sm` for cards, `md` for the detail view with a label. */
   size?: 'sm' | 'md'
 }
@@ -17,7 +19,7 @@ interface Props {
 const ICONS = { train: LuTrainFront, bus: LuBus, lightrail: LuTramFront, metro: LuTrainFront }
 const NAMES = { train: 'Train', bus: 'Bus', lightrail: 'Light rail', metro: 'Metro' }
 
-export function VehicleLoad({ mode, vehicle, fallback, loading, size = 'sm' }: Props) {
+export function VehicleLoad({ mode, vehicle, fallback, loading, notStarted, size = 'sm' }: Props) {
   const live = vehicle?.occupancy !== undefined
   const occ = live ? occupancyFromEnum(vehicle.occupancy) : fallback
   // The planner's figure is a forecast, not a measurement, so it is labelled as one.
@@ -33,9 +35,11 @@ export function VehicleLoad({ mode, vehicle, fallback, loading, size = 'sm' }: P
         <Text fontSize="sm">
           {loading
             ? 'Checking occupancy…'
-            : vehicle
-              ? "This service doesn't report how busy it is."
-              : 'Occupancy appears once the service is running.'}
+            : notStarted && !vehicle
+              ? 'Occupancy appears once the service is running.'
+              : vehicle
+                ? "This service doesn't report how busy it is."
+                : 'No live occupancy for this service right now.'}
         </Text>
       </Flex>
     )
