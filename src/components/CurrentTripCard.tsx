@@ -182,16 +182,20 @@ function WalkRow({ leg, final, toName, arrival }: { leg: Leg; final?: boolean; t
 
 export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number }) {
   const [confirmClear, setConfirmClear] = useState(false)
-  // The followed-trip bar above the tab bar opens the trip here.
+  // The followed-trip bar above the tab bar opens the trip here, by navigating to Home with { openCurrent: true }.
   const location = useLocation()
   const navigate = useNavigate()
-  const [detailOpen, setDetailOpen] = useState(() => !!(location.state as { openCurrent?: boolean } | null)?.openCurrent)
+  const wantsOpen = !!(location.state as { openCurrent?: boolean } | null)?.openCurrent
+  const [detailOpen, setDetailOpen] = useState(wantsOpen)
+  const [handled, setHandled] = useState(wantsOpen ? location.key : '')
+  if (wantsOpen && handled !== location.key) {
+    setHandled(location.key)
+    setDetailOpen(true)
+  }
+  // Clear the request, so going back to Home later doesn't open the sheet again.
   useEffect(() => {
-    if ((location.state as { openCurrent?: boolean } | null)?.openCurrent) {
-      setDetailOpen(true)
-      navigate('.', { replace: true, state: null })
-    }
-  }, [location.state, navigate])
+    if (wantsOpen) navigate('.', { replace: true, state: null })
+  }, [wantsOpen, navigate])
   const [dismissed, setDismissed] = useState<string>()
   const { minTransfer } = useSettings()
 
