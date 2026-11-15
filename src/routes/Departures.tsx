@@ -4,6 +4,7 @@ import type { Place } from '../api/types'
 import { LiveTabs } from '../components/LiveTabs'
 import { PageHeader } from '../components/PageHeader'
 import { StopSearch } from '../components/StopSearch'
+import { isStopId } from '../store/places'
 import { useSavedTrips } from '../store/savedTrips'
 
 export default function Departures() {
@@ -12,9 +13,10 @@ export default function Departures() {
   const open = (id: string, name: string) => navigate(`/station/${encodeURIComponent(id)}?n=${encodeURIComponent(name)}`)
 
   const recent = new Map<string, string>()
+  // Only stations and stops have a departure board; addresses and Home or Work don't.
   for (const t of trips) {
-    recent.set(t.fromId, t.fromName)
-    recent.set(t.toId, t.toName)
+    if (isStopId(t.fromId)) recent.set(t.fromId, t.fromName)
+    if (isStopId(t.toId)) recent.set(t.toId, t.toName)
   }
 
   return (
@@ -23,7 +25,7 @@ export default function Departures() {
         <LiveTabs />
       </PageHeader>
       <Stack gap={4} p={4}>
-        <StopSearch label="Search a station or stop" onChange={(p?: Place) => p && open(p.id, p.name)} />
+        <StopSearch label="Search a station or stop" stopsOnly onChange={(p?: Place) => p && open(p.id, p.name)} />
         {recent.size > 0 && (
           <Box>
             <Text fontSize="sm" fontWeight="semibold" mb={2}>

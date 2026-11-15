@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/ModePicker'
 import { WalkOptions } from '../components/WalkOptions'
 import { PageHeader } from '../components/PageHeader'
+import { SavedPlacesEditor } from '../components/SavedPlacesEditor'
 import { exportBackup, importBackup } from '../lib/backup'
 import { history, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
@@ -78,6 +79,8 @@ export default function Settings() {
             An independent app, not affiliated with or endorsed by Transport for NSW.
           </Text>
         </Stack>
+
+        <SavedPlacesEditor />
 
         <Box>
           <Text fontWeight="semibold" mb={2}>

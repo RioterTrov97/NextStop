@@ -1,4 +1,6 @@
 import { useSettings } from '../store/settings'
+import { isAddressId, railEnds } from '../lib/hubs'
+import { resolvePlaceId, useSavedPlaces, type SavedPlaces } from '../store/places'
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
@@ -13,7 +15,6 @@ import {
   fetchVehicles,
   mergeTrips,
   searchStops,
-  viaHubsFor,
   type TripQuery,
 } from './client'
 import type { Journey, StopEvent } from './types'
@@ -51,12 +52,48 @@ export const isTimetableKey = (key: readonly unknown[]) => isRealtimeKey(key) &&
 
 type TripPart = 'direct' | 'via'
 
-function tripsQuery(query: TripQuery, walkPace: TripQuery['walkPace'], part: TripPart, enabled = true) {
+/** The address behind "home" or "work", so changing it refetches; unset places keep their id and fail in the planner. */
+function resolved(id: string, places: SavedPlaces): string {
+  try {
+    return resolvePlaceId(id, places)
+  } catch {
+    return id
+  }
+}
+
+interface TripSettings {
+  walkPace: TripQuery['walkPace']
+  minTransfer: number
+  places: SavedPlaces
+}
+
+/** Whether the extra searches need the direct answer first: an address end is planned from where its trips board. */
+const needsDirect = (q: TripQuery, places: SavedPlaces) => isAddressId(resolved(q.from, places)) || isAddressId(resolved(q.to, places))
+
+function tripsQuery(query: TripQuery, settings: TripSettings, part: TripPart, enabled = true, ends?: { from?: string; to?: string }) {
+  const { walkPace, minTransfer, places } = settings
   const q = { ...query, walkPace }
+  // Split trips are stitched with the user's minimum change time, so only the 'via' part depends on it. The part stays
+  // at index 8: the cache persister reads it there.
+  const extra = part === 'via' ? [minTransfer, ends?.from ?? '', ends?.to ?? ''] : []
   return {
-    queryKey: ['trips', q.from, q.to, q.mode, q.when?.getTime() ?? 'now', q.count ?? 6, q.excluded, walkPace, part] as const,
-    queryFn: ({ signal }: { signal: AbortSignal }) => (part === 'direct' ? fetchTripsDirect(q, signal) : fetchTripsVia(q, signal)),
-    enabled: enabled && (part === 'direct' || viaHubsFor(q).length > 0),
+    queryKey: [
+      'trips',
+      q.from,
+      q.to,
+      q.mode,
+      q.when?.getTime() ?? 'now',
+      q.count ?? 6,
+      q.excluded,
+      walkPace,
+      part,
+      resolved(q.from, places),
+      resolved(q.to, places),
+      ...extra,
+    ] as const,
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      part === 'direct' ? fetchTripsDirect(q, signal) : fetchTripsVia(q, minTransfer, signal, ends),
+    enabled,
     staleTime: REALTIME_MS,
   }
 }
@@ -69,19 +106,27 @@ interface TripsOptions {
 }
 
 /**
- * A trip search in two parts: the planner's direct answer shows as soon as it lands, and the slower via-hub
- * alternatives merge in when they arrive, so the list never waits on five requests.
+ * A trip search in two parts: the planner's direct answer shows as soon as it lands, and the slower via-hub and
+ * split-at-interchange alternatives merge in when they arrive, so the list never waits on them.
  */
 export function useTrips(query: TripQuery, enabled = true, { keepPrevious = false, directOnly = false }: TripsOptions = {}) {
-  const { walkPace } = useSettings()
+  const { walkPace, minTransfer } = useSettings()
+  const places = useSavedPlaces()
+  const settings = { walkPace, minTransfer, places }
   // Growing the list keeps the current trips on screen instead of dropping back to skeletons.
   const placeholderData = <T>(prev: T | undefined, prevQuery?: { queryKey: readonly unknown[] }) => {
     const k = prevQuery?.queryKey
     if (!k || k[1] !== query.from || k[2] !== query.to || k[3] !== query.mode) return undefined
     return keepPrevious || k[4] === (query.when?.getTime() ?? 'now') ? prev : undefined
   }
-  const direct = useQuery({ ...tripsQuery(query, walkPace, 'direct', enabled), placeholderData })
-  const via = useQuery({ ...tripsQuery(query, walkPace, 'via', enabled && !directOnly), placeholderData })
+  const direct = useQuery({ ...tripsQuery(query, settings, 'direct', enabled), placeholderData })
+  // From an address, the extra searches start from the station the direct trips board at, so they wait for those.
+  const addressEnd = needsDirect(query, places)
+  const ends = useMemo(() => (addressEnd && direct.data ? railEnds(direct.data) : undefined), [addressEnd, direct.data])
+  const via = useQuery({
+    ...tripsQuery(query, settings, 'via', enabled && !directOnly && (!addressEnd || !!ends), ends),
+    placeholderData,
+  })
   const data = useMemo(() => direct.data && mergeTrips(direct.data, via.data ?? []), [direct.data, via.data])
   return {
     data,
@@ -99,10 +144,15 @@ export function useTrips(query: TripQuery, enabled = true, { keepPrevious = fals
 
 /** Several trip searches at once, flattened: used to keep every segment of a followed trip live. */
 export function useTripsMany(queries: TripQuery[]) {
-  const { walkPace } = useSettings()
+  const { walkPace, minTransfer } = useSettings()
+  const places = useSavedPlaces()
+  const settings = { walkPace, minTransfer, places }
+  // Segments of a followed trip run between stations; an address end only gets the planner's own answer here.
   return useQueries({
     queries: queries.flatMap((q) =>
-      (['direct', 'via'] as const).map((part) => ({ ...tripsQuery(q, walkPace, part), placeholderData: keepPreviousData })),
+      (['direct', 'via'] as const)
+        .filter((part) => part === 'direct' || !needsDirect(q, places))
+        .map((part) => ({ ...tripsQuery(q, settings, part), placeholderData: keepPreviousData })),
     ),
     combine: combineTrips,
   })

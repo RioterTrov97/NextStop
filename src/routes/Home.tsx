@@ -36,7 +36,7 @@ import { RefreshButton } from '../components/RefreshButton'
 import { SaveTripChip } from '../components/SaveTrip'
 import { LoadIndicator, loadIndicatorWidth } from '../components/LoadIndicator'
 import { useNow } from '../lib/hooks'
-import { isTransit, summarize, trailingWalk, tripList } from '../lib/journey'
+import { isTransit, setOff, summarize, trailingWalk, tripList } from '../lib/journey'
 import { exclusionParams, MODES } from '../lib/lines'
 import { tripPath } from '../lib/paths'
 import { platformInfo } from '../lib/platforms'
@@ -49,7 +49,7 @@ import { PERIODS, periodAt, savedTrips, useSavedTrips, type SavedTrip } from '..
 import { END_WALK_OPTIONS, useSettings } from '../store/settings'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
-  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
+  const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer } = useSettings()
   const maxEndWalk = trip.maxEndWalk ?? globalEndWalk
   const current = useCurrentTrip()
   const [selected, setSelected] = useState<number>()
@@ -64,6 +64,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
     now,
     mode: 'dep',
     maxEndWalkMin: maxEndWalk,
+    maxStartWalkMin: maxStartWalk,
     minTransferMin: minTransfer,
     pace: walkPace,
   }).visible
@@ -109,7 +110,10 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
         const arr = s.arrEstimated ?? s.arrPlanned
         const transit = j.legs.filter(isTransit)
         const tailWalk = trailingWalk(j, walkPace)
-        const boardAt = transit[0] && platformInfo(transit[0].origin, transit[0].transportation)?.long
+        const start = setOff(j, walkPace, now)
+        const platform = transit[0] && platformInfo(transit[0].origin, transit[0].transportation)?.long
+        // With a walk first, the time column says when to leave, so the ride's own time goes on the platform line.
+        const boardAt = start.walk ? [platform, `train ${formatTime(dep)}`].filter(Boolean).join(' · ') : platform
         return (
           // Two options can share a departure (a direct train and one that changes), so the whole route is the key.
           <Fragment key={tripKey(j)}>
@@ -129,7 +133,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
               {/* Fixed width, wide enough for "arrives 12:43 am", so line badges and platforms start at the same place in every row. */}
               <Box w="84px" flexShrink={0} textAlign="start" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" lineHeight="short">
                 <Text fontSize="sm" fontWeight="bold">
-                  {formatTime(dep)}
+                  {formatTime(start.leave ?? dep)}
                 </Text>
                 {arr && (
                   <Text color="fg.muted" fontSize="2xs">
@@ -139,6 +143,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
               </Box>
               <Box flex={1} minW={0}>
                 <HStack gap={1} wrap="wrap">
+                  {start.walk && <WalkBadge seconds={start.walk.durationSec} meters={start.walk.distanceM} size="sm" />}
                   {transit.map((leg, legIndex) => (
                     <LineBadge
                       key={legIndex}
@@ -165,7 +170,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
               {/* Minutes to go with the running status tucked right under it, as one unit. */}
               <Flex w="56px" flexShrink={0} direction="column" align="flex-end" whiteSpace="nowrap">
                 <Text fontSize="sm" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" lineHeight="1.2">
-                  {countdown(dep, now)}
+                  {countdown(start.countTo, now)}
                 </Text>
                 <DelayText
                   planned={s.depPlanned}

@@ -1,5 +1,5 @@
 import { Box, Button, HStack, Stack, Text } from '@chakra-ui/react'
-import { END_WALK_OPTIONS, TRANSFER_OPTIONS, WALK_PACES, settings, useSettings } from '../store/settings'
+import { END_WALK_OPTIONS, START_WALK_OPTIONS, TRANSFER_OPTIONS, WALK_PACES, settings, useSettings } from '../store/settings'
 
 const chip = (on: boolean) =>
   ({ size: 'sm', borderRadius: 'full', variant: on ? 'solid' : 'outline', colorPalette: 'teal', 'aria-pressed': on }) as const
@@ -13,10 +13,32 @@ export function WalkOptions({
   /** Edits one saved trip's end walk instead of the global default. */
   endWalk?: { value: number; onChange: (n: number) => void }
 }) {
-  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
+  const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer } = useSettings()
   const maxEndWalk = endWalk?.value ?? globalEndWalk
   return (
     <Stack gap={5}>
+      {!endWalk && (
+        <Box>
+          <Text fontWeight="semibold">Walking to the first stop</Text>
+          <Text fontSize="sm" color="fg.muted" mb={2}>
+            The longest walk you accept when a trip starts from an address or your location. Trips that need a longer walk are hidden.
+          </Text>
+          <HStack gap={2} wrap="wrap">
+            {START_WALK_OPTIONS.map((n) => (
+              <Button
+                key={n}
+                {...chip(maxStartWalk === n)}
+                onClick={() => {
+                  settings.set({ maxStartWalk: n })
+                  onPick?.()
+                }}
+              >
+                {n} min
+              </Button>
+            ))}
+          </HStack>
+        </Box>
+      )}
       <Box>
         <Text fontWeight="semibold">Walking at the end</Text>
         <Text fontSize="sm" color="fg.muted" mb={2}>

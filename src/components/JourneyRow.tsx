@@ -2,7 +2,7 @@ import { Box, Flex, HStack, Text } from '@chakra-ui/react'
 import { LuTriangleAlert } from 'react-icons/lu'
 import type { VehicleInfo } from '../../shared/vehicles'
 import type { Journey } from '../api/types'
-import { isTransit, journeyAlerts, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
+import { isTransit, journeyAlerts, setOff, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
 import { isCancelled } from '../lib/replan'
 import { countdown, formatDuration, formatTime } from '../lib/time'
 import { useSettings } from '../store/settings'
@@ -29,6 +29,8 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
   const alerts = journeyAlerts(journey).filter((a) => a.priority === 'high' || a.priority === 'veryHigh')
   const transit = journey.legs.filter(isTransit)
   const tailWalk = trailingWalk(journey, walkPace)
+  // Trips from an address start with a walk: the card shows when to leave and counts down to it.
+  const start = setOff(journey, walkPace, now)
   const origin = s.firstTransit?.origin
   const station = (origin?.disassembledName ?? origin?.name ?? '').split(',')[0].replace(/ (Station|Platform).*$/i, '')
   const railLeg = transit.find((l) => ['train', 'metro', 'bus', 'lightrail'].includes(vehicleModeForLeg(l) ?? ''))
@@ -60,7 +62,7 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
 
       <Flex justify="space-between" align="center" gap={2} mt={1.5}>
         <Text fontSize="2xl" fontWeight="bold" whiteSpace="nowrap">
-          {formatTime(dep)}
+          {formatTime(start.leave ?? dep)}
           {arr && (
             <>
               {' '}
@@ -71,13 +73,22 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
             </>
           )}
         </Text>
-        <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
-          {countdown(dep, now)}
-        </Text>
+        {/* "leave in" sits tight above the minutes, so the row keeps its width with long times like "12:52 pm → 1:27 pm". */}
+        <Flex direction="column" align="flex-end" flexShrink={0}>
+          {start.leaving && (
+            <Text fontSize="2xs" fontWeight="medium" color="fg.muted" lineHeight="1" mb="-2px">
+              leave in
+            </Text>
+          )}
+          <Text fontSize="2xl" fontWeight="bold" color="teal.500" fontVariantNumeric="tabular-nums" whiteSpace="nowrap">
+            {countdown(start.countTo, now)}
+          </Text>
+        </Flex>
       </Flex>
 
       <Flex mt={2.5} align="center" gap={2} wrap="wrap">
         <HStack gap={1.5} wrap="wrap">
+          {start.walk && <WalkBadge seconds={start.walk.durationSec} meters={start.walk.distanceM} size={tileSize} />}
           {transit.map((l, i) => (
             <LineBadge
               key={i}

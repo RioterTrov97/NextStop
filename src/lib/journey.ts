@@ -27,6 +27,57 @@ export function trailingWalk(j: Journey, pace: WalkPace = 'normal'): { durationS
   return sec >= MIN_TAIL_WALK_SEC && !isTransit(last) ? { durationSec: sec, distanceM: metres, to: last.destination.name ?? '' } : undefined
 }
 
+/**
+ * The walk before the first ride, when a trip starts from an address or a stop away from the boarding point. Short
+ * in-station walks don't count. Duration comes from distance at the user's pace.
+ */
+export function leadingWalk(j: Journey, pace: WalkPace = 'normal'): { durationSec: number; distanceM: number; from: string } | undefined {
+  let sec = 0
+  let metres = 0
+  let i = 0
+  for (; i < j.legs.length && !isTransit(j.legs[i]); i++) {
+    sec += j.legs[i].duration ?? 0
+    metres += j.legs[i].distance ?? 0
+  }
+  // A journey that is all walking has no first ride to walk to.
+  if (i === 0 || i === j.legs.length) return undefined
+  if (metres > 0) sec = walkSeconds(metres, pace)
+  return sec >= MIN_TAIL_WALK_SEC ? { durationSec: sec, distanceM: metres, from: j.legs[0].origin.name ?? '' } : undefined
+}
+
+/**
+ * When to set off: the first ride's departure (live time first) less the walk to it, as epoch milliseconds. Without a
+ * walk at the start, it is the departure itself.
+ */
+export function leaveAt(j: Journey, pace: WalkPace = 'normal'): number {
+  const first = j.legs.find(isTransit)
+  const dep = Date.parse(first?.origin.departureTimeEstimated ?? first?.origin.departureTimePlanned ?? '')
+  return dep - (leadingWalk(j, pace)?.durationSec ?? 0) * 1000
+}
+
+export interface SetOff {
+  /** When to leave (ISO), if the trip starts with a walk. */
+  leave?: string
+  /** What the countdown counts to: the time to leave until shortly after it passes, then the first ride's departure. */
+  countTo?: string
+  /** Whether the countdown is to leaving rather than to the ride. */
+  leaving: boolean
+  walk?: { durationSec: number; distanceM: number }
+}
+
+/** The countdown target for a trip card: leaving the door for trips that start with a walk, else the ride itself. */
+export function setOff(j: Journey, pace: WalkPace, now: number): SetOff {
+  const s = summarize(j)
+  const dep = s.depEstimated ?? s.depPlanned
+  const walk = leadingWalk(j, pace)
+  if (!walk) return { countTo: dep, leaving: false }
+  const at = leaveAt(j, pace)
+  const leave = Number.isFinite(at) ? new Date(at).toISOString() : undefined
+  // The countdown shows "Now" for a minute after the time passes; after that, the train is what matters.
+  const leaving = !!leave && now < at + 60_000
+  return { leave, countTo: leaving ? leave : dep, leaving, walk }
+}
+
 /** A change must leave at least this long after the platform walk, even when the user allows very tight changes. */
 export const MIN_SPARE_SEC = 60
 
@@ -213,7 +264,8 @@ function optionStats(j: Journey, pace: WalkPace): OptionStats {
   const s = summarize(j)
   const spare = transfers(j).map((t) => t.gapSec - t.walkSec)
   return {
-    dep: Date.parse(s.depEstimated ?? s.depPlanned ?? '') || 0,
+    // Leaving the door later is what counts when trips start with different walks.
+    dep: leaveAt(j, pace) || Date.parse(s.depEstimated ?? s.depPlanned ?? '') || 0,
     arr: Date.parse(s.arrEstimated ?? s.arrPlanned ?? '') || Infinity,
     changes: s.changes,
     tailSec: trailingWalk(j, pace)?.durationSec ?? 0,
@@ -247,6 +299,8 @@ export interface TripListOptions {
   when?: Date
   mode: 'dep' | 'arr'
   maxEndWalkMin: number
+  /** Longest walk to the first ride; trips from a station rarely start with one. */
+  maxStartWalkMin?: number
   minTransferMin: number
   pace: WalkPace
 }
@@ -261,7 +315,9 @@ export function tripList(journeys: Journey[], o: TripListOptions) {
     const s = summarize(j)
     return Date.parse(s.depEstimated ?? s.depPlanned ?? '') > o.now - 60_000
   })
-  const walkOk = (j: Journey) => (trailingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxEndWalkMin * 60
+  const startOk = (j: Journey) => o.maxStartWalkMin === undefined || (leadingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxStartWalkMin * 60
+  const endOk = (j: Journey) => (trailingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxEndWalkMin * 60
+  const walkOk = (j: Journey) => startOk(j) && endOk(j)
   const changeOk = (j: Journey) => transferFits(j, o.minTransferMin)
   const visible = bestOptions(
     upcoming.filter((j) => walkOk(j) && changeOk(j)),
@@ -277,7 +333,8 @@ export function tripList(journeys: Journey[], o: TripListOptions) {
   })
   return {
     visible,
-    hiddenByWalk: hidden.filter((j) => !walkOk(j)).length,
+    hiddenByStartWalk: hidden.filter((j) => !startOk(j)).length,
+    hiddenByWalk: hidden.filter((j) => startOk(j) && !endOk(j)).length,
     hiddenByTransfer: hidden.filter((j) => walkOk(j) && !changeOk(j)).length,
   }
 }

@@ -9,7 +9,7 @@ A mobile-first PWA for Sydney public transport, installed on iPhones as a home-s
 - `src/` client app. Routes in `src/routes`, shared UI in `src/components`, pure logic in `src/lib` (keep logic here and unit-test it).
 - `worker/` Cloudflare Worker: trip planner proxy with edge caching, GTFS-realtime vehicle decoding.
 - `shared/` code used by both (vehicle types, brand colours).
-- `src/data/stations.json` is generated; never edit it by hand (see Commands).
+- `src/data/stations.json` and `src/data/network.json` are generated; never edit them by hand (see Commands). Regenerate after timetable changes.
 
 ## Commands
 
@@ -20,7 +20,7 @@ npm test             # vitest (src and worker tests)
 npm run typecheck    # tsc -b across app, worker and node configs
 npm run lint         # oxlint
 npm run build        # typecheck + production build
-npm run stations     # regenerate src/data/stations.json from the TfNSW GTFS timetables
+npm run stations     # regenerate src/data/stations.json and network.json from the TfNSW GTFS timetables
 ```
 
 Run test, typecheck, lint and build before calling work done. `src/components/LiveMap.tsx` has a pre-existing Prettier warning; leave it unless you are changing that file.
@@ -36,13 +36,28 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 
 ### Trip planner (`/v1/tp/trip`)
 
-- The planner returns only its preferred routes. The app also asks via Central, Town Hall, Redfern and Wynyard to surface other rail/metro/light rail combinations. Direct and via results are separate queries (`'direct'` / `'via'` in the query key): the direct answer renders first (~0.5-1s), via results merge in later (~2-4s).
-- Via queries produce many near-duplicates (same trains changed at a different station, detours). `bestOptions` drops any option beaten by another (leaves no earlier, arrives no later, no more changes, no longer final walk); ties keep the roomier change.
+- The planner returns only its preferred routes and never splits a journey it can make on one train: Lidcombe to Wynyard is always a direct T1/T2/T3, never "T2 to Strathfield, change to an express or T9", even at peak when that arrives sooner. A via stop doesn't force a change (a train passing through counts), and no parameter forces one (`dwellTimeMinutes` and similar were tried).
+- So extra searches are chosen on the device, at no API cost, from a model of the timetable (`src/lib/network.ts`, data in `src/data/network.json`): every stopping pattern with its running times and trips per hour in each time band (`src/lib/bands.ts`). It computes the frequency-based optimal strategy (Spiess and Florian) to the destination and keeps interchanges that come within 20% of the best expected time, aren't within 4 minutes of either end, and bring in trains the direct trip doesn't use. Hubs offering the same trains a few minutes apart (Redfern, Central, Town Hall) count once, as the busiest. At most 2.
+  - Each chosen hub is searched as two trips (to the hub, and on from its earliest arrival) stitched by `stitchAtHub` with the user's minimum change time; the side with fewer trains asks for fewer, so both cover the same stretch of time.
+  - Typical cost: Lidcombe to Wynyard 3 requests (Strathfield), Parramatta to Penrith 1 (nothing helps). Planner via searches at the city hubs are now only the fallback when an end is a bus stop.
+  - From or to an address, the extra searches wait for the direct answer: `railEnds` takes the station its trips usually board and leave at, the model plans between those, and the split searches still start and end at the address. If the model can't place the trip (a bus from the address), nothing extra is searched.
+- The GTFS timetable splits trains running through the city into separate trips at Central (a Western Line T1 ends there, a new trip carries on to the North Shore), linked by `block_id`; the generator joins them, or no through train would exist in the model. It uses arrival times, so terminus layovers don't count as riding.
+- Direct and extra results are separate queries (`'direct'` / `'via'` in the query key; `'via'` also carries the minimum change time): the direct answer renders first (~0.5-1s), the rest merges in later (~2-4s).
+- Via and split queries produce many near-duplicates (same trains changed at a different station, detours). `bestOptions` drops any option beaten by another (leaves no earlier, arrives no later, no more changes, no longer final walk); ties keep the roomier change.
 - Changes are checked on live times. A change fits when the gap meets the user's minimum (Settings, default 3 min) and at least `MIN_SPARE_SEC` (60s) remains after the walk. The platform walk is in `footPathInfo` (position `AFTER`) on the arriving leg, or in separate walk legs; they never overlap.
 - Cancellation: `properties.isCancelled` or a `realtimeStatus` containing "CANCEL".
 - Station ids: use the leg's `parent.id` when `parent.type === 'stop'`, not the platform id.
 - Planning to a departure's terminus does not reliably return that service: the planner prefers faster lines (a T4 instead of the T8 tapped), even when restricted to the mode. Match services by `RealtimeTripId`.
 - Replacement buses during trackwork have product name "Temporary buses" (class 5), e.g. route 61CN from Hornsby, stand X1.
+
+### Addresses and places (`/v1/tp/stop_finder`)
+
+- The stop finder ignores `anyObjFilter_sf` and always returns about 50 mixed results: stops, platforms, `poi`, `singlehouse` (street addresses), `street`, `suburb`. `rankPlaces` filters and orders them in code; suburbs are too vague to plan to.
+- The trip planner takes any of their ids at either end with `type_origin=any` (`streetID:…`, `poiID:…`, `coord:…`). Stop ids never contain a colon; `isAddressId` relies on that.
+- Reverse lookup for "Current location": `type_sf=coord` with `name_sf=lon:lat:EPSG:4326` returns a `type: 'address'` entry whose `coord:` id the planner accepts.
+- On-demand vans (class 10) are excluded on every trip search (`exclMOT_10`); the planner otherwise offers them from addresses.
+- Home and Work are stored on the device (`src/store/places.ts`) and referenced by trips as the ids `home` and `work`, resolved to the address on each request; query keys carry the resolved id so changing Home refetches.
+- Trips from an address start with a walk: cards show the leave time and count down to it (`setOff`), then to the train. Settings "Walking to the first stop" (`maxStartWalk`) hides longer ones.
 
 ### Departure monitor (`/v1/tp/departure_mon`)
 
@@ -73,7 +88,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - **Labels over icons.** General users must understand every action without guessing. Icon-only controls need an obvious meaning or a label.
 - **Following a trip** keeps it live: leg-level merging (`withLiveLegs`) from planner lookups per segment, plus the station's departure board for trips followed from a board (`boardId`). A replan banner offers a faster route from the next interchange, or the best option when a ride is cancelled or a change is missed; board-followed trips only get the broken-plan prompts.
 - **Weekend notice.** Thursday to Sunday, Home warns once per weekend about replacement buses on saved trips (first 6 trips, planned at the trip's usual time of day). Dismissal is per weekend.
-- **Station search** answers the first 3 matches from the bundled station list instantly, then merges stop finder results below a loader. The stop finder alone ranks badly for partial words ("chats" finds no station).
+- **Station search** answers the first 3 matches from the bundled station list instantly, then merges stop finder results below a loader, grouped as Stations, Stops, and Addresses and places. The stop finder alone ranks badly for partial words ("chats" finds no station). Empty, it offers Current location, Home and Work, then recent stations. The departure board's search (`stopsOnly`) leaves out addresses.
 - **Trip details sheet** (`JourneySheet`) uses the Ark UI drawer: drag from anywhere (maps are `data-no-drag`), closes at a quarter of its height or a flick, stops a little below the page header so the header and its countdown stay visible. The sheet shows its own countdown only when the page header behind it has none.
 - **Refresh button**: draining ring with seconds, spinning arc with three soft dots while refreshing, a brief tick when fresh data lands. Respects reduced motion.
 

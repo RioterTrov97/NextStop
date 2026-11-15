@@ -38,7 +38,7 @@ export default function TripResults() {
   const fromName = sp.get('fn') ?? from
   const toName = sp.get('tn') ?? to
   const modes = sp.get('modes')?.split(',').filter(Boolean) ?? []
-  const { maxEndWalk: globalEndWalk, walkPace, minTransfer } = useSettings()
+  const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer } = useSettings()
   const when = sp.get('w') ? new Date(sp.get('w')!) : undefined
   const mode = sp.get('m') === 'arr' ? 'arr' : 'dep'
 
@@ -74,11 +74,12 @@ export default function TripResults() {
   const savedTrip = saved.find((t) => t.id === tripId(from, to))
   const isSaved = !!savedTrip
   const maxEndWalk = savedTrip?.maxEndWalk ?? globalEndWalk
-  const { visible, hiddenByWalk, hiddenByTransfer } = tripList(data ?? [], {
+  const { visible, hiddenByStartWalk, hiddenByWalk, hiddenByTransfer } = tripList(data ?? [], {
     now,
     when,
     mode,
     maxEndWalkMin: maxEndWalk,
+    maxStartWalkMin: maxStartWalk,
     minTransferMin: minTransfer,
     pace: walkPace,
   })
@@ -130,6 +131,12 @@ export default function TripResults() {
           size="xs"
           endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
         />
+        {hiddenByStartWalk > 0 && (
+          <Text fontSize="xs" color="fg.muted">
+            {hiddenByStartWalk} {hiddenByStartWalk === 1 ? 'trip is' : 'trips are'} hidden because the walk to the first stop is over{' '}
+            {maxStartWalk} min. Change this in Settings under "Walking to the first stop".
+          </Text>
+        )}
         {hiddenByWalk > 0 && (
           <Text fontSize="xs" color="fg.muted">
             {hiddenByWalk} {hiddenByWalk === 1 ? 'trip is' : 'trips are'} hidden because{' '}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Journey, Leg } from '../api/types'
-import { bestOptions, transferFits, transfers, tripList } from './journey'
+import { bestOptions, leadingWalk, leaveAt, setOff, transferFits, transfers, tripList } from './journey'
 import { loadCaption, rideLoad } from './rideLoad'
 
 const T = (hhmm: string) => `2026-10-30T${hhmm}:00Z`
@@ -105,5 +105,46 @@ describe('loadCaption', () => {
     expect(loadCaption('metro', { mode: 'metro', carriages: false, level, predicted: false }).caption).toBe('Few seats · overall')
     expect(loadCaption('bus', { mode: 'bus', carriages: false, level, predicted: false }).caption).toBe('Few seats')
     expect(loadCaption('train', undefined)).toMatchObject({ caption: 'No data' })
+  })
+})
+
+describe('walk at the start', () => {
+  // 800m at the normal 5 km/h is 9:36, rounded to 10 minutes on cards.
+  const walkTo = (to: string, metres: number, dep: string): Leg => ({
+    origin: { id: 'coord:home', name: '72 Joseph St, Lidcombe', departureTimePlanned: T(dep) },
+    destination: { id: to, name: `${to} Station` },
+    transportation: { product: { class: 100 } },
+    distance: metres,
+    duration: 900,
+  })
+  const fromHome = j(walkTo('LID', 800, '07:50'), ride('T1-a', 'LID', 'WYN', '08:00', '08:30'))
+  // A longer walk to an express that arrives sooner, so hiding it loses a real option.
+  const farther = j(walkTo('AUB', 2000, '07:40'), ride('T2-a', 'AUB', 'WYN', '08:04', '08:20'))
+
+  it('sizes the walk from its distance at the user pace, and leaves that long before the ride', () => {
+    expect(leadingWalk(fromHome)).toMatchObject({ durationSec: 576, distanceM: 800 })
+    expect(leadingWalk(fromHome, 'slow')?.durationSec).toBe(720)
+    expect(new Date(leaveAt(fromHome)).toISOString()).toBe('2026-10-30T07:50:24.000Z')
+  })
+
+  it('ignores trips from a station and walks under two minutes', () => {
+    expect(leadingWalk(j(ride('T1-a', 'LID', 'WYN', '08:00', '08:30')))).toBeUndefined()
+    expect(leadingWalk(j(walkTo('LID', 100, '07:58'), ride('T1-a', 'LID', 'WYN', '08:00', '08:30')))).toBeUndefined()
+  })
+
+  it('counts down to leaving, then to the train once that time has passed', () => {
+    const at = Date.parse(T('07:45'))
+    expect(setOff(fromHome, 'normal', at)).toMatchObject({ leaving: true, countTo: '2026-10-30T07:50:24.000Z' })
+    const late = Date.parse(T('07:52'))
+    expect(setOff(fromHome, 'normal', late)).toMatchObject({ leaving: false, countTo: T('08:00') })
+    expect(setOff(j(ride('T1-a', 'LID', 'WYN', '08:00', '08:30')), 'normal', at)).toEqual({ countTo: T('08:00'), leaving: false })
+  })
+
+  it('hides trips whose first walk is over the limit, and counts them apart from end walks', () => {
+    const base = { now: Date.parse(T('07:00')), mode: 'dep' as const, maxEndWalkMin: 5, minTransferMin: 3, pace: 'normal' as const }
+    const out = tripList([fromHome, farther], { ...base, maxStartWalkMin: 15 })
+    expect(out.visible).toEqual([fromHome])
+    expect(out).toMatchObject({ hiddenByStartWalk: 1, hiddenByWalk: 0 })
+    expect(tripList([fromHome, farther], base).visible).toHaveLength(2)
   })
 })

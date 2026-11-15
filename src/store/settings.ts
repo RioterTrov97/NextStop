@@ -18,6 +18,8 @@ export interface Settings {
   preferredModes: string[]
   /** Longest walk allowed after the last ride, in minutes; 0 only shows trips that end at the destination. */
   maxEndWalk: number
+  /** Longest walk allowed before the first ride, in minutes, when a trip starts from an address. */
+  maxStartWalk: number
   /** Walking pace used by the trip planner when it sizes transfers and walks. */
   walkPace: WalkPace
   /** Shortest scheduled gap between getting off one ride and the next one leaving, in minutes; tighter trips are hidden. */
@@ -30,11 +32,13 @@ export const DEFAULT_SETTINGS: Settings = {
   expandUpTo: 3,
   preferredModes: [],
   maxEndWalk: 5,
+  maxStartWalk: 15,
   walkPace: 'normal',
   minTransfer: 3,
   historyLimit: 25,
 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
+export const START_WALK_OPTIONS = [5, 10, 15, 20, 30]
 export const TRANSFER_OPTIONS = [1, 2, 3, 4, 5, 6]
 export const HISTORY_OPTIONS = [10, 25, 50, 100]
 export const EXPAND_OPTIONS = [0, 1, 2, 3, 4, 5]
@@ -59,6 +63,9 @@ function read(): Settings {
         ? { historyLimit: parsed.historyLimit }
         : {}),
       ...(typeof parsed.maxEndWalk === 'number' && END_WALK_OPTIONS.includes(parsed.maxEndWalk) ? { maxEndWalk: parsed.maxEndWalk } : {}),
+      ...(typeof parsed.maxStartWalk === 'number' && START_WALK_OPTIONS.includes(parsed.maxStartWalk)
+        ? { maxStartWalk: parsed.maxStartWalk }
+        : {}),
       ...(typeof parsed.minTransfer === 'number' && TRANSFER_OPTIONS.includes(parsed.minTransfer)
         ? { minTransfer: parsed.minTransfer }
         : {}),

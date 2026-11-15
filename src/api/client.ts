@@ -1,4 +1,10 @@
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
+import { loadNetwork, searchPlan } from '../lib/hubs'
+import { isPlannable, rankPlaces } from '../lib/places'
+import { resolvePlaceId } from '../store/places'
+import type { HubOption } from '../lib/network'
+import { summarize } from '../lib/journey'
+import { stitchAtHub } from '../lib/split'
 import { toAddInfoDate, toItd } from '../lib/time'
 import type { Alert, Journey, Place, StopEvent } from './types'
 
@@ -20,19 +26,28 @@ async function get<T>(path: string, params: Record<string, string | undefined>, 
   return res.json() as Promise<T>
 }
 
+/**
+ * Stops, addresses and places matching the text. The finder ignores its type filter (`anyObjFilter_sf`) and always
+ * answers with everything, so the ranking and filtering happen here.
+ */
 export async function searchStops(query: string, signal?: AbortSignal): Promise<Place[]> {
+  const data = await get<{ locations?: Place[] }>('tp/stop_finder', { type_sf: 'any', name_sf: query, TfNSWSF: 'true' }, signal)
+  return rankPlaces(data.locations ?? [])
+}
+
+/**
+ * The street address at a position, for "Current location": the planner takes its id like any other place, and a
+ * saved trip or history entry then names a real address instead of a position that means nothing later.
+ * Positions are rounded to about a metre.
+ */
+export async function addressAt(lat: number, lon: number, signal?: AbortSignal): Promise<Place | undefined> {
+  const at = (n: number) => n.toFixed(5)
   const data = await get<{ locations?: Place[] }>(
     'tp/stop_finder',
-    { type_sf: 'any', name_sf: query, TfNSWSF: 'true', anyObjFilter_sf: '2' },
+    { type_sf: 'coord', name_sf: `${at(lon)}:${at(lat)}:EPSG:4326`, TfNSWSF: 'true' },
     signal,
   )
-  const places = (data.locations ?? []).filter((l) => l.type === 'stop' || l.type === 'platform' || l.type === 'poi' || !l.type)
-  // Train/metro stations first, then by the finder's own match quality: its list order puts pubs in Armidale
-  // ahead of Central Station for "central".
-  return places
-    .map((p, i) => ({ p, i, rank: p.modes?.some((m) => m === 1 || m === 2) ? 0 : 1 }))
-    .sort((a, b) => a.rank - b.rank || (b.p.matchQuality ?? 0) - (a.p.matchQuality ?? 0) || a.i - b.i)
-    .map((x) => x.p)
+  return data.locations?.find(isPlannable)
 }
 
 export interface TripQuery {
@@ -52,17 +67,6 @@ const journeyKey = (j: Journey) =>
         `${l.origin.id ?? l.origin.name}@${l.origin.departureTimePlanned}>${l.destination.id ?? l.destination.name}@${l.destination.arrivalTimePlanned}`,
     )
     .join('|')
-
-// Stop IDs from the stop finder.
-const REDFERN = '201510'
-const CENTRAL = '200060'
-const TOWN_HALL = '200070'
-const WYNYARD = '200080'
-// const STRATHFIELD = '213510'
-// const PARRAMATTA = '215020'
-
-// Interchanges where rail, metro and light rail meet.
-const VIA_HUBS = [CENTRAL, TOWN_HALL, REDFERN, WYNYARD]
 
 const REQUEST_SPACING_MS = 250
 
@@ -85,11 +89,8 @@ async function tripSlot(signal?: AbortSignal) {
   if (at > now) await delay(at - now, signal)
 }
 
-const durationMs = (j: Journey) => {
-  const first = j.legs[0].origin
-  const last = j.legs[j.legs.length - 1].destination
-  return Date.parse(last.arrivalTimePlanned ?? '') - Date.parse(first.departureTimePlanned ?? '')
-}
+/** Door-to-door time. Walk legs can lack times, so this goes through the same summary the list shows. */
+const durationMs = (j: Journey) => summarize(j).durationSec * 1000
 
 function planTrip(q: TripQuery, extra: Record<string, string>, signal?: AbortSignal) {
   return tripSlot(signal).then(() =>
@@ -99,12 +100,15 @@ function planTrip(q: TripQuery, extra: Record<string, string>, signal?: AbortSig
         depArrMacro: q.mode,
         ...toItd(q.when ?? new Date()),
         type_origin: 'any',
-        name_origin: q.from,
+        name_origin: resolvePlaceId(q.from),
         type_destination: 'any',
-        name_destination: q.to,
+        name_destination: resolvePlaceId(q.to),
         calcNumberOfTrips: String(q.count ?? 6),
         TfNSWTR: 'true',
         changeSpeed: q.walkPace ?? 'normal',
+        // On-demand vans (Bridj) need booking ahead, which the app can't help with, so they never appear as a ride.
+        excludedMeans: 'checkbox',
+        exclMOT_10: '10',
         ...q.excluded,
         ...extra,
       },
@@ -116,15 +120,65 @@ function planTrip(q: TripQuery, extra: Record<string, string>, signal?: AbortSig
 /** The planner's own preferred routes: one request, so the list can show as soon as it lands. */
 export const fetchTripsDirect = (q: TripQuery, signal?: AbortSignal) => planTrip(q, {}, signal)
 
-export const viaHubsFor = (q: Pick<TripQuery, 'from' | 'to'>) => VIA_HUBS.filter((id) => id !== q.from && id !== q.to)
+/** The earliest (or, arriving by, latest) of a list of times. */
+const edge = (times: number[], latest: boolean) => {
+  const ok = times.filter(Number.isFinite)
+  return ok.length ? (latest ? Math.max(...ok) : Math.min(...ok)) : undefined
+}
+
+const rideTime = (j: Journey, end: 'dep' | 'arr') => {
+  const s = summarize(j)
+  return Date.parse((end === 'dep' ? (s.depEstimated ?? s.depPlanned) : (s.arrEstimated ?? s.arrPlanned)) ?? '')
+}
 
 /**
- * The planner only returns its preferred routes; forcing a via-stop at the major interchanges surfaces the other
- * rail, metro and light rail combinations. Slower, so it fills in after the direct results.
+ * The trip split at an interchange: trips to the hub and trips on from it, searched separately and stitched together.
+ * The planner never offers a change it can avoid, even when a faster train to the hub and a change there arrive
+ * sooner (Lidcombe to Wynyard: T2 or T3 to Strathfield, then an express). The second search starts from the first
+ * one's earliest arrival (or, arriving by, ends at the first one's latest departure). The side with fewer trains asks
+ * for fewer, so both searches cover about the same stretch of time and every trip found has its connection.
  */
-export async function fetchTripsVia(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
+export async function fetchTripsSplit(q: TripQuery, hub: HubOption, minTransferMin: number, signal?: AbortSignal): Promise<Journey[]> {
+  const change = minTransferMin * 60_000
+  const count = q.count ?? 6
+  const fewer = (mine: number, theirs: number) => Math.max(2, Math.min(count, Math.round((count * mine) / Math.max(theirs, 1))))
+  if (q.mode === 'arr') {
+    const onward = await planTrip({ ...q, from: hub.id, count: fewer(hub.onwardPerHour, hub.perHour) }, {}, signal)
+    const latest = edge(
+      onward.map((j) => rideTime(j, 'dep')),
+      true,
+    )
+    if (latest === undefined) return []
+    const toHub = await planTrip({ ...q, to: hub.id, when: new Date(latest - change) }, {}, signal)
+    return stitchAtHub(toHub, onward, minTransferMin * 60)
+  }
+  const toHub = await planTrip({ ...q, to: hub.id, count: fewer(hub.perHour, hub.onwardPerHour) }, {}, signal)
+  const earliest = edge(
+    toHub.map((j) => rideTime(j, 'arr')),
+    false,
+  )
+  if (earliest === undefined) return []
+  const onward = await planTrip({ ...q, from: hub.id, mode: 'dep', when: new Date(earliest + change) }, {}, signal)
+  return stitchAtHub(toHub, onward, minTransferMin * 60)
+}
+
+/**
+ * The alternatives the planner doesn't offer on its own (see src/lib/hubs.ts for how they are chosen): the trip split
+ * at the interchanges where changing could pay off, or, for ends outside the rail network, routes via the city hubs.
+ * Slower, so they fill in after the direct results. Each search fails on its own without losing the others, and a
+ * trip with nothing worth searching costs no requests at all.
+ */
+export async function fetchTripsVia(
+  q: TripQuery,
+  minTransferMin: number,
+  signal?: AbortSignal,
+  /** For address ends: the stations the direct answer boards and leaves at (`railEnds`). */
+  ends?: { from?: string; to?: string },
+): Promise<Journey[]> {
+  const plan = searchPlan(await loadNetwork(), { ...q, from: resolvePlaceId(q.from), to: resolvePlaceId(q.to) }, minTransferMin, ends)
   const viaHub = (id: string) => planTrip(q, { type_via: 'any', name_via: id, maxChanges: '4' }, signal).catch(() => [] as Journey[])
-  return (await Promise.all(viaHubsFor(q).map(viaHub))).flat()
+  const split = (hub: HubOption) => fetchTripsSplit(q, hub, minTransferMin, signal).catch(() => [] as Journey[])
+  return (await Promise.all([...plan.split.map(split), ...plan.via.map(viaHub)])).flat()
 }
 
 /** Direct results plus via-hub results that aren't much slower than the best direct one, without duplicates. */
@@ -138,11 +192,6 @@ export function mergeTrips(direct: Journey[], via: Journey[]): Journey[] {
     seen.add(k)
     return true
   })
-}
-
-export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Journey[]> {
-  const [direct, via] = await Promise.all([fetchTripsDirect(q, signal), fetchTripsVia(q, signal)])
-  return mergeTrips(direct, via)
 }
 
 export async function fetchDepartures(stopId: string, signal?: AbortSignal): Promise<StopEvent[]> {

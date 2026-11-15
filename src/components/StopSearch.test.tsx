@@ -21,8 +21,27 @@ describe('StopSearch', () => {
         </ChakraProvider>
       </QueryClientProvider>,
     )
-    fireEvent.change(screen.getByPlaceholderText('From'), { target: { value: 'chats' } })
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: 'chats' } })
     expect(screen.getByText('Chatswood Station')).toBeTruthy()
-    expect(screen.getByText('Searching all stops and places…')).toBeTruthy()
+    expect(screen.getByText('Searching stops, addresses and places…')).toBeTruthy()
+  })
+
+  it('keeps a departure board search to stations and stops', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChakraProvider value={system}>
+          <StopSearch label="Station or stop" stopsOnly onChange={() => {}} />
+        </ChakraProvider>
+      </QueryClientProvider>,
+    )
+    const input = screen.getByLabelText('Station or stop')
+    fireEvent.focus(input)
+    expect(screen.queryByText('Current location')).toBeNull()
+    fireEvent.change(input, { target: { value: 'chats' } })
+    expect(screen.getByText('Searching all stops…')).toBeTruthy()
   })
 })
