@@ -20,7 +20,7 @@ describe('makeTint', () => {
     })
   }
 
-  it('falls back to eucalyptus for grey lines', () => {
+  it('falls back to the app colour for grey lines', () => {
     expect(makeTint(LINE_COLOURS.T7, 'dark').base).toBe(brand[500])
     expect(makeTint(LINE_COLOURS.T1, 'dark').base).toBe(LINE_COLOURS.T1)
   })

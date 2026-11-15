@@ -94,7 +94,7 @@ function readableOn(hex: string, on: string, ratio: number): string {
 const blackOrWhite = (bg: string) => (contrast('#ffffff', bg) >= contrast(ink.light, bg) ? '#ffffff' : ink.light)
 
 export interface Tint {
-  /** The line colour this tint was made from (or eucalyptus for grey lines). */
+  /** The line colour this tint was made from (or the app colour for grey lines). */
   base: string
   /** Top of a tinted screen's gradient, and the header of a tinted screen. */
   wash: string
@@ -122,7 +122,7 @@ export interface Tint {
 
 /**
  * The tint for a line colour in a colour mode. Very grey lines (T7 is #6F818E) don't make a useful tint, so they fall
- * back to eucalyptus, like greyscale artwork in Sangeet.
+ * back to the app colour, like greyscale artwork in Sangeet.
  */
 export function makeTint(lineHex: string, mode: ColourMode): Tint {
   const grey = toHsl(parseHex(lineHex)).s < 0.18

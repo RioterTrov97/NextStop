@@ -1,5 +1,10 @@
-import { brand, ink, page, panel, sageGray } from '../shared/brand'
+import { backdrop, brand, darkSurface, gray, ink, page, panel } from '../shared/brand'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
+
+const rgba = (hex: string, a: number) => {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+}
 
 const scale = (s: Record<string | number, string>) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, { value: v }]))
 
@@ -14,9 +19,39 @@ const config = defineConfig({
     // iOS applies the rubber-band to the root element, so it must be disabled there too.
     // The canvas must also match the body, or content taller than the viewport spills onto a different colour.
     'html, body': { overscrollBehavior: 'none', bg: 'bg' },
+    // Colour for the glass to blur: soft sky and water light fixed behind the page, low down where the tab bar floats
+    // and clear of the solid header. Cards and the header stay solid.
+    // Glass colours (src/styles/glass.css), from the palette.
+    ':root': {
+      '--ns-glass-bg': 'rgba(255, 255, 255, 0.66)',
+      '--ns-glass-solid': panel.light,
+      '--ns-glass-edge': rgba(ink.light, 0.08),
+      '--ns-glass-shine': 'rgba(255, 255, 255, 0.9)',
+      '--ns-glass-shadow': `0 10px 30px ${rgba(brand[950], 0.12)}, 0 2px 6px ${rgba(brand[950], 0.06)}`,
+    },
+    '.dark': {
+      '--ns-glass-bg': rgba(darkSurface.muted, 0.62),
+      '--ns-glass-solid': darkSurface.muted,
+      '--ns-glass-edge': 'rgba(255, 255, 255, 0.09)',
+      '--ns-glass-shine': 'rgba(255, 255, 255, 0.13)',
+      '--ns-glass-shadow': '0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3)',
+    },
+    'body::before': {
+      content: '""',
+      position: 'fixed',
+      inset: 0,
+      zIndex: -1,
+      pointerEvents: 'none',
+      backgroundImage: `radial-gradient(70% 45% at 100% 100%, ${backdrop.light[0]}, transparent 70%), radial-gradient(60% 40% at 0% 72%, ${backdrop.light[1]}, transparent 70%), radial-gradient(55% 30% at 85% 38%, ${backdrop.light[2]}, transparent 70%)`,
+    },
+    '.dark body::before': {
+      backgroundImage: `radial-gradient(70% 45% at 100% 100%, ${backdrop.dark[0]}, transparent 70%), radial-gradient(60% 40% at 0% 72%, ${backdrop.dark[1]}, transparent 70%), radial-gradient(55% 30% at 85% 38%, ${backdrop.dark[2]}, transparent 70%)`,
+    },
     // Only the OSM fallback needs this; MapTiler ships a real dark style.
     '.dark .tiles-invert .leaflet-tile-pane': { filter: 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' },
+    // The body lets the backdrop through; the html canvas carries the page colour.
     body: {
+      bg: 'transparent',
       color: 'fg',
       WebkitTapHighlightColor: 'transparent',
     },
@@ -85,8 +120,8 @@ const config = defineConfig({
     tokens: {
       colors: {
         brand: scale(brand),
-        // Every grey leans slightly sage, so neutrals sit with the eucalyptus accent.
-        gray: scale(sageGray),
+        // Every grey leans slightly towards the accent's hue (shared/brand.ts).
+        gray: scale(gray),
       },
       fonts: {
         heading: { value: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif" },
@@ -104,19 +139,19 @@ const config = defineConfig({
         bg: {
           DEFAULT: { value: { _light: page.light, _dark: page.dark } },
           panel: { value: { _light: panel.light, _dark: panel.dark } },
-          subtle: { value: { _light: '{colors.gray.50}', _dark: '#121815' } },
-          muted: { value: { _light: '{colors.gray.100}', _dark: '#1D2622' } },
-          emphasized: { value: { _light: '{colors.gray.200}', _dark: '#28322D' } },
+          subtle: { value: { _light: '{colors.gray.50}', _dark: darkSurface.subtle } },
+          muted: { value: { _light: '{colors.gray.100}', _dark: darkSurface.muted } },
+          emphasized: { value: { _light: '{colors.gray.200}', _dark: darkSurface.emphasized } },
         },
         fg: {
           DEFAULT: { value: { _light: ink.light, _dark: ink.dark } },
           muted: { value: { _light: '{colors.gray.600}', _dark: '{colors.gray.400}' } },
         },
         border: {
-          DEFAULT: { value: { _light: '{colors.gray.200}', _dark: '#26302B' } },
-          muted: { value: { _light: '{colors.gray.100}', _dark: '#1E2723' } },
+          DEFAULT: { value: { _light: '{colors.gray.200}', _dark: darkSurface.border } },
+          muted: { value: { _light: '{colors.gray.100}', _dark: darkSurface.borderMuted } },
         },
-        // colorPalette="brand": light mode uses the deep eucalyptus with white text, dark mode the pale sage with dark text.
+        // colorPalette="brand": light mode uses the deep accent with white text, dark mode the pale one with dark text.
         brand: {
           solid: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.300}' } },
           contrast: { value: { _light: 'white', _dark: '{colors.brand.950}' } },

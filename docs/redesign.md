@@ -5,7 +5,7 @@ behaviour is removed, and the layouts recorded in [AGENTS.md](../AGENTS.md) keep
 
 ## Decisions
 
-- **Primary colour: eucalyptus.** `#3E6B5A` in light mode (white text, about 6:1), `#A8C5B5` in dark mode (dark text).
+- **Primary colour: harbour blue** (from 16 November 2026; eucalyptus before, which read too muted for travel and looked flat behind glass). Derived from one seed, `PRIMARY` in `shared/brand.ts`. Originally: **eucalyptus.** `#3E6B5A` in light mode (white text, about 6:1), `#A8C5B5` in dark mode (dark text).
   Neutrals lean slightly sage. The scale is in `shared/brand.ts`. Red (NSW Government) was considered and rejected: red
   already means delays and cancellations, it is near T9 and light rail, and red and white suggests the app is official.
 - **Font:** Inter, unchanged.
@@ -18,7 +18,7 @@ behaviour is removed, and the layouts recorded in [AGENTS.md](../AGENTS.md) keep
   gradient from the line colour into the page (first line to last line when a trip changes mode), the followed-trip mini
   card takes the current ride's colour, Home gets a faint glow from the followed trip, station boards take the selected
   transport's colour, and search result cards get a faint wash of their line. Line badges keep the official colours
-  unmodified; tints are derived from them for surfaces only. Grey and unknown lines fall back to eucalyptus. Settings has
+  unmodified; tints are derived from them for surfaces only. Grey and unknown lines fall back to the app colour. Settings has
   "Colour screens by line" to turn it off.
 - **Header:** solid, the page colour (or the screen's tint), with dark or light text to match. The status bar strip and
   `theme-color` follow it.

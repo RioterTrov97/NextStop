@@ -5,20 +5,7 @@
 
   --ns-glass-tint / --ns-glass-solid-tint let a tinted screen colour the glass (see src/lib/tint.ts).
 */
-:root {
-  --ns-glass-bg: rgba(255, 255, 255, 0.66);
-  --ns-glass-solid: #ffffff;
-  --ns-glass-edge: rgba(18, 24, 21, 0.08);
-  --ns-glass-shine: rgba(255, 255, 255, 0.9);
-  --ns-glass-shadow: 0 10px 30px rgba(15, 26, 22, 0.12), 0 2px 6px rgba(15, 26, 22, 0.06);
-}
-.dark {
-  --ns-glass-bg: rgba(30, 39, 35, 0.62);
-  --ns-glass-solid: #1d2622;
-  --ns-glass-edge: rgba(255, 255, 255, 0.09);
-  --ns-glass-shine: rgba(255, 255, 255, 0.13);
-  --ns-glass-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
-}
+/* The glass colours (--ns-glass-bg, -solid, -edge, -shine, -shadow) are set in src/theme.ts from the palette. */
 
 .ns-glass,
 [data-scope='dialog'][data-part='content'],
@@ -75,7 +62,7 @@ html:not([data-solid]) .ns-glass-surface,
 html:not([data-solid]) [data-scope='dialog'][data-part='content'] {
   --chakra-colors-bg-panel: rgba(255, 255, 255, 0.62);
   --chakra-colors-bg-subtle: rgba(255, 255, 255, 0.5);
-  --chakra-colors-bg-muted: rgba(18, 24, 21, 0.05);
+  --chakra-colors-bg-muted: rgba(16, 21, 28, 0.05);
 }
 html.dark:not([data-solid]) .ns-glass-surface,
 html.dark:not([data-solid]) [data-scope='dialog'][data-part='content'] {

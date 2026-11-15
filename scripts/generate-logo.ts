@@ -4,8 +4,8 @@ import { markBody, markSvg } from '../shared/logo.ts'
 
 const out = (name: string, svg: string) => writeFileSync(new URL(`../public/${name}`, import.meta.url), svg)
 
-// The app icon: the mark without the vehicles (they would be specks on a home screen), white pin and pale sage orbit
-// on a eucalyptus square. pwa-assets-generator turns this into the PNG icons and favicon.
+// The app icon: the mark without the vehicles (they would be specks on a home screen), white pin and pale orbit
+// on a square in the app colour. pwa-assets-generator turns this into the PNG icons and favicon.
 out(
   'logo.svg',
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NextStop">

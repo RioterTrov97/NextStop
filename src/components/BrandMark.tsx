@@ -10,7 +10,7 @@ interface Props extends Omit<BoxProps, 'children'> {
   vehicles?: boolean
 }
 
-/** The NextStop mark, inline so it follows the colour mode: deep eucalyptus on light pages, pale sage on dark ones. */
+/** The NextStop mark, inline so it follows the colour mode: the deep accent on light pages, the pale one on dark ones. */
 export function BrandMark({ size, vehicles = false, ...rest }: Props) {
   const id = `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const body = useMemo(() => markBody({ pin: 'var(--ns-logo-pin)', ring: 'var(--ns-logo-ring)', vehicles, id }), [vehicles, id])
