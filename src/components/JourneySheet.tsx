@@ -348,8 +348,8 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
                         {showInfo && minor.map((a, i) => <AlertCard key={`m${i}`} {...toAlertProps(a)} />)}
                       </Stack>
                     )}
-                    {ahead.map((x) => renderLeg(x))}
                     {shown && <FareRow journey={shown} />}
+                    {ahead.map((x) => renderLeg(x))}
                     {previous.length > 0 && (
                       <Box>
                         <Box

@@ -1,27 +1,19 @@
 import { Box, Flex, Text } from '@chakra-ui/react'
-import { memo, useEffect, useState } from 'react'
+import { memo } from 'react'
 import { LuTicket } from 'react-icons/lu'
 import type { Journey } from '../api/types'
-import { estimateFare, FARE_TYPES, formatFare, loadFares, type FareData } from '../lib/fares'
+import { FARE_TYPES, formatFare } from '../lib/fares'
 import { isTransit } from '../lib/journey'
+import { useFare, useFareData } from '../lib/useFares'
 import { useSettings } from '../store/settings'
 
-/** The estimated Opal fare at the foot of trip details. */
+/** The estimated Opal fare near the top of trip details. */
 export const FareRow = memo(function FareRow({ journey }: { journey: Journey }) {
   const { fareType } = useSettings()
-  const [data, setData] = useState<FareData>()
-  useEffect(() => {
-    let live = true
-    loadFares()
-      .then((d) => live && setData(d))
-      .catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [])
+  const data = useFareData()
+  const fare = useFare(journey)
   // Walking only: there is nothing to pay.
   if (!data || !journey.legs.some(isTransit)) return null
-  const fare = estimateFare(data, journey, fareType)
   const label = FARE_TYPES.find((f) => f.key === fareType)!.label
   const details = fare
     ? [

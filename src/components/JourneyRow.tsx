@@ -4,7 +4,9 @@ import type { VehicleInfo } from '../../shared/vehicles'
 import type { Journey } from '../api/types'
 import { isTransit, journeyAlerts, setOff, summarize, trailingWalk, vehicleModeForLeg } from '../lib/journey'
 import { isCancelled } from '../lib/replan'
+import { formatFare } from '../lib/fares'
 import { countdown, formatDuration, formatTime } from '../lib/time'
+import { useFare } from '../lib/useFares'
 import { useSettings } from '../store/settings'
 import { DelayBadge } from './DelayBadge'
 import { LineBadge } from './LineBadge'
@@ -36,6 +38,8 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
   const railLeg = transit.find((l) => ['train', 'metro', 'bus', 'lightrail'].includes(vehicleModeForLeg(l) ?? ''))
   const tripId = railLeg?.transportation?.properties?.RealtimeTripId
   const tileSize = transit.length > 2 ? 'sm' : 'md'
+  // Departure-board entries have no arrival, so no fare either; details explain the estimate.
+  const fare = useFare(s.arrPlanned ? journey : undefined)
 
   return (
     <Box
@@ -57,7 +61,12 @@ export function JourneyRow({ journey, now, vehicles, title, onClick }: Props) {
           <StopPlatform point={origin} transportation={s.firstTransit?.transportation} />
         </HStack>
         {/* A departure-board entry has no arrival yet, so no duration either. */}
-        {s.arrPlanned && <Text flexShrink={0}>{formatDuration(s.durationSec)}</Text>}
+        {s.arrPlanned && (
+          <Text flexShrink={0} fontVariantNumeric="tabular-nums">
+            {formatDuration(s.durationSec)}
+            {fare && ` · ${formatFare(fare.cents)}`}
+          </Text>
+        )}
       </Flex>
 
       <Flex justify="space-between" align="center" gap={2} mt={1.5}>

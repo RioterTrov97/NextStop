@@ -88,7 +88,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 
 ## Product decisions (keep these)
 
-- **One card everywhere.** Search results, Home, and station departures use `JourneyRow`: three rows (station + platform | duration; times | countdown; line badges, delay, alert | occupancy). Departures pass `title="to …"` and omit arrival/duration. Don't add rows to the card.
+- **One card everywhere.** Search results, Home, and station departures use `JourneyRow`: three rows (station + platform | duration · fare; times | countdown; line badges, delay, alert | occupancy). Departures pass `title="to …"` and omit arrival/duration. Don't add rows to the card.
 - **Occupancy icon.** One indicator per card, right of the badge row, with a tiny caption: the status ("Plenty"), "· est." for forecasts, "· overall" for whole-train readings, "No data" when unknown (grey shape). Compact sizes are deliberate: train strip 82px, metro strip 67px, train body 74px, other bodies 58px, bus 48px, all 14px tall.
 - **Home upcoming rows** keep their layout, in fixed-width columns with 12px gaps so everything lines up across rows and cards: time (84px) with "arrives …" under it; all line badges with the boarding platform ("Platform 3", "Stand A2") as small grey text under them; the occupancy shape with caption (82px); the countdown with the status ("on time" green, "+2 min" red, small thin text, no background) directly under it (56px). Rows are separated by a thin inset divider. Don't drop elements to make it one line.
 - **Followed trip details**: rides still ahead come first (the next one at the top); finished rides fold into a collapsed "Previous stops" section, dimmed, with no occupancy or map. Other trips keep the planned order.
@@ -99,7 +99,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - **Weekend notice.** Thursday to Sunday, Home warns once per weekend about replacement buses on saved trips (first 6 trips, planned at the trip's usual time of day). Dismissal is per weekend.
 - **Station search** answers the first 3 matches from the bundled station list instantly, then merges stop finder results below a loader, grouped as Stations, Stops, and Addresses and places. The stop finder alone ranks badly for partial words ("chats" finds no station). Empty, it offers Current location, Home and Work, then recent stations. The departure board's search (`stopsOnly`) leaves out addresses.
 - **Trip details sheet** (`JourneySheet`) uses the Ark UI drawer: drag from anywhere (maps are `data-no-drag`), closes at a quarter of its height or a flick, stops a little below the page header so the header and its countdown stay visible. The sheet shows its own countdown only when the page header behind it has none.
-- **Opal fare** shows only in trip details (`FareRow`, after the rides), as an estimate for the fare type set in Settings; never on the cards.
+- **Opal fare** is an estimate for the fare type set in Settings: on the card after the duration in the top row ("37 min · $8.38"; nothing when unknown, and none on departure boards), and in trip details as a row above the rides (`FareRow`) that says what it includes. `useFare` shares one loaded copy of the fare bands and memoises per journey.
 - **Refresh button**: draining ring with seconds, spinning arc with three soft dots while refreshing, a brief tick when fresh data lands. Respects reduced motion.
 
 ## iPhone PWA specifics
