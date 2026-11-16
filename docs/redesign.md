@@ -5,7 +5,7 @@ behaviour is removed, and the layouts recorded in [AGENTS.md](../AGENTS.md) keep
 
 ## Decisions
 
-- **Primary colour: harbour blue** (from 16 November 2026; eucalyptus before, which read too muted for travel and looked flat behind glass). Derived from one seed, `PRIMARY` in `shared/brand.ts`. Originally: **eucalyptus.** `#3E6B5A` in light mode (white text, about 6:1), `#A8C5B5` in dark mode (dark text).
+- **Primary colour: the original orange** (default again from 16 November 2026, with eight other colours to choose in Settings; harbour blue and eucalyptus were tried as the default first). Derived from one seed, `PRIMARY` in `shared/brand.ts`. Originally: **eucalyptus.** `#3E6B5A` in light mode (white text, about 6:1), `#A8C5B5` in dark mode (dark text).
   Neutrals lean slightly sage. The scale is in `shared/brand.ts`. Red (NSW Government) was considered and rejected: red
   already means delays and cancellations, it is near T9 and light rail, and red and white suggests the app is official.
 - **Font:** Inter, unchanged.

@@ -1,17 +1,19 @@
 // Single source of truth for the app's colours. Theme, manifest, <meta theme-color>, the status bar strip, icon
 // backgrounds and the logo all derive from this.
 //
-// Every colour comes from one seed, PRIMARY: the accent scale, the neutrals (which lean towards its hue), the page,
-// panel and text colours, and the backdrop behind the glass. To change the app's colour, change PRIMARY and run
-// `npm run icons`. `makePalette` is pure and checked for contrast on many seeds in palette.test.ts, so a colour chosen
-// by the user at runtime can use it too.
+// Each app colour comes from one seed: makePalette derives the accent scale, the neutrals (which lean towards its hue),
+// the page, panel and text colours, and the backdrop behind the glass. The default, Original, is the app's first theme
+// kept exactly (ORIGINAL below). To change the default, put another accent first in ACCENTS, point `palette` at its
+// palette and run `npm run icons`. `makePalette` is pure and checked for contrast on many seeds in palette.test.ts.
 
-/** Harbour blue. */
-export const PRIMARY = '#1A86F0'
+/** The default colour's seed: the original orange. */
+export const PRIMARY = '#F97316'
 
-/** App colours people can choose in Settings; the first is the default (PRIMARY). */
+/** App colours people can choose in Settings; the first is the default. */
 export const ACCENTS = [
-  { key: 'harbour', label: 'Harbour', hex: PRIMARY },
+  // The app's first colour, orange on plain greys, kept exactly as it was (see ORIGINAL below).
+  { key: 'original', label: 'Original', hex: PRIMARY },
+  { key: 'harbour', label: 'Harbour', hex: '#1A86F0' },
   { key: 'bondi', label: 'Bondi', hex: '#00A6B0' },
   { key: 'eucalyptus', label: 'Eucalyptus', hex: '#3E8E6E' },
   { key: 'wattle', label: 'Wattle', hex: '#E0A100' },
@@ -19,8 +21,6 @@ export const ACCENTS = [
   { key: 'waratah', label: 'Waratah', hex: '#D6264A' },
   { key: 'jacaranda', label: 'Jacaranda', hex: '#7B4FE0' },
   { key: 'graphite', label: 'Graphite', hex: '#5F6B7A' },
-  // The app's first colour, orange on plain greys, kept exactly as it was (see ORIGINAL below).
-  { key: 'original', label: 'Original', hex: '#F97316' },
 ] as const
 
 export type AccentKey = (typeof ACCENTS)[number]['key']
@@ -183,9 +183,6 @@ export function makePalette(seed: string): Palette {
   return { brand, gray, page, panel, ink, darkSurface, backdrop }
 }
 
-export const palette = makePalette(PRIMARY)
-export const { brand, gray, page, panel, ink, darkSurface, backdrop } = palette
-
 /**
  * The app's first theme (October 2026): an orange scale on Chakra's plain greys, white and black pages, kept exactly
  * rather than derived from its seed, which darkens the orange to brown to reach 4.5:1. White on its light-mode
@@ -193,7 +190,7 @@ export const { brand, gray, page, panel, ink, darkSurface, backdrop } = palette
  * the glow behind the glass is generated.
  */
 export const ORIGINAL: Palette = {
-  ...makePalette('#F97316'),
+  ...makePalette(PRIMARY),
   brand: {
     50: '#FFF7ED', 100: '#FFEDD5', 200: '#FED7AA', 300: '#FDBA74', 400: '#FB923C', 500: '#F97316',
     600: '#EA6A12', 700: '#C2570C', 800: '#9A3F0C', 900: '#431407', 950: '#2A0C04',
@@ -209,6 +206,10 @@ export const ORIGINAL: Palette = {
 }
 
 export const FIXED_PALETTES: Partial<Record<string, Palette>> = { original: ORIGINAL }
+
+/** The default palette (Original), which the theme, manifest, status bar and icons are built from. */
+export const palette = ORIGINAL
+export const { brand, gray, page, panel, ink, darkSurface, backdrop } = palette
 
 // The manifest takes one colour; the app replaces it at runtime with the page colour of the current theme.
 export const themeColor = page.light

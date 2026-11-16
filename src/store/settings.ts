@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fareType: 'adult',
   reduceTransparency: false,
   tintByLine: true,
-  accent: 'harbour',
+  accent: 'original',
 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
 export const START_WALK_OPTIONS = [5, 10, 15, 20, 30]
