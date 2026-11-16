@@ -21,10 +21,11 @@ export function BrandMark({ size, vehicles = false, ...rest }: Props) {
       w={`${size}px`}
       h={`${size}px`}
       css={{
-        // The theme's variables, so the mark follows the app colour chosen in Settings.
-        '--ns-logo-pin': 'var(--chakra-colors-brand-600)',
+        // The theme's variables, so the mark follows the app colour chosen in Settings. The pin is the primary accent
+        // (the same colour as solid buttons) in both modes; the ring is dark on light pages and pale on dark ones.
+        '--ns-logo-pin': 'var(--chakra-colors-brand-solid)',
         '--ns-logo-ring': 'var(--chakra-colors-brand-800)',
-        '.dark &': { '--ns-logo-pin': 'var(--chakra-colors-brand-400)', '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
+        '.dark &': { '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
       }}
       {...rest}
     >
