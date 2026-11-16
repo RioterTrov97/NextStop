@@ -26,12 +26,10 @@
       <path d="M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z" fill="#000"/>
     </mask>
   </defs>
-  <g mask="url(#icon-back)">
-    <path d="M15 120A105 34 0 0 1 225 120" transform="rotate(-18 120 120)" fill="none" stroke="#FED7AA" stroke-width="4.5" stroke-linecap="round"/>
-  </g>
+  <path d="M15 120A105 34 0 0 1 225 120" transform="rotate(-18 120 120)" fill="none" stroke="#FED7AA" stroke-width="4.5" stroke-linecap="round" mask="url(#icon-back)"/>
   <path d="M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z" fill="#fff" mask="url(#icon-pin)"/>
+  <path d="M225 120A105 34 0 0 1 15 120" transform="rotate(-18 120 120)" fill="none" stroke="#FED7AA" stroke-width="4.5" stroke-linecap="round"/>
   <g transform="rotate(-18 120 120)">
-    <path d="M225 120A105 34 0 0 1 15 120" fill="none" stroke="#FED7AA" stroke-width="4.5" stroke-linecap="round"/>
     
   </g>
   </g>
