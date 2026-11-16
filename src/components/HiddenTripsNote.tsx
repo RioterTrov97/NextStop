@@ -6,8 +6,21 @@ import { LuChevronDown, LuEyeOff } from 'react-icons/lu'
  * One small line saying how many trips the walking and change settings hide, which opens to explain each reason. The
  * full explanations took several lines above the results on every search.
  */
-export function HiddenTripsNote({ reasons }: { reasons: { count: number; text: string }[] }) {
-  const [open, setOpen] = useState(false)
+export function HiddenTripsNote({
+  reasons,
+  allHidden = false,
+}: {
+  reasons: { count: number; text: string }[]
+  /** Every trip found is hidden: open with the reasons, since they are the whole answer. */
+  allHidden?: boolean
+}) {
+  const [open, setOpen] = useState(allHidden)
+  // Opens itself when the list turns out to be all hidden (the count settles after the extra searches land).
+  const [wasAll, setWasAll] = useState(allHidden)
+  if (allHidden !== wasAll) {
+    setWasAll(allHidden)
+    if (allHidden) setOpen(true)
+  }
   const shown = reasons.filter((r) => r.count > 0)
   const total = shown.reduce((n, r) => n + r.count, 0)
   if (total === 0) return null

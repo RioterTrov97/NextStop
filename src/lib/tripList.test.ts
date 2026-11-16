@@ -189,6 +189,11 @@ describe('walksAtPace', () => {
     expect(leadingWalk(normal)?.durationSec).toBe(1325)
   })
 
+  it('shortens a normal-pace answer for a fast walker', () => {
+    const normal = walksAtPace(fast, 'normal')
+    expect(transfers(walksAtPace(normal, 'fast', 'normal'))[0].walkSec).toBe(60)
+  })
+
   it('leaves fast trips alone at the fast pace', () => {
     expect(walksAtPace(fast, 'fast')).toBe(fast)
   })

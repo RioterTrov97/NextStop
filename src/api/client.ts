@@ -180,14 +180,16 @@ export async function fetchTripsVia(
   const split = (hub: HubOption) => fetchTripsSplit(q, hub, minTransferMin, signal).catch(() => [] as Journey[])
   // From or to an address, the planner leaves out stops it thinks too far to walk to at the user's pace, and its normal
   // pace is slow (1.84km took it about 28 min): from 120A Bombay St, Lidcombe it offered only buses, never the train
-  // from Lidcombe Station 18 minutes away. Asking at the fast pace finds those; the walks are then stretched back to the
-  // user's pace, so the walk limits and change checks still hold.
+  // from Lidcombe Station 18 minutes away. At the fast pace it does the opposite and drops the bus stops round the corner
+  // for that station. So address searches also ask at the other pace (fast, or normal for fast walkers); its walks are
+  // then put back at the user's pace, so the walk limits and change checks still hold.
   const pace = q.walkPace ?? 'normal'
+  const other = pace === 'fast' ? 'normal' : 'fast'
   const wider =
-    pace !== 'fast' && (isAddressId(resolvePlaceId(q.from)) || isAddressId(resolvePlaceId(q.to)))
+    isAddressId(resolvePlaceId(q.from)) || isAddressId(resolvePlaceId(q.to))
       ? [
-          planTrip({ ...q, walkPace: 'fast' }, {}, signal).then(
-            (js) => js.map((j) => walksAtPace(j, pace)),
+          planTrip({ ...q, walkPace: other }, {}, signal).then(
+            (js) => js.map((j) => walksAtPace(j, pace, other)),
             () => [] as Journey[],
           ),
         ]

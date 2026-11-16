@@ -92,11 +92,11 @@ const PLANNER_WALK_FACTOR: Record<WalkPace, number> = { fast: 1, normal: 1.8, sl
 const shiftIso = (iso: string | undefined, sec: number) => (iso ? new Date(Date.parse(iso) + sec * 1000).toISOString() : iso)
 
 /**
- * A journey the planner worked out at the fast pace, with its walks stretched to `pace`: street walks, in-station
- * footpaths (which decide whether a change fits), and the times at the two ends. The rides keep their times.
+ * A journey the planner worked out at pace `from`, with its walks stretched (or shortened) to `to`: street walks,
+ * in-station footpaths (which decide whether a change fits), and the times at the two ends. The rides keep their times.
  */
-export function walksAtPace(j: Journey, pace: WalkPace): Journey {
-  const factor = PLANNER_WALK_FACTOR[pace]
+export function walksAtPace(j: Journey, to: WalkPace, from: WalkPace = 'fast'): Journey {
+  const factor = PLANNER_WALK_FACTOR[to] / PLANNER_WALK_FACTOR[from]
   if (factor === 1) return j
   const first = j.legs.findIndex(isTransit)
   const last = j.legs.length - 1 - [...j.legs].reverse().findIndex(isTransit)
@@ -231,7 +231,9 @@ export function summarize(j: Journey, pace: WalkPace = 'normal'): JourneySummary
   // Door-to-door time, so waits between legs count (summing leg durations would hide them).
   const rideDep = dep.departureTimeEstimated ?? dep.departureTimePlanned
   const start =
-    lead && rideDep ? Date.parse(rideDep) - lead.durationSec * 1000 : Date.parse(j.legs[0].origin.departureTimeEstimated ?? j.legs[0].origin.departureTimePlanned ?? '')
+    lead && rideDep
+      ? Date.parse(rideDep) - lead.durationSec * 1000
+      : Date.parse(j.legs[0].origin.departureTimeEstimated ?? j.legs[0].origin.departureTimePlanned ?? '')
   const end = Date.parse(arrEstimated ?? arrPlanned ?? '')
   const elapsed = Number.isFinite(start) && Number.isFinite(end) ? (end - start) / 1000 : 0
   return {

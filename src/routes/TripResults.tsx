@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestFresh } from '../api/client'
 import { refreshRealtime } from '../api/realtime'
-import { LuArrowLeftRight, LuTrainFront } from 'react-icons/lu'
+import { LuArrowLeftRight, LuEyeOff, LuTrainFront } from 'react-icons/lu'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { Journey } from '../api/types'
 import { useJourneyVehicles, useRunningForecasts, useTrips, useTripsMany } from '../api/hooks'
@@ -161,7 +161,9 @@ export default function TripResults() {
   const selectedJourney = selectedKey === undefined ? undefined : everything.find((j) => tripKey(j) === selectedKey)
 
   // A short list means the planner has no further trips; a growing request keeps the button while loading.
-  const canLoadMore = !!data && visible.length > 0 && (isPlaceholderData || data.length >= count)
+  // With every trip hidden by the user's limits, later ones may still fit, so the button stays.
+  const hiddenCount = hiddenByStartWalk + hiddenByWalk + hiddenByTransfer
+  const canLoadMore = !!data && (visible.length > 0 || hiddenCount > 0) && (isPlaceholderData || data.length >= count)
 
   // Cached trips may all be in the past; wait for the refetch instead of flashing "No trips found".
   const settling = !!data && visible.length === 0 && isFetching
@@ -237,6 +239,7 @@ export default function TripResults() {
           endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
         />
         <HiddenTripsNote
+          allHidden={!!data && visible.length === 0 && !settling}
           reasons={[
             {
               count: hiddenByStartWalk,
@@ -262,7 +265,13 @@ export default function TripResults() {
             </Button>
           </Stack>
         )}
-        {data && visible.length === 0 && !settling && (
+        {data && visible.length === 0 && !settling && hiddenCount > 0 && (
+          <EmptyState icon={LuEyeOff} title="All trips hidden">
+            {hiddenCount === 1 ? 'The trip found breaks' : `All ${hiddenCount} trips found break`} your walking or change limits, as
+            explained above. Change them with the footprints icon or in Settings, or try later trips.
+          </EmptyState>
+        )}
+        {data && visible.length === 0 && !settling && hiddenCount === 0 && (
           <EmptyState
             icon={LuTrainFront}
             title="No trips found"
