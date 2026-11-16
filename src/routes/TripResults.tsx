@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestFresh } from '../api/client'
@@ -17,7 +17,6 @@ import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { SaveTripChip } from '../components/SaveTrip'
 import { useNow } from '../lib/hooks'
-import { usePullDown } from '../lib/usePullDown'
 import { summarize, tripList } from '../lib/journey'
 import { exclusionParams } from '../lib/lines'
 import { tripPath } from '../lib/paths'
@@ -37,8 +36,6 @@ const LATER_SPAN_MS = 60 * 60_000
 const loadedLater = new Map<string, number[]>()
 const depMs = (j: Journey) => Date.parse(summarize(j).depEstimated ?? summarize(j).depPlanned ?? '')
 const PAST_SPAN_MS = 60 * 60_000 // each pull of earlier trips reaches an hour further back
-// Phones pull down; devices without touch get a button instead.
-const canTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
 /** The last ride has arrived, so there is nothing left to follow. */
 const ended = (j: Journey, now: number) => {
@@ -78,7 +75,7 @@ export default function TripResults() {
     setLaterStartsState(next)
   }
 
-  // Earlier trips: loaded only when asked for (pull down or button), shown above the live list.
+  // Earlier trips: loaded when the user scrolls back up to the top of the list (or taps the button), shown above the live list.
   // Each pull reaches another hour further back.
   const [pastBase, setPastBase] = useState<number>()
   // Hours pulled so far; the hour being pulled is [lo, hi), and searches (starts) follow each other until it is covered.
@@ -104,7 +101,15 @@ export default function TripResults() {
     setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
-  const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({ enabled: pastEnabled && selectedKey === undefined, onRelease: revealPast })
+  // Earlier trips load by themselves, like later ones: once the user has scrolled down and comes back up to the top of
+  // the list, the next hour above loads and the list stays put (a new page does not load them until then).
+  const [pastArmed, setPastArmed] = useState(false)
+  useEffect(() => {
+    const onScroll = () => window.scrollY > 300 && setPastArmed(true)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  const pastTop = useRef<HTMLDivElement>(null)
 
   // Changing the route (swap, new modes) refetches live data now, even when a cached copy is still fresh.
   const qc = useQueryClient()
@@ -162,6 +167,14 @@ export default function TripResults() {
   const nextPastStart = inWindow.length ? Math.floor(Math.max(...inWindow) / 60_000) * 60_000 + 60_000 : undefined
   const pastMore = !!pastWin && nextPastStart !== undefined && nextPastStart < pastWin.hi - 60_000 && !pastStarts.includes(nextPastStart)
   const pastBusy = earlier.isFetching || pastMore
+  const pastReady = pastEnabled && pastArmed && !!data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && selectedKey === undefined
+  useEffect(() => {
+    if (!pastReady || !pastTop.current || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && revealPast(), { rootMargin: '150px' })
+    io.observe(pastTop.current)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastReady, pastChunks])
   useEffect(() => {
     if (!earlier.isFetching && pastMore) setPastStarts((st) => [...st, nextPastStart!])
   }, [earlier.isFetching, pastMore, nextPastStart])
@@ -281,60 +294,35 @@ export default function TripResults() {
             <SaveTripChip route={{ fromId: from, fromName, toId: to, toName, modes }} onHeader removable />
           </>
         }
-      />
-      <PageBody ref={pullRef} position="relative">
-        <Flex
-          ref={pullLabelRef}
-          position="absolute"
-          left={0}
-          right={0}
-          top="-40px"
-          h="40px"
-          align="flex-end"
-          justify="center"
-          pb={2}
-          opacity={0}
-          pointerEvents="none"
-          fontSize="xs"
-          color="fg.muted"
-          aria-hidden
-        >
-          {pastChunks >= MAX_PAST_CHUNKS ? (
-            'No more earlier trips'
-          ) : (
-            <>
-              <Text as="span" css={{ '[data-armed=true] > &': { display: 'none' } }}>
-                Pull down for earlier trips
-              </Text>
-              <Text as="span" display="none" css={{ '[data-armed=true] > &': { display: 'inline' } }}>
-                Release to load earlier trips
-              </Text>
-            </>
-          )}
-        </Flex>
-        <ModePicker
-          value={modes}
-          onChange={changeModes}
-          size="xs"
-          endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
-        />
-        <HiddenTripsNote
-          allHidden={!!data && visible.length === 0 && !settling}
-          reasons={[
-            {
-              count: hiddenByStartWalk,
-              text: `${hiddenByStartWalk === 1 ? 'One has' : `${hiddenByStartWalk} have`} a walk to the first stop over ${maxStartWalk} min. Change this in Settings under "Walking to the first stop".`,
-            },
-            {
-              count: hiddenByWalk,
-              text: `${hiddenByWalk === 1 ? 'One ends' : `${hiddenByWalk} end`} ${maxEndWalk === 0 ? 'with a walk' : `with a walk over ${maxEndWalk} min`}. Tap the footprints icon to allow longer walks.`,
-            },
-            {
-              count: hiddenByTransfer,
-              text: `${hiddenByTransfer === 1 ? 'One has a change' : `${hiddenByTransfer} have a change`} under ${minTransfer} min, or too little time to walk to the next platform. Tap the footprints icon to allow tighter changes.`,
-            },
-          ]}
-        />
+      >
+        {/* Sticky with the header, so the transport choice and the hidden-trips note stay in view while only the trips scroll. */}
+        <Stack gap={1} mt={2}>
+          <ModePicker
+            value={modes}
+            onChange={changeModes}
+            size="xs"
+            endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
+          />
+          <HiddenTripsNote
+            allHidden={!!data && visible.length === 0 && !settling}
+            reasons={[
+              {
+                count: hiddenByStartWalk,
+                text: `${hiddenByStartWalk === 1 ? 'One has' : `${hiddenByStartWalk} have`} a walk to the first stop over ${maxStartWalk} min. Change this in Settings under "Walking to the first stop".`,
+              },
+              {
+                count: hiddenByWalk,
+                text: `${hiddenByWalk === 1 ? 'One ends' : `${hiddenByWalk} end`} ${maxEndWalk === 0 ? 'with a walk' : `with a walk over ${maxEndWalk} min`}. Tap the footprints icon to allow longer walks.`,
+              },
+              {
+                count: hiddenByTransfer,
+                text: `${hiddenByTransfer === 1 ? 'One has a change' : `${hiddenByTransfer} have a change`} under ${minTransfer} min, or too little time to walk to the next platform. Tap the footprints icon to allow tighter changes.`,
+              },
+            ]}
+          />
+        </Stack>
+      </PageHeader>
+      <PageBody position="relative">
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
         {(isLoading || settling) && [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
@@ -365,7 +353,8 @@ export default function TripResults() {
             swap direction.
           </EmptyState>
         )}
-        {pastEnabled && !canTouch && data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && (
+        <div ref={pastTop} aria-hidden />
+        {pastEnabled && data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && (
           <Button variant="subtle" size="sm" borderRadius="xl" alignSelf="center" onClick={revealPast}>
             {pastChunks === 0 ? 'Show earlier trips' : 'Show even earlier trips'}
           </Button>
@@ -374,7 +363,7 @@ export default function TripResults() {
           // As tall as the "Show earlier trips" button it replaces, so the list doesn't shift up at the top of the page.
           <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
             <Spinner size="xs" />
-            <Text>Pulling older trips…</Text>
+            <Text>Loading earlier trips…</Text>
           </HStack>
         )}
         {pastFrom && !pastBusy && past.length === 0 && (

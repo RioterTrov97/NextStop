@@ -51,7 +51,7 @@ and following the header (eucalyptus page, and a line-tinted station board), gla
   walking settings, Leave now / Depart at / Arrive by with time, Show trips.
 - **Trip results:** back, refresh button (draining ring, spinner, tick), swap direction, save chip, mode picker, walking
   settings, hidden-trips notice, cards (station and platform, duration and fare, times, countdown or leave-in, badges,
-  delay, alert, occupancy), earlier trips on pull-down or button, later trips.
+  delay, alert, occupancy), earlier trips loaded automatically on scrolling back up (or by button), later trips.
 - **Trip details sheet:** drag, flick to close, header countdown rule, follow / unfollow, replan banner, alerts, fare
   breakdown, rides ahead first and "Previous stops" folded, platforms, stops, walks, long-change warning, occupancy and
   carriage strip, live map (with full screen), save.
