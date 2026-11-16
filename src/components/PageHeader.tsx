@@ -43,19 +43,6 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
         // While a sheet or dialog is open: the header's colour as seen through the backdrop, drawn above it, so iOS
         // (which samples this bar for the status bar) dims the status bar too. Taps fall through to the backdrop.
         css={{
-          // Once the page has scrolled under it, the header ends in a short fade, so trips don't look sliced off by its edge.
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: '100%',
-            height: '14px',
-            background: 'linear-gradient(var(--ns-header-bg), transparent)',
-            opacity: scrolled ? 1 : 0,
-            transition: 'opacity 0.2s',
-            pointerEvents: 'none',
-          },
           'html[data-overlay] &': {
             bg: 'var(--ns-header-dim)',
             // Above every backdrop, sheet (1400) and centred dialog (1500); none of them reach up into the header.
