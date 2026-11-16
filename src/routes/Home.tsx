@@ -1,4 +1,4 @@
-import { Box, Button, CloseButton, Dialog, Flex, HStack, IconButton, Portal, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, CloseButton, Dialog, Flex, HStack, IconButton, Popover, Portal, Skeleton, Stack, Text } from '@chakra-ui/react'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -18,6 +18,7 @@ import {
   LuTrash2,
   LuEllipsisVertical,
   LuSearch,
+  LuInfo,
 } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
@@ -484,11 +485,60 @@ function SortableTrip({ trip, now, compact, sortable }: { trip: SavedTrip; now: 
 }
 
 /** A section's title: small grey capitals, like iOS grouped lists, so it reads as a label under the page title. */
-function SectionLabel({ children, color = 'fg.muted' }: { children: ReactNode; color?: string }) {
+function SectionLabel({ children, color = 'fg.muted', info }: { children: ReactNode; color?: string; info?: ReactNode }) {
   return (
-    <Text as="h2" fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color={color} px={1}>
+    <Flex align="center" gap={1} px={1} minH="24px">
+      <Text as="h2" fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color={color}>
+        {children}
+      </Text>
+      {info}
+    </Flex>
+  )
+}
+
+/**
+ * A section of the page: its label 8px above its content. Sections sit 24px apart (the page's gap), so a label
+ * clearly belongs to what is under it rather than to what is above.
+ */
+function Section({ label, info, children }: { label: string; info?: ReactNode; children: ReactNode }) {
+  return (
+    <Stack gap={2}>
+      <SectionLabel info={info}>{label}</SectionLabel>
       {children}
-    </Text>
+    </Stack>
+  )
+}
+
+/** How to use the saved trips list, behind an info icon next to its label, like the occupancy explanation. */
+function SavedTripsHelp({ sortable }: { sortable: boolean }) {
+  const tips = [
+    'Tap a trip for live times and details.',
+    ...(sortable ? ['Drag the handle to change the order.'] : []),
+    'Swipe a trip sideways to remove it.',
+  ]
+  return (
+    <Popover.Root positioning={{ placement: 'bottom-start' }} lazyMount>
+      <Popover.Trigger asChild>
+        <IconButton aria-label="How to use saved trips" variant="ghost" size="2xs" color="fg.muted" borderRadius="full">
+          <LuInfo />
+        </IconButton>
+      </Popover.Trigger>
+      <Portal>
+        <Popover.Positioner>
+          <Popover.Content borderRadius="xl" maxW="280px">
+            <Popover.Body p={3}>
+              <Stack as="ul" gap={1.5} fontSize="sm" listStyleType="none">
+                {tips.map((t) => (
+                  <Text as="li" key={t}>
+                    {t}
+                  </Text>
+                ))}
+              </Stack>
+            </Popover.Body>
+          </Popover.Content>
+        </Popover.Positioner>
+      </Portal>
+    </Popover.Root>
   )
 }
 
@@ -512,10 +562,9 @@ function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) 
   if (items.length === 0) return null
 
   return (
-    // A separate section, 24px below the one above (the list gap plus this margin). Its rows share one card, like an
-    // iOS grouped list, rather than a stack of bordered pills that competed with the saved trip cards.
-    <Stack gap={3} mt={3}>
-      <SectionLabel>Previous trips</SectionLabel>
+    // Its rows share one card, like an iOS grouped list, rather than a stack of bordered pills that competed with the
+    // saved trip cards.
+    <Section label="Previous trips">
       <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" shadow="xs" overflow="hidden">
         {items.map((e, i) => (
           <Box key={routeKey(e)} borderTopWidth={i > 0 ? '1px' : 0} borderColor="border.muted">
@@ -538,7 +587,7 @@ function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) 
           </Box>
         ))}
       </Box>
-    </Stack>
+    </Section>
   )
 }
 
@@ -593,12 +642,13 @@ export function Home() {
           style={{ background: `linear-gradient(180deg, ${glow} 0%, transparent 100%)` }}
         />
       )}
-      <PageBody position="relative">
+      {/* Sections 24px apart; each label sits 8px above its own content (Section). */}
+      <PageBody gap={6} position="relative">
         {current && <CurrentTripCard trip={current} now={now} />}
         <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
           <>
-            <Box borderWidth="2px" borderStyle="dashed" borderRadius="2xl" mt={2}>
+            <Box borderWidth="2px" borderStyle="dashed" borderRadius="2xl">
               <EmptyState
                 icon={LuBookmarkPlus}
                 title="No saved trips yet"
@@ -635,53 +685,41 @@ export function Home() {
           </>
         ) : (
           <>
-            <SectionLabel>Saved trips</SectionLabel>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              {active.length > 0 && (
-                <>
-                  <Flex align="center" gap={2} px={1} color="brand.fg">
-                    <Box boxSize="8px" borderRadius="full" bg="brand.solid" aria-hidden />
-                    <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider">
-                      Active now
-                    </Text>
-                  </Flex>
-                  <SortableContext items={active.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                    {active.map((t) => (
-                      <SortableTrip key={t.id} trip={t} now={now} compact={false} sortable={trips.length > 1} />
+            <Section label="Saved trips" info={<SavedTripsHelp sortable={trips.length > 1} />}>
+              <Stack gap={3}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  {active.length > 0 && (
+                    <>
+                      <Flex align="center" gap={2} px={1} color="brand.fg">
+                        <Box boxSize="8px" borderRadius="full" bg="brand.solid" aria-hidden />
+                        <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider">
+                          Active now
+                        </Text>
+                      </Flex>
+                      <SortableContext items={active.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                        {active.map((t) => (
+                          <SortableTrip key={t.id} trip={t} now={now} compact={false} sortable={trips.length > 1} />
+                        ))}
+                      </SortableContext>
+                      <Box mt={3}>
+                        <SectionLabel>Other trips</SectionLabel>
+                      </Box>
+                    </>
+                  )}
+                  <SortableContext items={rest.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                    {rest.map((t, i) => (
+                      <SortableTrip
+                        key={t.id}
+                        trip={t}
+                        now={now}
+                        compact={!!current || active.length > 0 || i >= expandUpTo}
+                        sortable={trips.length > 1}
+                      />
                     ))}
                   </SortableContext>
-                  <Box mt={2}>
-                    <SectionLabel>Other trips</SectionLabel>
-                  </Box>
-                </>
-              )}
-              <SortableContext items={rest.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                {rest.map((t, i) => (
-                  <SortableTrip
-                    key={t.id}
-                    trip={t}
-                    now={now}
-                    compact={!!current || active.length > 0 || i >= expandUpTo}
-                    sortable={trips.length > 1}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-            {/* How to use the list, as a quiet footnote under it rather than a second line in the heading. Wraps only
-                between phrases, so a small phone never strands a single word on its own line. */}
-            <Text fontSize="xs" color="fg.subtle" px={1} mt={-1}>
-              {(trips.length > 1
-                ? ['Tap for live times', 'drag to sort', 'swipe to remove']
-                : ['Tap for live times', 'swipe to remove']
-              ).map((phrase, i, all) => (
-                <Fragment key={phrase}>
-                  <Box as="span" whiteSpace="nowrap">
-                    {phrase}
-                    {i < all.length - 1 && ' ·'}
-                  </Box>{' '}
-                </Fragment>
-              ))}
-            </Text>
+                </DndContext>
+              </Stack>
+            </Section>
             {trips.length === 1 && <PreviousTrips limit={3} saved={trips} />}
           </>
         )}
