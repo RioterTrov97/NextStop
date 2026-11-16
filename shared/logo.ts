@@ -1,7 +1,7 @@
 // The NextStop mark, drawn once and used by the icon generator (scripts/generate-logo.ts) and the in-app BrandMark.
 //
 // A location pin with a train front cut into it, circled by a tilted orbit. The orbit passes behind the pin at the top
-// and in front of it at the bottom, with a gap cut into the pin where it crosses, and carries a bus and a light rail
+// and in front of it at the bottom, with a gap cut into the pin where it crosses, and carries a ferry and a light rail
 // tram riding on it. Everything is cut with masks rather than painted in a background colour, so the mark sits on any
 // background. Coordinates are in a 240 x 240 box.
 
@@ -18,7 +18,9 @@ export interface MarkOptions extends MarkColours {
    * the background. Its windows and lights still show the pin.
    */
   train?: string
-  /** Draw the bus and tram on the orbit (the full logo); off for small sizes such as the app icon. */
+  /** A thin edge around the ring and vehicles, so a white ring still shows on a white page. */
+  edge?: string
+  /** Draw the ferry and tram on the orbit (the full logo); off for small sizes such as the app icon. */
   vehicles?: boolean
   /** Prefix for mask ids, unique per mark on a page. */
   id?: string
@@ -126,38 +128,55 @@ function wheel(t0: number, at: Pt, r: number): string {
   return circle(r) + circle(r * 0.38)
 }
 
-// Vehicles are drawn flat, facing the direction of travel (+u), then bent onto the orbit. Wheels clear the line by a
-// hair. Windows are cut out with the even-odd rule, so the mark works on any background.
+// Vehicles are drawn flat, facing the direction of travel (+u), then shrunk towards the line and bent onto the orbit.
+// They sit on top of the line. Windows are cut out with the even-odd rule, so the mark works on any background.
 
-/** A low-floor city bus: sloped windscreen, three side windows and a front door, wheels in arches. */
-function bus(t0: number, fill: string): string {
-  const axle = LINE / 2 + 0.2 + 3.2
-  const skirt = 4.6
-  const body: Pt[] = [
-    [-20, skirt],
-    ...archOver(-11, axle, 4.2, skirt),
-    ...archOver(11, axle, 4.2, skirt),
-    [19.6, skirt],
-    ...arc(19.6, skirt + 1, 1, -Math.PI / 2, 0, 3),
-    [20.8, 12.5],
-    ...arc(17, 16, 3.8, 0.1, Math.PI / 2, 8),
-    ...arc(-17.6, 17.4, 2.4, Math.PI / 2, Math.PI, 4),
-    [-20, skirt + 0.6],
+/** How far above the line's centre a vehicle's underside sits: just clear of the line. */
+const BASE = LINE / 2 + 0.2
+
+/** Vehicles are drawn at this fraction of their designed size: small passengers on the ring, not the subject. */
+const VEHICLE_SCALE = 0.6
+
+/** A point of a vehicle shrunk towards the line it rides on. */
+const shrink = ([u, h]: Pt): Pt => [u * VEHICLE_SCALE, BASE + (h - BASE) * VEHICLE_SCALE]
+
+/** Path attributes for a vehicle: filled, with an optional thin edge drawn under the fill. */
+const paint = (fill: string, edge?: string) =>
+  `fill="${fill}"${edge ? ` stroke="${edge}" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke"` : ''}`
+
+/** A Sydney ferry: a hull floating on the line with a raised bow, a cabin with a row of windows and a wheelhouse. */
+function ferry(t0: number, fill: string, edge?: string): string {
+  const b = BASE
+  const outline: Pt[] = [
+    [-14, b],
+    [12, b],
+    [17, b + 5],
+    [9, b + 5],
+    [9, b + 10],
+    [4, b + 10],
+    [4, b + 13.5],
+    [-3, b + 13.5],
+    [-3, b + 10],
+    [-12, b + 10],
+    [-12, b + 5],
+    [-16.5, b + 5],
+    [-16.5, b + 3],
   ]
-  const holes = [
-    box(-17.6, 11.2, -11.2, 17, 1),
-    box(-9.8, 11.2, -3.4, 17, 1),
-    box(-2, 11.2, 4.6, 17, 1),
-    box(6.6, 6.6, 11, 17, 0.8),
-    [[12.6, 11.2], [19.2, 11.2], [18.8, 14.8], [17, 17.3], [12.6, 17.3]] as Pt[],
+  const holes: Pt[][] = [
+    box(-10.4, b + 6.4, -6.6, b + 8.8, 0.6),
+    box(-5.2, b + 6.4, -1.4, b + 8.8, 0.6),
+    box(0, b + 6.4, 3.8, b + 8.8, 0.6),
+    box(5.2, b + 6.4, 7.8, b + 8.8, 0.6),
+    box(-1.6, b + 10.9, 2.6, b + 12.5, 0.4),
   ]
-  return `<path fill="${fill}" fill-rule="evenodd" d="${[body, ...holes].map((p) => shape(t0, p)).join('')}"/>
-    <path fill="${fill}" fill-rule="evenodd" d="${wheel(t0, [-11, axle], 3.2)}${wheel(t0, [11, axle], 3.2)}"/>`
+  // Drawn small; a third larger matches the tram's size on the ring.
+  const grow = ([u, h]: Pt): Pt => [u * 1.35, b + (h - b) * 1.35]
+  return `<path ${paint(fill, edge)} fill-rule="evenodd" d="${[outline, ...holes].map((p) => shape(t0, p.map((q) => shrink(grow(q))))).join('')}"/>`
 }
 
 /** A light rail tram: long low body with sloped noses, an articulation joint, a window band and a pantograph. */
-function tram(t0: number, fill: string): string {
-  const axle = LINE / 2 + 0.2 + 2.4
+function tram(t0: number, fill: string, edge?: string): string {
+  const axle = BASE + 2.4
   const skirt = 3.8
   const body: Pt[] = [
     [-22.6, skirt],
@@ -190,17 +209,19 @@ function tram(t0: number, fill: string): string {
     [[-2.4, 19.4], [-0.6, 19.4], [3.6, 24], [1.8, 24]],
     box(-0.4, 23.2, 6.4, 24.8, 0.8),
   ]
-  // Drawn at full length, then shortened to fit the tighter curve on the right of the orbit.
-  const k = 0.8
-  const fit = (p: Pt[]) => shape(t0, p.map(([u, h]) => [u * k, h] as Pt))
-  return `<path fill="${fill}" fill-rule="evenodd" d="${[body, ...holes].map(fit).join('')}"/>
-    <path fill="${fill}" d="${pantograph.map(fit).join('')}"/>
-    <path fill="${fill}" fill-rule="evenodd" d="${wheel(t0, [-15 * k, axle], 2.4)}${wheel(t0, [15 * k, axle], 2.4)}"/>`
+  const fit = (p: Pt[]) => shape(t0, p.map(shrink))
+  const wheels = [-15, 15].map((u) => wheel(t0, shrink([u, axle]), 2.4 * VEHICLE_SCALE)).join('')
+  return `<path ${paint(fill, edge)} fill-rule="evenodd" d="${[body, ...holes].map(fit).join('')}"/>
+    <path ${paint(fill, edge)} d="${pantograph.map(fit).join('')}"/>
+    <path ${paint(fill, edge)} fill-rule="evenodd" d="${wheels}"/>`
 }
 
 /** The mark's SVG elements (no <svg> wrapper), for embedding. */
-export function markBody({ pin, ring, train, vehicles = true, id = 'ns' }: MarkOptions): string {
-  const ride = vehicles ? `${bus(0.75 * Math.PI, ring)}${tram(0.2 * Math.PI, ring)}` : ''
+export function markBody({ pin, ring, train, edge, vehicles = true, id = 'ns' }: MarkOptions): string {
+  const ride = vehicles ? `${ferry(0.75 * Math.PI, ring, edge)}${tram(0.2 * Math.PI, ring, edge)}` : ''
+  // A ring the colour of the page (white) needs an edge to show off the pin: the same line drawn wider underneath.
+  const under = (d: string, extra = '') =>
+    edge ? `<path d="${d}" fill="none" stroke="${edge}" stroke-width="${LINE + 2.4}" stroke-linecap="round"${extra}/>` : ''
   return `<defs>
     <mask id="${id}-pin" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
       <path d="${PIN}" fill="#fff"/>
@@ -220,7 +241,9 @@ export function markBody({ pin, ring, train, vehicles = true, id = 'ns' }: MarkO
       <path d="${PIN}" fill="#000"/>
     </mask>
   </defs>
-  <path d="${BACK}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round" mask="url(#${id}-back)"/>
+  <g mask="url(#${id}-back)">${under(BACK, ` transform="${TILT}"`)}
+    <path d="${BACK}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round"/>
+  </g>
   <path d="${PIN}" fill="${pin}" mask="url(#${id}-pin)"/>${
     train
       ? `
@@ -230,7 +253,7 @@ export function markBody({ pin, ring, train, vehicles = true, id = 'ns' }: MarkO
   </g>`
       : ''
   }
-  <g transform="${TILT}">
+  <g transform="${TILT}">${under(FRONT)}
     <path d="${FRONT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round"/>
     ${ride}
   </g>`

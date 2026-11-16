@@ -12,7 +12,7 @@ interface Props extends Omit<BoxProps, 'children'> {
 /** The NextStop mark, inline so it follows the app colour: the same in light and dark mode. */
 export function BrandMark({ size, vehicles = false, ...rest }: Props) {
   const id = `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  const body = useMemo(() => markBody({ pin: 'var(--ns-logo-pin)', ring: 'var(--ns-logo-pin)', train: '#fff', vehicles, id }), [vehicles, id])
+  const body = useMemo(() => markBody({ pin: 'var(--ns-logo-pin)', ring: '#fff', train: '#fff', edge: 'var(--ns-logo-pin)', vehicles, id }), [vehicles, id])
   return (
     <Box
       as="span"
@@ -21,8 +21,9 @@ export function BrandMark({ size, vehicles = false, ...rest }: Props) {
       w={`${size}px`}
       h={`${size}px`}
       css={{
-        // The same in light and dark: the mark in the primary accent (the colour of solid buttons, following the app colour
-        // chosen in Settings) with a white train.
+        // The same in light and dark: the pin in the primary accent (the colour of solid buttons, following the app colour
+        // chosen in Settings) with a white train, and a white ring and vehicles edged in the accent so they show on a
+        // white page too.
         '--ns-logo-pin': 'var(--chakra-colors-brand-solid)',
       }}
       {...rest}
