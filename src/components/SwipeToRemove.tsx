@@ -11,6 +11,7 @@ export function SwipeToRemove({
   onRemove,
   confirm = false,
   ratio = SWIPE_REMOVE_RATIO,
+  radius = '2xl',
 }: {
   children: ReactNode
   onRemove: () => void
@@ -18,6 +19,8 @@ export function SwipeToRemove({
   confirm?: boolean
   /** Overrides SWIPE_REMOVE_RATIO for this row. */
   ratio?: number
+  /** Corner radius; rows inside a grouped card pass 0, the card rounds the corners. */
+  radius?: string | number
 }) {
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -45,7 +48,7 @@ export function SwipeToRemove({
       ref={rowRef}
       position="relative"
       overflow="hidden"
-      borderRadius="2xl"
+      borderRadius={radius}
       opacity={gone ? 0 : 1}
       transition="opacity 0.18s"
       tabIndex={-1}

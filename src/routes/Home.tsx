@@ -483,6 +483,24 @@ function SortableTrip({ trip, now, compact, sortable }: { trip: SavedTrip; now: 
   )
 }
 
+/** A section's title: small grey capitals, like iOS grouped lists, so it reads as a label under the page title. */
+function SectionLabel({ children, color = 'fg.muted' }: { children: ReactNode; color?: string }) {
+  return (
+    <Text as="h2" fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color={color} px={1}>
+      {children}
+    </Text>
+  )
+}
+
+/** A place's short name, as the saved trip cards show it: "Lidcombe" for "Lidcombe Station", the street for an address. */
+const placeLabel = (name: string) => name.split(',')[0].replace(/ Station$/, '')
+
+/** "Good morning" and so on, for the page title. */
+function greeting(now: number): string {
+  const h = new Date(now).getHours()
+  return h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : 'Good evening'
+}
+
 /** Trip history first, then searches, minus anything already saved. */
 function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) {
   const tripHistory = useTripHistory()
@@ -494,27 +512,32 @@ function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) 
   if (items.length === 0) return null
 
   return (
-    // A separate section: 24px above it (the list gap plus this margin), 12px from its title to the rows like Saved trips.
+    // A separate section, 24px below the one above (the list gap plus this margin). Its rows share one card, like an
+    // iOS grouped list, rather than a stack of bordered pills that competed with the saved trip cards.
     <Stack gap={3} mt={3}>
-      <Text fontSize="lg" fontWeight="bold" px={1} lineHeight="short">
-        Previous trips
-      </Text>
-      {items.map((e) => (
-        <SwipeToRemove key={routeKey(e)} onRemove={() => history.removeRoute(e)}>
-          <Flex align="center" gap={2} bg="bg.panel" borderRadius="2xl" borderWidth="1px" shadow="xs" p={3} ps={4}>
-            <Box asChild flex={1} minW={0}>
-              <Link to={tripPath({ ...e, modes: [] })}>
-                <Flex align="center" gap={2} fontWeight="semibold">
-                  <Text truncate>{e.fromName.split(',')[0]}</Text>
-                  <LuArrowRight style={{ flexShrink: 0 }} />
-                  <Text truncate>{e.toName.split(',')[0]}</Text>
-                </Flex>
-              </Link>
-            </Box>
-            <SaveTripChip route={{ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] }} />
-          </Flex>
-        </SwipeToRemove>
-      ))}
+      <SectionLabel>Previous trips</SectionLabel>
+      <Box bg="bg.panel" borderRadius="2xl" borderWidth="1px" shadow="xs" overflow="hidden">
+        {items.map((e, i) => (
+          <Box key={routeKey(e)} borderTopWidth={i > 0 ? '1px' : 0} borderColor="border.muted">
+            <SwipeToRemove radius={0} onRemove={() => history.removeRoute(e)}>
+              <Flex align="center" gap={2} bg="bg.panel" py={2.5} pe={3} ps={4}>
+                <Box asChild flex={1} minW={0}>
+                  <Link to={tripPath({ ...e, modes: [] })}>
+                    <Flex align="center" gap={2} fontWeight="medium">
+                      <Text truncate>{placeLabel(e.fromName)}</Text>
+                      <Box as="span" color="fg.muted" flexShrink={0} display="inline-flex">
+                        <LuArrowRight />
+                      </Box>
+                      <Text truncate>{placeLabel(e.toName)}</Text>
+                    </Flex>
+                  </Link>
+                </Box>
+                <SaveTripChip route={{ fromId: e.fromId, fromName: e.fromName, toId: e.toId, toName: e.toName, modes: [] }} />
+              </Flex>
+            </SwipeToRemove>
+          </Box>
+        ))}
+      </Box>
     </Stack>
   )
 }
@@ -540,8 +563,10 @@ export function Home() {
   return (
     <>
       <PageHeader
-        title="NextStop"
-        subtitle="Plan your trips"
+        // A greeting and today's date rather than the app's name: the page says where the day stands, and the sections
+        // below get small labels, so the title and "Saved trips" no longer read as two headings of the same weight.
+        title={greeting(now)}
+        subtitle={new Date(now).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
         action={
           <>
             {current && <RefreshButton />}
@@ -610,27 +635,7 @@ export function Home() {
           </>
         ) : (
           <>
-            <Flex align="flex-start" justify="space-between" gap={3} px={1}>
-              <Box minW={0}>
-                <Text fontSize="lg" fontWeight="bold" lineHeight="short">
-                  Saved trips
-                </Text>
-                {/* Quiet, and wraps only between phrases, so a small phone never strands a single word on its own line. */}
-                <Text fontSize="xs" color="fg.subtle" mt={0.5}>
-                  {(trips.length > 1
-                    ? ['Tap for live times', 'drag to sort', 'swipe to remove']
-                    : ['Tap for live times', 'swipe to remove']
-                  ).map((phrase, i, all) => (
-                    <Fragment key={phrase}>
-                      <Box as="span" whiteSpace="nowrap">
-                        {phrase}
-                        {i < all.length - 1 && ' ·'}
-                      </Box>{' '}
-                    </Fragment>
-                  ))}
-                </Text>
-              </Box>
-            </Flex>
+            <SectionLabel>Saved trips</SectionLabel>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               {active.length > 0 && (
                 <>
@@ -645,9 +650,9 @@ export function Home() {
                       <SortableTrip key={t.id} trip={t} now={now} compact={false} sortable={trips.length > 1} />
                     ))}
                   </SortableContext>
-                  <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="fg.muted" px={1} mt={2}>
-                    Other trips
-                  </Text>
+                  <Box mt={2}>
+                    <SectionLabel>Other trips</SectionLabel>
+                  </Box>
                 </>
               )}
               <SortableContext items={rest.map((t) => t.id)} strategy={verticalListSortingStrategy}>
@@ -662,6 +667,21 @@ export function Home() {
                 ))}
               </SortableContext>
             </DndContext>
+            {/* How to use the list, as a quiet footnote under it rather than a second line in the heading. Wraps only
+                between phrases, so a small phone never strands a single word on its own line. */}
+            <Text fontSize="xs" color="fg.subtle" px={1} mt={-1}>
+              {(trips.length > 1
+                ? ['Tap for live times', 'drag to sort', 'swipe to remove']
+                : ['Tap for live times', 'swipe to remove']
+              ).map((phrase, i, all) => (
+                <Fragment key={phrase}>
+                  <Box as="span" whiteSpace="nowrap">
+                    {phrase}
+                    {i < all.length - 1 && ' ·'}
+                  </Box>{' '}
+                </Fragment>
+              ))}
+            </Text>
             {trips.length === 1 && <PreviousTrips limit={3} saved={trips} />}
           </>
         )}
