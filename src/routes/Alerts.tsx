@@ -1,4 +1,4 @@
-import { Button, HStack, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Button, HStack, Skeleton, Text } from '@chakra-ui/react'
 import { useState } from 'react'
 import { useAlerts } from '../api/hooks'
 import type { Alert } from '../api/types'
@@ -7,6 +7,7 @@ import { NoConnection } from '../components/NoConnection'
 import { LiveTabs } from '../components/LiveTabs'
 import { PageHeader } from '../components/PageHeader'
 import { useSavedTrips } from '../store/savedTrips'
+import { PageBody } from '../components/PageBody'
 
 const RANK: Record<string, number> = { veryHigh: 0, high: 1, normal: 2, low: 3, veryLow: 4 }
 
@@ -28,7 +29,7 @@ export default function Alerts() {
       <PageHeader title="Live" subtitle="Departures and alerts">
         <LiveTabs />
       </PageHeader>
-      <Stack gap={3} p={4}>
+      <PageBody>
         {trips.length > 0 && (
           <HStack gap={2}>
             <Button size="sm" borderRadius="full" colorPalette="brand" variant={!all ? 'solid' : 'outline'} onClick={() => setAll(false)}>
@@ -50,7 +51,7 @@ export default function Alerts() {
         {list.map((a) => (
           <AlertCard key={a.id} title={a.subtitle} html={a.content} priority={a.priority} url={a.url} urlText={a.urlText} />
         ))}
-      </Stack>
+      </PageBody>
     </>
   )
 }

@@ -9,6 +9,7 @@ import { tripPath } from '../lib/paths'
 import { StopSearch } from '../components/StopSearch'
 import { history, type HistoryEntry } from '../store/history'
 import { useSettings } from '../store/settings'
+import { PageBody } from '../components/PageBody'
 
 type When = 'now' | 'dep' | 'arr'
 
@@ -65,7 +66,7 @@ export default function Plan() {
   return (
     <>
       <PageHeader title="Plan a trip" back backTo="/" />
-      <Stack gap={4} p={4}>
+      <PageBody gap={4}>
         <Flex gap={2} align="center">
           <Stack flex={1} gap={2}>
             <StopSearch label="From" value={from} onChange={setFrom} />
@@ -148,7 +149,7 @@ export default function Plan() {
         <Button mt="2" size="lg" colorPalette="brand" borderRadius="xl" disabled={!from || !to} onClick={go}>
           Show trips
         </Button>
-      </Stack>
+      </PageBody>
     </>
   )
 }

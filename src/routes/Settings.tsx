@@ -16,6 +16,7 @@ import { FARE_TYPES, FARES_FROM } from '../lib/fares'
 import { history, useSearchHistory, useTripHistory } from '../store/history'
 import { savedTrips, useSavedTrips } from '../store/savedTrips'
 import { EXPAND_OPTIONS, HISTORY_OPTIONS, settings, useSettings } from '../store/settings'
+import { PageBody } from '../components/PageBody'
 
 function AboutRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -245,7 +246,7 @@ export default function Settings() {
       <PageHeader title="Settings">
         <SectionNav current={current} />
       </PageHeader>
-      <Stack gap={7} p={4} pb={8}>
+      <PageBody gap={6} pb={8}>
         <Section id="appearance" title="Appearance">
           <Item title="Light or dark">
             <Choices value={(theme ?? 'system') as (typeof THEMES)[number][0]} options={THEMES} onPick={setTheme} />
@@ -253,7 +254,10 @@ export default function Settings() {
           <Item title="App colour" hint="Buttons, tabs and highlights across the app. Line badges always keep their official colours.">
             <AccentPicker value={accent} />
           </Item>
-          <Item title="Glass" hint="The tab bar, the trip you're following, menus and map buttons are see-through. Solid ones are easier to read.">
+          <Item
+            title="Glass"
+            hint="The tab bar, the trip you're following, menus and map buttons are see-through. Solid ones are easier to read."
+          >
             <Choices
               value={reduceTransparency}
               options={[
@@ -292,7 +296,11 @@ export default function Settings() {
             hint="Trip details estimate the fare for this card type, with an Opal card or contactless card."
             note={`Worked out on this phone from Transport for NSW fares from ${FARES_FROM}. What you're charged can differ, for example after earlier trips today or once you reach the weekly cap.`}
           >
-            <Choices value={fareType} options={FARE_TYPES.map((f) => [f.key, f.label] as const)} onPick={(v) => settings.set({ fareType: v })} />
+            <Choices
+              value={fareType}
+              options={FARE_TYPES.map((f) => [f.key, f.label] as const)}
+              onPick={(v) => settings.set({ fareType: v })}
+            />
           </Item>
         </Section>
 
@@ -473,7 +481,7 @@ export default function Settings() {
           onConfirm={resetApp}
           onClose={() => setConfirm(undefined)}
         />
-      </Stack>
+      </PageBody>
     </>
   )
 }

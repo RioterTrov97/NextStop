@@ -1,4 +1,4 @@
-import { Box, Skeleton, Stack, Text } from '@chakra-ui/react'
+import { Box, Skeleton, Text } from '@chakra-ui/react'
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useDepartureJourney, useDepartures, useJourneyVehicles } from '../api/hooks'
@@ -17,6 +17,7 @@ import { comparePlatforms, PLATFORM_KINDS, platformInfo, type PlatformInfo, type
 import { useTint } from '../lib/useTint'
 import { currentTrip, useCurrentTrip } from '../store/currentTrip'
 import { history } from '../store/history'
+import { PageBody } from '../components/PageBody'
 
 const rideId = (j?: Journey) => j?.legs.find(isTransit)?.transportation?.properties?.RealtimeTripId
 
@@ -88,7 +89,7 @@ export default function StationBoard() {
           style={{ background: `linear-gradient(180deg, ${tint.first.wash} 0%, transparent 100%)` }}
         />
       )}
-      <Stack gap={3} p={4} position="relative">
+      <PageBody position="relative">
         {groups.length > 0 && (groups.length > 1 || groups[0][1].length > 1) && (
           <PlatformFilter groups={groups} counts={counts} total={items.length} value={filter} onChange={setFilter} />
         )}
@@ -110,7 +111,7 @@ export default function StationBoard() {
             onClick={() => setSelectedKey(key)}
           />
         ))}
-      </Stack>
+      </PageBody>
       <JourneySheet
         journey={detail}
         vehicles={vehicles}

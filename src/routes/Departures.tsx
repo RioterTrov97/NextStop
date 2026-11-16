@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { StopSearch } from '../components/StopSearch'
 import { isStopId } from '../store/places'
 import { useSavedTrips } from '../store/savedTrips'
+import { PageBody } from '../components/PageBody'
 
 export default function Departures() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function Departures() {
       <PageHeader title="Live" subtitle="Departures and alerts">
         <LiveTabs />
       </PageHeader>
-      <Stack gap={4} p={4}>
+      <PageBody gap={6}>
         <StopSearch label="Search a station or stop" stopsOnly onChange={(p?: Place) => p && open(p.id, p.name)} />
         {recent.size > 0 && (
           <Box>
@@ -50,7 +51,7 @@ export default function Departures() {
             </Stack>
           </Box>
         )}
-      </Stack>
+      </PageBody>
     </>
   )
 }

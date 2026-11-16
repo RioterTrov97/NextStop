@@ -11,6 +11,7 @@ import { tripPath } from '../lib/paths'
 import { formatDuration, formatTime } from '../lib/time'
 import { history, tripEntryKey, useSearchHistory, useTripHistory, type HistoryEntry } from '../store/history'
 import { SaveTripChip } from '../components/SaveTrip'
+import { PageBody } from '../components/PageBody'
 
 const dayLabel = (at?: number) =>
   at ? new Date(at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined
@@ -159,7 +160,7 @@ export default function History() {
           ))}
         </Flex>
       </PageHeader>
-      <Stack gap={5} p={4} pt={6}>
+      <PageBody>
         {tab === 'trips' ? (
           <RouteList
             items={trips}
@@ -169,7 +170,7 @@ export default function History() {
         ) : (
           <RouteList items={searches} onRemove={history.removeSearch} empty="No searches yet." />
         )}
-      </Stack>
+      </PageBody>
     </>
   )
 }

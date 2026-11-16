@@ -26,6 +26,7 @@ import { useSettings } from '../store/settings'
 import { history } from '../store/history'
 import { savedTrips, tripId, useSavedTrips } from '../store/savedTrips'
 import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
+import { PageBody } from '../components/PageBody'
 
 const PAGE = 4
 const PAST_CHUNK_MIN = 90
@@ -202,7 +203,7 @@ export default function TripResults() {
           </>
         }
       />
-      <Stack ref={pullRef} gap={3} p={4} position="relative">
+      <PageBody ref={pullRef} position="relative">
         <Flex
           ref={pullLabelRef}
           position="absolute"
@@ -333,7 +334,7 @@ export default function TripResults() {
             Show later trips
           </Button>
         )}
-      </Stack>
+      </PageBody>
       <JourneySheet
         journey={selectedJourney}
         vehicles={vehicles}

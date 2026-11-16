@@ -51,6 +51,7 @@ import { SwipeToRemove } from '../components/SwipeToRemove'
 import { dedupeRoutes, history, routeKey, useSearchHistory, useTripHistory } from '../store/history'
 import { PERIODS, periodAt, savedTrips, useSavedTrips, type SavedTrip } from '../store/savedTrips'
 import { END_WALK_OPTIONS, useSettings } from '../store/settings'
+import { PageBody } from '../components/PageBody'
 
 function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
   const { maxEndWalk: globalEndWalk, maxStartWalk, walkPace, minTransfer, fareType } = useSettings()
@@ -493,7 +494,8 @@ function PreviousTrips({ limit, saved }: { limit: number; saved: SavedTrip[] }) 
   if (items.length === 0) return null
 
   return (
-    <Stack gap={2} mt={2}>
+    // A separate section: 24px above it (the list gap plus this margin), 12px from its title to the rows like Saved trips.
+    <Stack gap={3} mt={3}>
       <Text fontSize="lg" fontWeight="bold" px={1} lineHeight="short">
         Previous trips
       </Text>
@@ -559,7 +561,7 @@ export function Home() {
           style={{ background: `linear-gradient(180deg, ${glow} 0%, transparent 100%)` }}
         />
       )}
-      <Stack gap={3} p={4} pt={6} position="relative">
+      <PageBody position="relative">
         {current && <CurrentTripCard trip={current} now={now} />}
         <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
@@ -601,7 +603,7 @@ export function Home() {
           </>
         ) : (
           <>
-            <Flex align="flex-start" justify="space-between" gap={3} px={1} mb={3}>
+            <Flex align="flex-start" justify="space-between" gap={3} px={1}>
               <Box minW={0}>
                 <Text fontSize="lg" fontWeight="bold" lineHeight="short">
                   Saved trips
@@ -661,7 +663,7 @@ export function Home() {
             {trips.length === 1 && <PreviousTrips limit={3} saved={trips} />}
           </>
         )}
-      </Stack>
+      </PageBody>
     </>
   )
 }
