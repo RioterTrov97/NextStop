@@ -355,7 +355,8 @@ export default function TripResults() {
             swap direction.
           </EmptyState>
         )}
-        <div ref={pastTop} aria-hidden />
+        {/* Out of the flow: an empty row in the stack would add a 12px gap above the first trip. */}
+        <Box ref={pastTop} aria-hidden position="absolute" top={0} left={0} h="1px" w="1px" pointerEvents="none" />
         {pastFrom && pastBusy && (
           // Shown only while loading; the list holds its place (useScrollAnchor).
           <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
