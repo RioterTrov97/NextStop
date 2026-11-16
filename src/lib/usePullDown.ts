@@ -92,6 +92,10 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         el.style.willChange = 'transform'
         // The card under the finger would otherwise show its pressed (shrunk) state for the whole drag and look glitchy.
         el.style.pointerEvents = 'none'
+        // A mouse drag (a desktop window, or Chrome's phone view) would otherwise select text and drag card contents along.
+        document.documentElement.style.userSelect = 'none'
+        document.documentElement.style.setProperty('-webkit-user-select', 'none')
+        window.getSelection()?.removeAllRanges()
         return
       }
       if (e.cancelable) e.preventDefault()
@@ -117,6 +121,8 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
           if (fire) release.current()
         }, reduce ? 0 : 320)
         el.style.pointerEvents = ''
+        document.documentElement.style.userSelect = ''
+        document.documentElement.style.removeProperty('-webkit-user-select')
         setTimeout(() => {
           el.style.willChange = ''
         }, reduce ? 0 : 560)
@@ -145,6 +151,9 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
       else move(e.clientY, e)
     }
     const away = () => end(false)
+    // The browser's touch emulation can lose `touchend` when the button is released outside the page; pointer events still say.
+    const pup = () => end(true)
+    const noDrag = (e: Event) => dragging && e.preventDefault()
     const mu = () => mouse && end(true)
     const key = (e: KeyboardEvent) => e.key === 'Escape' && end(false)
 
@@ -157,6 +166,9 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
     window.addEventListener('mouseup', mu)
     window.addEventListener('keydown', key)
     window.addEventListener('blur', away)
+    window.addEventListener('pointerup', pup)
+    window.addEventListener('dragstart', noDrag)
+    window.addEventListener('selectstart', noDrag)
     document.addEventListener('mouseleave', away)
     document.addEventListener('visibilitychange', away)
     return () => {
@@ -170,6 +182,9 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
       window.removeEventListener('mouseup', mu)
       window.removeEventListener('keydown', key)
       window.removeEventListener('blur', away)
+      window.removeEventListener('pointerup', pup)
+      window.removeEventListener('dragstart', noDrag)
+      window.removeEventListener('selectstart', noDrag)
       document.removeEventListener('mouseleave', away)
       document.removeEventListener('visibilitychange', away)
     }
