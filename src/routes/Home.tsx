@@ -642,8 +642,9 @@ export function Home() {
           style={{ background: `linear-gradient(180deg, ${glow} 0%, transparent 100%)` }}
         />
       )}
-      {/* Sections 24px apart; each label sits 8px above its own content (Section). */}
-      <PageBody gap={6} position="relative">
+      {/* Sections 24px apart; each label sits 8px above its own content (Section). Home's header is a greeting, not
+          a toolbar, so the first section starts 24px below it too, as one more section break. */}
+      <PageBody gap={6} pt={3} position="relative">
         {current && <CurrentTripCard trip={current} now={now} />}
         <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
