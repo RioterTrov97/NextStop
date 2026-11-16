@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react'
+import type { AccentKey } from '../../shared/brand'
+import { isAccentKey } from '../lib/accent'
 import { FARE_TYPES, type FareType } from '../lib/fares'
 import { MODES } from '../lib/lines'
 
@@ -33,6 +35,8 @@ export interface Settings {
   reduceTransparency: boolean
   /** Colour trip screens, the followed trip and search results by their line. */
   tintByLine: boolean
+  /** The app colour (ACCENTS in shared/brand.ts). */
+  accent: AccentKey
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fareType: 'adult',
   reduceTransparency: false,
   tintByLine: true,
+  accent: 'harbour',
 }
 export const END_WALK_OPTIONS = [0, 5, 10, 15, 20, 30]
 export const START_WALK_OPTIONS = [5, 10, 15, 20, 30]
@@ -79,6 +84,7 @@ function read(): Settings {
       ...(FARE_TYPES.some((f) => f.key === parsed.fareType) ? { fareType: parsed.fareType } : {}),
       ...(typeof parsed.reduceTransparency === 'boolean' ? { reduceTransparency: parsed.reduceTransparency } : {}),
       ...(typeof parsed.tintByLine === 'boolean' ? { tintByLine: parsed.tintByLine } : {}),
+      ...(isAccentKey(parsed.accent) ? { accent: parsed.accent } : {}),
       ...(typeof parsed.minTransfer === 'number' && TRANSFER_OPTIONS.includes(parsed.minTransfer)
         ? { minTransfer: parsed.minTransfer }
         : {}),

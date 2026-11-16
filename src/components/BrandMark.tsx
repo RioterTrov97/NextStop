@@ -1,6 +1,5 @@
 import { Box, type BoxProps } from '@chakra-ui/react'
 import { useId, useMemo } from 'react'
-import { brand } from '../../shared/brand'
 import { markBody } from '../../shared/logo'
 
 interface Props extends Omit<BoxProps, 'children'> {
@@ -22,9 +21,10 @@ export function BrandMark({ size, vehicles = false, ...rest }: Props) {
       w={`${size}px`}
       h={`${size}px`}
       css={{
-        '--ns-logo-pin': brand[600],
-        '--ns-logo-ring': brand[800],
-        '.dark &': { '--ns-logo-pin': brand[300], '--ns-logo-ring': brand[100] },
+        // The theme's variables, so the mark follows the app colour chosen in Settings.
+        '--ns-logo-pin': 'var(--chakra-colors-brand-600)',
+        '--ns-logo-ring': 'var(--chakra-colors-brand-800)',
+        '.dark &': { '--ns-logo-pin': 'var(--chakra-colors-brand-300)', '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
       }}
       {...rest}
     >

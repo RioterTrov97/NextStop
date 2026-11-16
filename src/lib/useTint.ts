@@ -4,6 +4,7 @@ import { useSettings } from '../store/settings'
 import { useColorMode } from './colorMode'
 import { isTransit } from './journey'
 import { lineColor } from './lines'
+import { accentPalette } from './accent'
 import { cardWash, makeTint, tintGradient, tintVars, type Tint } from './tint'
 
 /** The official colour of a ride's line (as its badge shows it). */
@@ -33,14 +34,16 @@ export interface ScreenTint {
  * or there's no line. Memoised on the colours, so it is cheap on pages that re-render every second.
  */
 export function useTint(first: string | undefined, last: string | undefined = first): ScreenTint | undefined {
-  const { tintByLine } = useSettings()
+  const { tintByLine, accent } = useSettings()
   const mode = useColorMode()
   return useMemo(() => {
     if (!tintByLine || !first) return undefined
-    const a = makeTint(first, mode)
-    const b = last && last !== first ? makeTint(last, mode) : a
-    return { first: a, last: b, vars: tintVars(a), gradient: tintGradient(a, b, mode), card: cardWash(a, b) }
-  }, [tintByLine, first, last, mode])
+    // Tints are worked out against the app colour's page and panels; grey lines take the app colour.
+    const pal = accentPalette(accent)
+    const a = makeTint(first, mode, pal)
+    const b = last && last !== first ? makeTint(last, mode, pal) : a
+    return { first: a, last: b, vars: tintVars(a), gradient: tintGradient(a, b, mode, undefined, pal), card: cardWash(a, b) }
+  }, [tintByLine, first, last, mode, accent])
 }
 
 /** The tint for a journey: its first ride's line, blending into its last ride's. */

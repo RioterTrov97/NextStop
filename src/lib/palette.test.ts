@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, makePalette, PRIMARY } from '../../shared/brand'
+import { ACCENTS, contrastRatio, makePalette, PRIMARY } from '../../shared/brand'
 
 // Any seed must give a readable app, so the colour can later be chosen by the user.
-const seeds = [PRIMARY, '#5A8573', '#E0452B', '#FFD400', '#7B4FE0', '#00B3B8', '#C4258F', '#22C55E', '#808080', '#000000', '#FFFFFF']
+const seeds = [...ACCENTS.map((a) => a.hex), PRIMARY, '#5A8573', '#E0452B', '#FFD400', '#7B4FE0', '#00B3B8', '#C4258F', '#22C55E', '#808080', '#000000', '#FFFFFF']
 
 describe('makePalette', () => {
   for (const seed of seeds) {

@@ -22,6 +22,13 @@
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
         // The status bar takes the header colour, which is the page colour of the theme.
         if (dark) document.querySelector('meta[name="theme-color"]').content = '%PAGE_DARK%'
+        // An app colour chosen in Settings (src/lib/accent.ts), applied before the first paint.
+        var accent = JSON.parse(localStorage.getItem('nextstop.accent.v1') || 'null')
+        var vars = accent && accent[dark ? 'dark' : 'light']
+        if (vars) {
+          for (var k in vars) document.documentElement.style.setProperty(k, vars[k])
+          document.querySelector('meta[name="theme-color"]').content = vars['--ns-page']
+        }
       } catch (e) {}
     </script>
     <style>

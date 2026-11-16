@@ -1,5 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { useSettings } from '../store/settings'
+import { applyAccent } from './accent'
+import { useColorMode } from './colorMode'
 
 /** Marks <html data-solid> while "Reduce transparency" is on, which swaps every glass surface for a solid one. */
 export function useSolidSurfaces() {
@@ -9,6 +11,13 @@ export function useSolidSurfaces() {
     if (reduceTransparency) root.dataset.solid = ''
     else delete root.dataset.solid
   }, [reduceTransparency])
+}
+
+/** Applies the app colour chosen in Settings, for the current colour mode, before the browser paints. */
+export function useAccent() {
+  const { accent } = useSettings()
+  const mode = useColorMode()
+  useLayoutEffect(() => applyAccent(accent, mode), [accent, mode])
 }
 
 /**

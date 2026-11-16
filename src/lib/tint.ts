@@ -4,7 +4,7 @@
 // tint.test.ts so text stays readable on every line in both colour modes.
 
 import type { CSSProperties } from 'react'
-import { brand, ink, page, panel } from '../../shared/brand'
+import { palette as defaultPalette, type Palette } from '../../shared/brand'
 
 export type Rgb = { r: number; g: number; b: number }
 export type ColourMode = 'light' | 'dark'
@@ -91,7 +91,7 @@ function readableOn(hex: string, on: string, ratio: number): string {
   return contrast(cur, on) >= ratio ? cur : lighter ? '#ffffff' : '#000000'
 }
 
-const blackOrWhite = (bg: string) => (contrast('#ffffff', bg) >= contrast(ink.light, bg) ? '#ffffff' : ink.light)
+const blackOrWhite = (bg: string, ink: string) => (contrast('#ffffff', bg) >= contrast(ink, bg) ? '#ffffff' : ink)
 
 export interface Tint {
   /** The line colour this tint was made from (or the app colour for grey lines). */
@@ -124,17 +124,18 @@ export interface Tint {
  * The tint for a line colour in a colour mode. Very grey lines (T7 is #6F818E) don't make a useful tint, so they fall
  * back to the app colour, like greyscale artwork in Sangeet.
  */
-export function makeTint(lineHex: string, mode: ColourMode): Tint {
+export function makeTint(lineHex: string, mode: ColourMode, pal: Palette = defaultPalette): Tint {
   const grey = toHsl(parseHex(lineHex)).s < 0.18
-  const base = grey ? brand[500] : lineHex
-  const pageBg = page[mode]
-  const panelBg = panel[mode]
+  const base = grey ? pal.brand[500] : lineHex
+  const pageBg = pal.page[mode]
+  const panelBg = pal.panel[mode]
+  const ink = pal.ink.light
   if (mode === 'dark') {
     const wash = adjust(base, { s: (s) => Math.min(s, 0.55), l: () => 0.2 })
     const accent = readableOn(adjust(base, { s: (s) => Math.max(s, 0.5) }), panelBg, 4.5)
     // Bright enough to stand out from the page, then lighter still if dark text on it would fall short (mid reds).
     let solid = readableOn(adjust(base, { s: (s) => Math.max(s, 0.5) }), pageBg, 3)
-    if (contrast(blackOrWhite(solid), solid) < 4.5) solid = readableOn(solid, ink.light, 4.5)
+    if (contrast(blackOrWhite(solid, ink), solid) < 4.5) solid = readableOn(solid, ink, 4.5)
     const onWash = '#ffffff'
     return {
       base,
@@ -143,7 +144,7 @@ export function makeTint(lineHex: string, mode: ColourMode): Tint {
       onWashMuted: readableOn(mix(onWash, wash, 0.3), wash, 4.5),
       accent,
       solid,
-      onSolid: blackOrWhite(solid),
+      onSolid: blackOrWhite(solid, ink),
       glass: rgba(adjust(base, { s: (s) => Math.min(s, 0.5), l: () => 0.16 }), 0.62),
       glassSolid: adjust(base, { s: (s) => Math.min(s, 0.4), l: () => 0.14 }),
       card: rgba(base, 0.1),
@@ -152,7 +153,7 @@ export function makeTint(lineHex: string, mode: ColourMode): Tint {
     }
   }
   const wash = adjust(base, { s: (s) => Math.min(s, 0.7), l: () => 0.91 })
-  const onWash = ink.light
+  const onWash = ink
   const accent = readableOn(base, panelBg, 4.5)
   return {
     base,
@@ -161,7 +162,7 @@ export function makeTint(lineHex: string, mode: ColourMode): Tint {
     onWashMuted: readableOn(mix(onWash, wash, 0.35), wash, 4.5),
     accent,
     solid: accent,
-    onSolid: blackOrWhite(accent),
+    onSolid: blackOrWhite(accent, ink),
     glass: rgba(adjust(base, { s: (s) => Math.min(s, 0.7), l: () => 0.95 }), 0.7),
     glassSolid: adjust(base, { s: (s) => Math.min(s, 0.6), l: () => 0.96 }),
     card: rgba(base, 0.07),
@@ -190,8 +191,14 @@ export function tintVars(t: Tint): CSSProperties {
  * The background of a tinted screen: the first line's wash fading into the page, through the last line's wash when a
  * trip changes to a different line colour.
  */
-export function tintGradient(first: Tint, last: Tint | undefined, mode: ColourMode, height = '320px'): string {
-  const end = page[mode]
+export function tintGradient(
+  first: Tint,
+  last: Tint | undefined,
+  mode: ColourMode,
+  height = '320px',
+  pal: Palette = defaultPalette,
+): string {
+  const end = pal.page[mode]
   if (last && last.base !== first.base) return `linear-gradient(165deg, ${first.wash} 0%, ${last.wash} 50%, ${end} ${height})`
   return `linear-gradient(180deg, ${first.wash} 0%, ${mix(first.wash, end, 0.55)} calc(${height} * 0.5), ${end} ${height})`
 }

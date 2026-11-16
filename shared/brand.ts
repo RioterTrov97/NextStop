@@ -9,6 +9,20 @@
 /** Harbour blue. */
 export const PRIMARY = '#1A86F0'
 
+/** App colours people can choose in Settings; the first is the default (PRIMARY). */
+export const ACCENTS = [
+  { key: 'harbour', label: 'Harbour', hex: PRIMARY },
+  { key: 'bondi', label: 'Bondi', hex: '#00A6B0' },
+  { key: 'eucalyptus', label: 'Eucalyptus', hex: '#3E8E6E' },
+  { key: 'wattle', label: 'Wattle', hex: '#E0A100' },
+  { key: 'sunset', label: 'Sunset', hex: '#EE5A36' },
+  { key: 'waratah', label: 'Waratah', hex: '#D6264A' },
+  { key: 'jacaranda', label: 'Jacaranda', hex: '#7B4FE0' },
+  { key: 'graphite', label: 'Graphite', hex: '#5F6B7A' },
+] as const
+
+export type AccentKey = (typeof ACCENTS)[number]['key']
+
 type Scale = Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950, string>
 type Modes<T> = { light: T; dark: T }
 
@@ -86,8 +100,8 @@ const rgba = (hex: string, a: number) => {
 /** The whole palette from one colour. */
 export function makePalette(seed: string): Palette {
   const { h, s: seedS } = hexToHsl(seed)
-  // Vivid but not neon; greys (a seed with no saturation) stay grey.
-  const s = seedS < 0.05 ? 0 : Math.min(Math.max(seedS, 0.55), 0.9)
+  // Vivid but not neon; greyish seeds (graphite) keep their quiet saturation.
+  const s = seedS < 0.25 ? seedS : Math.min(Math.max(seedS, 0.55), 0.9)
   const tone = (l: number, sat = s) => hsl(h, sat, l)
 
   const page = { light: hsl(h, Math.min(s, 0.45), 0.965), dark: hsl(h, Math.min(s, 0.35), 0.07) }

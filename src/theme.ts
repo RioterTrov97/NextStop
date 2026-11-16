@@ -1,10 +1,6 @@
-import { backdrop, brand, darkSurface, gray, ink, page, panel } from '../shared/brand'
+import { brand, darkSurface, gray, ink, page, palette, panel } from '../shared/brand'
+import { appVars } from './lib/accent'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
-
-const rgba = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
-}
 
 const scale = (s: Record<string | number, string>) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, { value: v }]))
 
@@ -21,32 +17,10 @@ const config = defineConfig({
     'html, body': { overscrollBehavior: 'none', bg: 'bg' },
     // Colour for the glass to blur: soft sky and water light fixed behind the page, low down where the tab bar floats
     // and clear of the solid header. Cards and the header stay solid.
-    // Glass colours (src/styles/glass.css), from the palette.
-    ':root': {
-      '--ns-glass-bg': 'rgba(255, 255, 255, 0.66)',
-      '--ns-glass-solid': panel.light,
-      '--ns-glass-edge': rgba(ink.light, 0.08),
-      '--ns-glass-shine': 'rgba(255, 255, 255, 0.9)',
-      '--ns-glass-shadow': `0 10px 30px ${rgba(brand[950], 0.12)}, 0 2px 6px ${rgba(brand[950], 0.06)}`,
-    },
-    '.dark': {
-      '--ns-glass-bg': rgba(darkSurface.muted, 0.62),
-      '--ns-glass-solid': darkSurface.muted,
-      '--ns-glass-edge': 'rgba(255, 255, 255, 0.09)',
-      '--ns-glass-shine': 'rgba(255, 255, 255, 0.13)',
-      '--ns-glass-shadow': '0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3)',
-    },
-    'body::before': {
-      content: '""',
-      position: 'fixed',
-      inset: 0,
-      zIndex: -1,
-      pointerEvents: 'none',
-      backgroundImage: `radial-gradient(70% 45% at 100% 100%, ${backdrop.light[0]}, transparent 70%), radial-gradient(60% 40% at 0% 72%, ${backdrop.light[1]}, transparent 70%), radial-gradient(55% 30% at 85% 38%, ${backdrop.light[2]}, transparent 70%)`,
-    },
-    '.dark body::before': {
-      backgroundImage: `radial-gradient(70% 45% at 100% 100%, ${backdrop.dark[0]}, transparent 70%), radial-gradient(60% 40% at 0% 72%, ${backdrop.dark[1]}, transparent 70%), radial-gradient(55% 30% at 85% 38%, ${backdrop.dark[2]}, transparent 70%)`,
-    },
+    // Glass colours (src/styles/glass.css) and the backdrop, from the palette. Another app colour overrides them
+    // (src/lib/accent.ts).
+    ':root': appVars(palette, 'light'),
+    '.dark': appVars(palette, 'dark'),
     // Only the OSM fallback needs this; MapTiler ships a real dark style.
     '.dark .tiles-invert .leaflet-tile-pane': { filter: 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' },
     // The body lets the backdrop through; the html canvas carries the page colour.
