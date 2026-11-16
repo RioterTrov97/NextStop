@@ -36,7 +36,7 @@ const MAX_LATER_CHUNKS = 40
 const LATER_SPAN_MS = 60 * 60_000
 const loadedLater = new Map<string, number[]>()
 const depMs = (j: Journey) => Date.parse(summarize(j).depEstimated ?? summarize(j).depPlanned ?? '')
-const PAST_CHUNK_MIN = 90
+const PAST_SPAN_MS = 60 * 60_000 // each pull of earlier trips reaches an hour further back
 // Phones pull down; devices without touch get a button instead.
 const canTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
@@ -45,7 +45,7 @@ const ended = (j: Journey, now: number) => {
   const last = j.legs[j.legs.length - 1]
   return Date.parse(last?.destination.arrivalTimeEstimated ?? last?.destination.arrivalTimePlanned ?? '') <= now
 }
-const MAX_PAST_CHUNKS = 16
+const MAX_PAST_CHUNKS = 24 // hours
 // Trips loaded per route, so returning from another tab restores the longer list.
 const loadedCounts = new Map<string, number>()
 
@@ -79,9 +79,12 @@ export default function TripResults() {
   }
 
   // Earlier trips: loaded only when asked for (pull down or button), shown above the live list.
-  // Each pull reaches another 90 minutes further back.
+  // Each pull reaches another hour further back.
   const [pastBase, setPastBase] = useState<number>()
+  // Hours pulled so far; the hour being pulled is [lo, hi), and searches (starts) follow each other until it is covered.
   const [pastChunks, setPastChunks] = useState(0)
+  const [pastStarts, setPastStarts] = useState<number[]>([])
+  const [pastWin, setPastWin] = useState<{ lo: number; hi: number }>()
   const pastEnabled = mode === 'dep' && !when
   const pastFrom = pastBase !== undefined && pastChunks > 0 ? new Date(pastBase) : undefined
   // Earlier trips load above the list without moving it: the trip at the top stays exactly where it is, and the earlier
@@ -89,10 +92,16 @@ export default function TripResults() {
   const firstShownKey = useRef<string>(undefined)
   const scrollAnchor = useScrollAnchor()
   const revealPast = () => {
-    if (!pastEnabled || pastChunks >= MAX_PAST_CHUNKS) return
+    if (!pastEnabled || pastChunks >= MAX_PAST_CHUNKS || pastBusy) return
     const key = firstShownKey.current
     scrollAnchor.hold(key === undefined ? null : document.querySelector(`[data-trip-key="${CSS.escape(key)}"]`))
-    if (pastBase === undefined) setPastBase(Date.now())
+    const base = pastBase ?? Date.now()
+    if (pastBase === undefined) setPastBase(base)
+    // Only the hour beyond what is already loaded: it ends where the previous one began.
+    const hi = pastWin?.lo ?? base
+    const lo = hi - PAST_SPAN_MS
+    setPastWin({ lo, hi })
+    setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
   const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({ enabled: pastEnabled && selectedKey === undefined, onRelease: revealPast })
@@ -134,18 +143,28 @@ export default function TripResults() {
 
   const pastQueries = useMemo(
     () =>
-      Array.from({ length: pastBase === undefined ? 0 : pastChunks }, (_, k) => ({
+      pastStarts.map((t) => ({
         from,
         to,
         mode: 'dep' as const,
-        when: new Date(pastBase! - (k + 1) * PAST_CHUNK_MIN * 60_000),
+        when: new Date(t),
         excluded: exclusionParams(modes),
-        count: 8,
+        count: 12,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pastBase, pastChunks, from, to, modes.join(',')],
+    [pastStarts, from, to, modes.join(',')],
   )
-  const earlier = useTripsMany(pastQueries, false, true)
+  // Direct searches only, and no refresh: trips that have left don't need the extra routes or live updates.
+  const earlier = useTripsMany(pastQueries, true, true)
+  // The planner answers with about 20 minutes of services, so the hour is covered by following searches, each starting
+  // a minute after the last trip found inside it.
+  const inWindow = pastWin ? earlier.journeys.map(depMs).filter((d) => Number.isFinite(d) && d >= pastWin.lo && d < pastWin.hi) : []
+  const nextPastStart = inWindow.length ? Math.floor(Math.max(...inWindow) / 60_000) * 60_000 + 60_000 : undefined
+  const pastMore = !!pastWin && nextPastStart !== undefined && nextPastStart < pastWin.hi - 60_000 && !pastStarts.includes(nextPastStart)
+  const pastBusy = earlier.isFetching || pastMore
+  useEffect(() => {
+    if (!earlier.isFetching && pastMore) setPastStarts((st) => [...st, nextPastStart!])
+  }, [earlier.isFetching, pastMore, nextPastStart])
   const past = pastFrom
     ? tripList([...new Map(earlier.journeys.map((j) => [tripKey(j), j])).values()], {
         now,
@@ -216,10 +235,10 @@ export default function TripResults() {
   // Let go of the top trip shortly after the earlier ones have all landed (the timer restarts while any still load).
   const pastKeys = shownPast.map(tripKey).join('|')
   useEffect(() => {
-    if (earlier.isFetching) return
+    if (pastBusy) return
     const t = setTimeout(scrollAnchor.release, 400)
     return () => clearTimeout(t)
-  }, [earlier.isFetching, pastKeys, scrollAnchor.release])
+  }, [pastBusy, pastKeys, scrollAnchor.release])
   const selectedJourney = selectedKey === undefined ? undefined : everything.find((j) => tripKey(j) === selectedKey)
 
   // A short list means the planner has no further trips; a growing request keeps the button while loading.
@@ -346,21 +365,21 @@ export default function TripResults() {
             swap direction.
           </EmptyState>
         )}
-        {pastEnabled && !canTouch && data && !earlier.isFetching && pastChunks < MAX_PAST_CHUNKS && (
+        {pastEnabled && !canTouch && data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && (
           <Button variant="subtle" size="sm" borderRadius="xl" alignSelf="center" onClick={revealPast}>
             {pastChunks === 0 ? 'Show earlier trips' : 'Show even earlier trips'}
           </Button>
         )}
-        {pastFrom && earlier.isFetching && (
+        {pastFrom && pastBusy && (
           // As tall as the "Show earlier trips" button it replaces, so the list doesn't shift up at the top of the page.
           <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
             <Spinner size="xs" />
             <Text>Pulling older trips…</Text>
           </HStack>
         )}
-        {pastFrom && !earlier.isFetching && past.length === 0 && (
+        {pastFrom && !pastBusy && past.length === 0 && (
           <Text fontSize="xs" color="fg.muted" textAlign="center">
-            No earlier trips found in the last hour or so.
+            No earlier trips found.
           </Text>
         )}
         {shownPast.map((j, i) => (
