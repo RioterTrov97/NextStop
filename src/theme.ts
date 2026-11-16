@@ -125,11 +125,11 @@ const config = defineConfig({
           DEFAULT: { value: { _light: '{colors.gray.200}', _dark: darkSurface.border } },
           muted: { value: { _light: '{colors.gray.100}', _dark: darkSurface.borderMuted } },
         },
-        // colorPalette="brand": light mode uses the deep accent with white text, dark mode the pale one with dark text.
+        // colorPalette="brand": buttons are the same vivid accent with white text in both modes; text in dark mode is the brighter 400.
         brand: {
-          solid: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.300}' } },
-          contrast: { value: { _light: 'white', _dark: '{colors.brand.950}' } },
-          fg: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.300}' } },
+          solid: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.600}' } },
+          contrast: { value: { _light: 'white', _dark: 'white' } },
+          fg: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.400}' } },
           muted: { value: { _light: '{colors.brand.200}', _dark: '{colors.brand.800}' } },
           subtle: { value: { _light: '{colors.brand.100}', _dark: '{colors.brand.900}' } },
           emphasized: { value: { _light: '{colors.brand.300}', _dark: '{colors.brand.700}' } },

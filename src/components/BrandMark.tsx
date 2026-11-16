@@ -24,7 +24,7 @@ export function BrandMark({ size, vehicles = false, ...rest }: Props) {
         // The theme's variables, so the mark follows the app colour chosen in Settings.
         '--ns-logo-pin': 'var(--chakra-colors-brand-600)',
         '--ns-logo-ring': 'var(--chakra-colors-brand-800)',
-        '.dark &': { '--ns-logo-pin': 'var(--chakra-colors-brand-300)', '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
+        '.dark &': { '--ns-logo-pin': 'var(--chakra-colors-brand-400)', '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
       }}
       {...rest}
     >

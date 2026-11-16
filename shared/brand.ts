@@ -29,7 +29,7 @@ type Scale = Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 9
 type Modes<T> = { light: T; dark: T }
 
 export interface Palette {
-  /** The accent scale. 600 is the light-mode accent (white text at least 4.5:1), 300 the dark-mode one (dark text). */
+  /** The accent scale. 600 takes white text in both modes and is the light-mode accent text; 400 is the dark-mode text. */
   brand: Scale
   /** Neutrals leaning slightly towards the accent's hue, replacing Chakra's grey scale. */
   gray: Scale
@@ -124,8 +124,9 @@ export function makePalette(seed: string): Palette {
     900: tone(0.21),
     950: tone(0.13),
   }
-  // The dark-mode accent: light enough to read on dark panels (and to take dark text as a button).
-  brand[300] = reach(h, s, 0.72, panel.dark, 7, 0.01)
+  // Accent text and icons in dark mode: as vivid as possible while still reading on dark panels. Dark-mode buttons use
+  // 600 with white text, like light mode, so the colour looks the same in both.
+  brand[400] = reach(h, s, 0.64, panel.dark, 4.6, 0.01)
 
   const gs = Math.min(s, 0.16)
   const gray: Scale = {

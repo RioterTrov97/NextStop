@@ -11,9 +11,8 @@ describe('makePalette', () => {
       // Buttons and links in light mode (white text on brand.600; brand.600 text on panels and the page).
       expect(contrastRatio('#FFFFFF', p.brand[600])).toBeGreaterThanOrEqual(4.5)
       expect(contrastRatio(p.brand[600], p.page.light)).toBeGreaterThanOrEqual(4.5)
-      // Dark mode: brand.300 text on panels, and dark text on brand.300 buttons.
-      expect(contrastRatio(p.brand[300], p.panel.dark)).toBeGreaterThanOrEqual(4.5)
-      expect(contrastRatio(p.brand[950], p.brand[300])).toBeGreaterThanOrEqual(4.5)
+      // Dark mode: brand.400 text on panels (buttons are brand.600 with white text, as in light mode).
+      expect(contrastRatio(p.brand[400], p.panel.dark)).toBeGreaterThanOrEqual(4.5)
       // Body and muted text in both modes.
       expect(contrastRatio(p.ink.light, p.panel.light)).toBeGreaterThanOrEqual(12)
       expect(contrastRatio(p.ink.dark, p.panel.dark)).toBeGreaterThanOrEqual(12)
@@ -33,8 +32,7 @@ describe('the original orange theme', () => {
     const p = ORIGINAL
     // White on the orange buttons (and orange text on white) is about 3.2:1, kept deliberately (see ORIGINAL).
     expect(contrastRatio('#FFFFFF', p.brand[600])).toBeGreaterThanOrEqual(3)
-    expect(contrastRatio(p.brand[300], p.panel.dark)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(p.brand[950], p.brand[300])).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(p.brand[400], p.panel.dark)).toBeGreaterThanOrEqual(4.5)
     expect(contrastRatio(p.ink.light, p.panel.light)).toBeGreaterThanOrEqual(12)
     expect(contrastRatio(p.ink.dark, p.panel.dark)).toBeGreaterThanOrEqual(12)
     expect(contrastRatio(p.gray[600], p.page.light)).toBeGreaterThanOrEqual(4.5)
