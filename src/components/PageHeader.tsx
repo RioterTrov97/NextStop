@@ -32,7 +32,7 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
         bg="var(--ns-header-bg)"
         color="var(--ns-header-fg)"
         px={4}
-        pb={3}
+        pb={2}
         // The full status bar height, uncapped: iOS 27 blurs anything in that zone, so the title must start below it
         // (59px on Dynamic Island iPhones). The solid sticky header behind the status bar is also what stops the blur.
         pt="calc(8px + env(safe-area-inset-top))"

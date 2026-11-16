@@ -645,7 +645,7 @@ export function Home() {
       )}
       {/* Sections 24px apart; each label sits 8px above its own content (Section). Home's header is a greeting, not
           a toolbar, so the first section starts 24px below it too, as one more section break. */}
-      <PageBody gap={6} pt={3} position="relative">
+      <PageBody gap={6} pt={4} position="relative">
         {current && <CurrentTripCard trip={current} now={now} />}
         <WeekendNotice trips={trips} now={now} />
         {trips.length === 0 && current ? (
