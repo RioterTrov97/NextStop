@@ -545,7 +545,14 @@ export function Home() {
         action={
           <>
             {current && <RefreshButton />}
-            <BrandMark size={40} aria-hidden />
+            {/* The page's main action, top right like other iOS apps. Without saved trips the page's own "Plan a trip" button does this. */}
+            {trips.length > 0 && (
+              <Button asChild size="sm" variant="solid" colorPalette="brand" borderRadius="full" flexShrink={0}>
+                <Link to="/plan">
+                  <LuSearch /> Plan
+                </Link>
+              </Button>
+            )}
           </>
         }
       />
@@ -623,11 +630,6 @@ export function Home() {
                   ))}
                 </Text>
               </Box>
-              <Button asChild size="sm" variant="solid" colorPalette="brand" borderRadius="full" flexShrink={0}>
-                <Link to="/plan">
-                  <LuSearch /> Plan
-                </Link>
-              </Button>
             </Flex>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               {active.length > 0 && (
