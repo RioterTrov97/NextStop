@@ -80,8 +80,13 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
           </Box>
           {action}
         </Flex>
-        {/* Under a sheet or dialog the extra rows (transport picker, filters) are hidden; the raised header keeps only its title row. */}
-        {children && <Box css={{ 'html[data-overlay] &': { visibility: 'hidden' } }}>{children}</Box>}
+        {/* Under a sheet or dialog the extra rows (transport picker, filters) are hidden; the raised header keeps only its title row.
+            The 16px above them is set here, never by each page, so every header has the same room under its title. */}
+        {children && (
+          <Box mt={4} css={{ 'html[data-overlay] &': { visibility: 'hidden' } }}>
+            {children}
+          </Box>
+        )}
       </Box>
       {!online && (
         <Flex role="status" align="center" justify="center" gap={2} px={4} py={2} bg="bg.muted" color="fg.muted" fontSize="sm">

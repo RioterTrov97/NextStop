@@ -297,7 +297,7 @@ export default function TripResults() {
         }
       >
         {/* Sticky with the header, so the transport choice and the hidden-trips note stay in view while only the trips scroll. */}
-        <Stack gap={1} mt={2}>
+        <Stack gap={1}>
           <ModePicker
             value={modes}
             onChange={changeModes}

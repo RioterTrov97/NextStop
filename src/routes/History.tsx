@@ -131,7 +131,7 @@ export default function History() {
   return (
     <>
       <PageHeader title="History" subtitle="Trips you followed and routes you searched">
-        <Flex mt={3} p="3px" bg="bg.muted" borderRadius="full" role="tablist">
+        <Flex p="3px" bg="bg.muted" borderRadius="full" role="tablist">
           {(
             [
               ['trips', 'Trips'],

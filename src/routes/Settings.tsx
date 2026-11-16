@@ -188,7 +188,6 @@ function SectionNav({ current }: { current: SectionId }) {
       as="nav"
       aria-label="Settings sections"
       gap={2}
-      mt={3}
       mx={-4}
       px={4}
       overflowX="auto"

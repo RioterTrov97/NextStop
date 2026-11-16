@@ -10,7 +10,7 @@ const ITEMS = [
 export function LiveTabs() {
   const { pathname } = useLocation()
   return (
-    <Flex mt={3} p="3px" bg="bg.muted" borderRadius="full" role="tablist">
+    <Flex p="3px" bg="bg.muted" borderRadius="full" role="tablist">
       {ITEMS.map(({ to, label }) => {
         const active = pathname.startsWith(to)
         return (
