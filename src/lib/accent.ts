@@ -63,9 +63,9 @@ export function accentVars(p: Palette, mode: ColourMode): Record<string, string>
     vars['--chakra-colors-bg-subtle'] = p.darkSurface.subtle
     vars['--chakra-colors-bg-muted'] = p.darkSurface.muted
     vars['--chakra-colors-bg-emphasized'] = p.darkSurface.emphasized
-    vars['--chakra-colors-border'] = p.darkSurface.border
-    vars['--chakra-colors-border-muted'] = p.darkSurface.borderMuted
   }
+  vars['--chakra-colors-border'] = p.line[mode].border
+  vars['--chakra-colors-border-muted'] = p.line[mode].muted
   // index.html: the page colour shared by the header and the status bar. (Not --ns-header-fg: tinted screens own it.)
   vars['--ns-page'] = p.page[mode]
   return { ...vars, ...appVars(p, mode) }

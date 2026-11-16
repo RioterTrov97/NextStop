@@ -39,10 +39,12 @@ export interface Palette {
   panel: Modes<string>
   /** Default text on the page. */
   ink: Modes<string>
-  /** Raised dark surfaces: bg.subtle, bg.muted, bg.emphasized, border, border.muted. */
-  darkSurface: { subtle: string; muted: string; emphasized: string; border: string; borderMuted: string }
+  /** Raised dark surfaces: bg.subtle, bg.muted, bg.emphasized. */
+  darkSurface: { subtle: string; muted: string; emphasized: string }
   /** Soft colour fixed behind the page so glass has something to blur: the accent, a neighbouring hue, the accent again. */
   backdrop: Modes<[string, string, string]>
+  /** Borders: card and field edges (`border`), and dividers inside cards (`muted`). See `linesFor`. */
+  line: Modes<{ border: string; muted: string }>
 }
 
 // Colour maths kept here, without imports, so build scripts can load this file directly with Node.
@@ -111,6 +113,26 @@ export const mixHex = (a: string, b: string, t: number) =>
     .join('')
     .toUpperCase()
 
+/** How far borders stand out from the panel they edge: card edges, and dividers inside cards (WCAG contrast ratio). */
+export const LINE_CONTRAST = { border: 1.55, muted: 1.3 }
+
+/**
+ * Borders as the text colour mixed into the panel colour, just enough to reach LINE_CONTRAST. iOS separators and
+ * Material outlines sit about 1.6:1 on white; the light greys used before (1.2-1.3:1, dividers 1.1:1) vanished on the
+ * grey and tinted trip sheet.
+ */
+export function linesFor(ink: Modes<string>, panel: Modes<string>): Modes<{ border: string; muted: string }> {
+  const line = (mode: 'light' | 'dark', ratio: number) => {
+    let t = 0.04
+    while (t < 0.6 && contrastRatio(mixHex(ink[mode], panel[mode], t), panel[mode]) < ratio) t += 0.01
+    return mixHex(ink[mode], panel[mode], t)
+  }
+  return {
+    light: { border: line('light', LINE_CONTRAST.border), muted: line('light', LINE_CONTRAST.muted) },
+    dark: { border: line('dark', LINE_CONTRAST.border), muted: line('dark', LINE_CONTRAST.muted) },
+  }
+}
+
 /** The whole palette from one colour. */
 export function makePalette(seed: string): Palette {
   const { h, s: seedS } = hexToHsl(seed)
@@ -168,8 +190,6 @@ export function makePalette(seed: string): Palette {
     subtle: hsl(h, ds, 0.095),
     muted: hsl(h, ds, 0.14),
     emphasized: hsl(h, ds, 0.19),
-    border: hsl(h, ds, 0.18),
-    borderMuted: hsl(h, ds, 0.14),
   }
 
   // A cooler neighbour (blue to aqua, red to pink) gives the backdrop some depth without clashing.
@@ -180,7 +200,7 @@ export function makePalette(seed: string): Palette {
     dark: [rgba(tone(0.52), 0.26), rgba(hsl(h - 35, Math.min(s, 0.75), 0.4), 0.18), rgba(near, 0.12)] as [string, string, string],
   }
 
-  return { brand, gray, page, panel, ink, darkSurface, backdrop }
+  return { brand, gray, page, panel, ink, darkSurface, backdrop, line: linesFor(ink, panel) }
 }
 
 /**
@@ -202,7 +222,8 @@ export const ORIGINAL: Palette = {
   page: { light: '#FFFFFF', dark: '#09090B' },
   panel: { light: '#FFFFFF', dark: '#111111' },
   ink: { light: '#09090B', dark: '#FAFAFA' },
-  darkSurface: { subtle: '#111111', muted: '#18181B', emphasized: '#27272A', border: '#27272A', borderMuted: '#18181B' },
+  darkSurface: { subtle: '#111111', muted: '#18181B', emphasized: '#27272A' },
+  line: linesFor({ light: '#09090B', dark: '#FAFAFA' }, { light: '#FFFFFF', dark: '#111111' }),
 }
 
 /**
@@ -221,7 +242,7 @@ export const FIXED_PALETTES: Partial<Record<string, Palette>> = { original: ORIG
 
 /** The default palette (Original), which the theme, manifest, status bar and icons are built from. */
 export const palette = ORIGINAL
-export const { brand, gray, page, panel, ink, darkSurface, backdrop } = palette
+export const { brand, gray, page, panel, ink, darkSurface, backdrop, line } = palette
 
 // The manifest takes one colour; the app replaces it at runtime with the page colour of the current theme.
 export const themeColor = page.light

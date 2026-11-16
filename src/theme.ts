@@ -1,4 +1,4 @@
-import { brand, DARK_WASH, darkSurface, gray, ink, page, palette, panel } from '../shared/brand'
+import { brand, DARK_WASH, darkSurface, gray, ink, line, page, palette, panel } from '../shared/brand'
 import { appVars } from './lib/accent'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
@@ -125,8 +125,10 @@ const config = defineConfig({
           muted: { value: { _light: '{colors.gray.600}', _dark: '{colors.gray.400}' } },
         },
         border: {
-          DEFAULT: { value: { _light: '{colors.gray.200}', _dark: darkSurface.border } },
-          muted: { value: { _light: '{colors.gray.100}', _dark: darkSurface.borderMuted } },
+          // Mixed from the text colour to reach LINE_CONTRAST on panels (shared/brand.ts), so card edges and dividers
+          // still show on the grey or tinted trip sheet.
+          DEFAULT: { value: { _light: line.light.border, _dark: line.dark.border } },
+          muted: { value: { _light: line.light.muted, _dark: line.dark.muted } },
         },
         // colorPalette="brand": buttons are the same vivid accent with white text in both modes; text in dark mode is the brighter 400.
         // Tinted surfaces in dark mode are washes of the accent over whatever is behind, so unselected chips, banners and
