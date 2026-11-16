@@ -49,6 +49,9 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
             zIndex: 1550,
             pointerEvents: 'none',
             boxShadow: 'none',
+            // Only the top of the header stays above the backdrop (the status bar and the title, as far as the sheet's top,
+            // see SHEET_MAX_H). Anything taller, like the transport picker on a results page, goes under the sheet and backdrop.
+            clipPath: 'inset(0 0 calc(100% - 104px - env(safe-area-inset-top)) 0)',
           },
         }}
       >
@@ -77,7 +80,8 @@ export function PageHeader({ title, subtitle, back, backTo, action, children }: 
           </Box>
           {action}
         </Flex>
-        {children}
+        {/* Under a sheet or dialog the extra rows (transport picker, filters) are hidden; the raised header keeps only its title row. */}
+        {children && <Box css={{ 'html[data-overlay] &': { visibility: 'hidden' } }}>{children}</Box>}
       </Box>
       {!online && (
         <Flex role="status" align="center" justify="center" gap={2} px={4} py={2} bg="bg.muted" color="fg.muted" fontSize="sm">
