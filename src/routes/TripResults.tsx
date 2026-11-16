@@ -159,11 +159,11 @@ export default function TripResults() {
   const nextPastStart = inWindow.length ? Math.floor(Math.max(...inWindow) / 60_000) * 60_000 + 60_000 : undefined
   const pastMore = !!pastWin && nextPastStart !== undefined && nextPastStart < pastWin.hi - 60_000 && !pastStarts.includes(nextPastStart)
   const pastBusy = earlier.isFetching || pastMore
-  // Earlier trips load only on a long pull down at the top (past the threshold, about 330px of finger travel). The list
+  // Earlier trips load only on a pull down at the top (past the threshold, about 200px of finger travel). The list
   // then rests PULL_HOLD px down with a loader above it until they arrive.
   const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({
     enabled: pastEnabled && selectedKey === undefined,
-    threshold: 100,
+    threshold: 80,
     hold: PULL_HOLD,
     loading: pastBusy,
     onRelease: revealPast,
@@ -219,11 +219,19 @@ export default function TripResults() {
     if (laterTarget > 0 && laterStarts.length > 0 && !later.isFetching && !laterDone && lastDep < laterTarget) addChunk()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [laterTarget, later.isFetching, lastDep, laterDone])
-  const laterReady = laterOn && !!data && !isPlaceholderData && !laterDone && !later.isFetching && (visible.length > 0 || hiddenCount > 0)
+  // Later trips load ahead of the reader, but not until the list has been moved: opening a search costs nothing extra.
+  const [laterArmed, setLaterArmed] = useState(false)
+  useEffect(() => {
+    const arm = () => setLaterArmed(true)
+    const events = ['scroll', 'wheel', 'touchmove'] as const
+    events.forEach((e) => window.addEventListener(e, arm, { passive: true, once: true }))
+    return () => events.forEach((e) => window.removeEventListener(e, arm))
+  }, [])
+  const laterReady = laterOn && laterArmed && !!data && !isPlaceholderData && !laterDone && !later.isFetching && (visible.length > 0 || hiddenCount > 0)
   const laterEnd = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!laterReady || !laterEnd.current || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && loadLater(), { rootMargin: '150px' })
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && loadLater(), { rootMargin: '800px' })
     io.observe(laterEnd.current)
     return () => io.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,7 +350,7 @@ export default function TripResults() {
           ) : (
             <>
               <Text as="span" css={{ '[data-armed=true] > &': { display: 'none' } }}>
-                Pull down a long way for earlier trips
+                Pull down for earlier trips
               </Text>
               <Text as="span" display="none" css={{ '[data-armed=true] > &': { display: 'inline' } }}>
                 Release to load earlier trips
