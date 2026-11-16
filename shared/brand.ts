@@ -14,7 +14,7 @@ export const ACCENTS = [
   // The app's first colour, orange on plain greys, kept exactly as it was (see ORIGINAL below).
   { key: 'original', label: 'Original', hex: PRIMARY },
   { key: 'harbour', label: 'Harbour', hex: '#1A86F0' },
-  { key: 'bondi', label: 'Bondi', hex: '#00A6B0' },
+  { key: 'bondi', label: 'Bondi', hex: '#0891B2' },
   { key: 'eucalyptus', label: 'Eucalyptus', hex: '#3E8E6E' },
   { key: 'wattle', label: 'Wattle', hex: '#E0A100' },
   { key: 'sunset', label: 'Sunset', hex: '#EE5A36' },
@@ -205,7 +205,19 @@ export const ORIGINAL: Palette = {
   darkSurface: { subtle: '#111111', muted: '#18181B', emphasized: '#27272A', border: '#27272A', borderMuted: '#18181B' },
 }
 
-export const FIXED_PALETTES: Partial<Record<string, Palette>> = { original: ORIGINAL }
+/**
+ * Bondi: the beach's aqua. Derived from its seed, the buttons darken to a muddy teal to reach 4.5:1, so like Original
+ * it keeps a lighter cyan for buttons (white on 600 about 3.7:1), chosen for the look. Neutrals and pages are derived.
+ */
+export const BONDI: Palette = {
+  ...makePalette('#0891B2'),
+  brand: {
+    50: '#ECFEFF', 100: '#CFFAFE', 200: '#A5F3FC', 300: '#67E8F9', 400: '#22D3EE', 500: '#06B6D4',
+    600: '#0891B2', 700: '#0E7490', 800: '#155E75', 900: '#164E63', 950: '#083344',
+  },
+}
+
+export const FIXED_PALETTES: Partial<Record<string, Palette>> = { original: ORIGINAL, bondi: BONDI }
 
 /** The default palette (Original), which the theme, manifest, status bar and icons are built from. */
 export const palette = ORIGINAL

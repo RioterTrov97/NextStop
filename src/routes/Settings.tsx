@@ -111,7 +111,8 @@ function AccentPicker({ value }: { value: string }) {
     <SimpleGrid columns={3} gap={3}>
       {ACCENTS.map((a) => {
         const on = value === a.key
-        const colour = accentPalette(a.key).brand[500]
+        // The colour of its buttons, so the swatch shows what choosing it gives.
+        const colour = accentPalette(a.key).brand[600]
         return (
           <Flex
             key={a.key}

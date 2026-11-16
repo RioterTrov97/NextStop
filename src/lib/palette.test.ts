@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ACCENTS, contrastRatio, DARK_WASH, makePalette, mixHex, ORIGINAL, PRIMARY } from '../../shared/brand'
+import { ACCENTS, BONDI, contrastRatio, DARK_WASH, makePalette, mixHex, ORIGINAL, PRIMARY } from '../../shared/brand'
 
 // Any seed must give a readable app, so the colour can later be chosen by the user.
 const seeds = [...ACCENTS.map((a) => a.hex), PRIMARY, '#5A8573', '#E0452B', '#FFD400', '#7B4FE0', '#00B3B8', '#C4258F', '#22C55E', '#808080', '#000000', '#FFFFFF']
@@ -29,10 +29,12 @@ describe('makePalette', () => {
   })
 })
 
-describe('the original orange theme', () => {
+describe.each([
+  ['original orange', ORIGINAL],
+  ['Bondi aqua', BONDI],
+])('the fixed %s theme', (_name, p) => {
   it('keeps text readable, with its lighter light-mode buttons', () => {
-    const p = ORIGINAL
-    // White on the orange buttons (and orange text on white) is about 3.2:1, kept deliberately (see ORIGINAL).
+    // White on the buttons (and accent text on white) is about 3.2:1 for orange and 3.7:1 for aqua, kept deliberately.
     expect(contrastRatio('#FFFFFF', p.brand[600])).toBeGreaterThanOrEqual(3)
     expect(contrastRatio(p.brand[400], p.panel.dark)).toBeGreaterThanOrEqual(4.5)
     expect(contrastRatio(p.brand[400], mixHex(p.brand[400], p.panel.dark, DARK_WASH / 100))).toBeGreaterThanOrEqual(4.5)
