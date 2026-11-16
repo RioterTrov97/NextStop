@@ -1,5 +1,5 @@
 import { Box, Button, Flex, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestFresh } from '../api/client'
 import { refreshRealtime } from '../api/realtime'
@@ -69,8 +69,13 @@ export default function TripResults() {
   const [pastChunks, setPastChunks] = useState(0)
   const pastEnabled = mode === 'dep' && !when
   const pastFrom = pastBase !== undefined && pastChunks > 0 ? new Date(pastBase) : undefined
+  // The trip at the top of the list when earlier ones were asked for: once they load, the view stays on it with just one
+  // earlier trip showing above, rather than jumping to the oldest (see the layout effect below).
+  const firstShownKey = useRef<string>(undefined)
+  const anchorKey = useRef<string>(undefined)
   const revealPast = () => {
     if (!pastEnabled || pastChunks >= MAX_PAST_CHUNKS) return
+    anchorKey.current = firstShownKey.current
     if (pastBase === undefined) setPastBase(Date.now())
     setPastChunks((n) => n + 1)
   }
@@ -141,6 +146,24 @@ export default function TripResults() {
   const unlockedPast = useRunningForecasts(past.filter((j) => unlocked.includes(tripKey(j)) || tripKey(j) === currentKey))
   const shownPast = past.map((j) => unlockedPast.find((u) => tripKey(u) === tripKey(j)) ?? j)
   const everything = [...shownPast, ...shownVisible]
+  firstShownKey.current = everything[0] && tripKey(everything[0])
+
+  // Earlier trips land above the list. Scroll so the trip just before the old top sits under the header: the view
+  // barely moves, one earlier trip peeks in, and the rest are a scroll up. Runs before paint, so nothing jumps.
+  const pastKeys = shownPast.map(tripKey).join('|')
+  useLayoutEffect(() => {
+    const anchor = anchorKey.current
+    if (anchor === undefined || earlier.isFetching) return
+    const keys = pastKeys.split('|')
+    const at = keys.indexOf(anchor)
+    // The anchor is among the earlier trips (a further reveal) or, the first time, the first current trip after them.
+    const before = at > 0 ? keys[at - 1] : at === -1 && keys[0] ? keys[keys.length - 1] : undefined
+    anchorKey.current = undefined
+    const el = before && document.querySelector(`[data-trip-key="${CSS.escape(before)}"]`)
+    if (!el) return
+    const headerBottom = document.querySelector('[data-page-header]')?.getBoundingClientRect().bottom ?? 0
+    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - headerBottom - 12, behavior: 'instant' })
+  }, [pastKeys, earlier.isFetching])
   const selectedJourney = selectedKey === undefined ? undefined : everything.find((j) => tripKey(j) === selectedKey)
 
   // A short list means the planner has no further trips; a growing request keeps the button while loading.
@@ -279,7 +302,7 @@ export default function TripResults() {
           </Text>
         )}
         {shownPast.map((j, i) => (
-          <Box key={`past-${summarize(j).depPlanned}-${i}`} opacity={0.55}>
+          <Box key={`past-${summarize(j).depPlanned}-${i}`} data-trip-key={tripKey(j)} opacity={0.55}>
             <JourneyRow
               journey={j}
               now={now}
