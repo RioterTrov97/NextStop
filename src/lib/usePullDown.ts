@@ -90,6 +90,8 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         // Committed to a pull-down. Promote the layer now and steal from the next event.
         dragging = true
         el.style.willChange = 'transform'
+        // The card under the finger would otherwise show its pressed (shrunk) state for the whole drag and look glitchy.
+        el.style.pointerEvents = 'none'
         return
       }
       if (e.cancelable) e.preventDefault()
@@ -114,6 +116,7 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         setTimeout(() => {
           if (fire) release.current()
         }, reduce ? 0 : 320)
+        el.style.pointerEvents = ''
         setTimeout(() => {
           el.style.willChange = ''
         }, reduce ? 0 : 560)
