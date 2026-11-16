@@ -48,7 +48,7 @@ function TripDetails({ entry }: { entry: HistoryEntry }) {
           </Flex>
         )
       })}
-      <Button asChild size="xs" variant="subtle" colorPalette="brand" alignSelf="flex-start" mt={1}>
+      <Button asChild size="xs" variant="solid" colorPalette="brand" borderRadius="full" alignSelf="flex-start" mt={1}>
         <Link to={tripPath({ ...entry, modes: [] })}>See live times for this route</Link>
       </Button>
     </Stack>

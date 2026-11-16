@@ -621,7 +621,7 @@ export function Home() {
                   ))}
                 </Text>
               </Box>
-              <Button asChild size="sm" variant="subtle" colorPalette="brand" borderRadius="full" flexShrink={0}>
+              <Button asChild size="sm" variant="solid" colorPalette="brand" borderRadius="full" flexShrink={0}>
                 <Link to="/plan">
                   <LuSearch /> Plan
                 </Link>
