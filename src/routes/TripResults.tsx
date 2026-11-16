@@ -1,4 +1,4 @@
-import { Box, Button, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, Flex, HStack, IconButton, Skeleton, Spinner, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestFresh } from '../api/client'
@@ -17,6 +17,7 @@ import { PageHeader } from '../components/PageHeader'
 import { RefreshButton } from '../components/RefreshButton'
 import { SaveTripChip } from '../components/SaveTrip'
 import { useNow } from '../lib/hooks'
+import { usePullDown } from '../lib/usePullDown'
 import { summarize, tripList } from '../lib/journey'
 import { exclusionParams } from '../lib/lines'
 import { tripPath } from '../lib/paths'
@@ -101,6 +102,8 @@ export default function TripResults() {
     setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
+  // Pulling the page down at the top loads them too, for the user who expects that gesture.
+  const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({ enabled: pastEnabled && selectedKey === undefined, onRelease: revealPast })
   // Earlier trips load by themselves, like later ones: once the user starts scrolling and the top of the list is near, the
   // next hour above loads and the list stays put (a page just opened loads nothing until then).
   const [pastArmed, setPastArmed] = useState(false)
@@ -324,7 +327,36 @@ export default function TripResults() {
           />
         </Stack>
       </PageHeader>
-      <PageBody position="relative">
+      <PageBody ref={pullRef} position="relative">
+        <Flex
+          ref={pullLabelRef}
+          position="absolute"
+          left={0}
+          right={0}
+          top="-40px"
+          h="40px"
+          align="flex-end"
+          justify="center"
+          pb={2}
+          opacity={0}
+          pointerEvents="none"
+          fontSize="xs"
+          color="fg.muted"
+          aria-hidden
+        >
+          {pastChunks >= MAX_PAST_CHUNKS ? (
+            'No more earlier trips'
+          ) : (
+            <>
+              <Text as="span" css={{ '[data-armed=true] > &': { display: 'none' } }}>
+                Pull down for earlier trips
+              </Text>
+              <Text as="span" display="none" css={{ '[data-armed=true] > &': { display: 'inline' } }}>
+                Release to load earlier trips
+              </Text>
+            </>
+          )}
+        </Flex>
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
         {(isLoading || settling) && [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
