@@ -36,6 +36,7 @@ const MAX_LATER_CHUNKS = 40
 const LATER_SPAN_MS = 60 * 60_000
 const loadedLater = new Map<string, number[]>()
 const depMs = (j: Journey) => Date.parse(summarize(j).depEstimated ?? summarize(j).depPlanned ?? '')
+const PULL_HOLD = 64 // px the list rests down while earlier trips load
 const PAST_SPAN_MS = 60 * 60_000 // each pull of earlier trips reaches an hour further back
 
 /** The last ride has arrived, so there is nothing left to follow. */
@@ -102,9 +103,6 @@ export default function TripResults() {
     setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
-  // Earlier trips load only on a pull down past the threshold at the top of the page (later trips load by scrolling).
-  const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({ enabled: pastEnabled && selectedKey === undefined, onRelease: revealPast })
-
   // Changing the route (swap, new modes) refetches live data now, even when a cached copy is still fresh.
   const qc = useQueryClient()
   const firstRoute = useRef(true)
@@ -161,6 +159,15 @@ export default function TripResults() {
   const nextPastStart = inWindow.length ? Math.floor(Math.max(...inWindow) / 60_000) * 60_000 + 60_000 : undefined
   const pastMore = !!pastWin && nextPastStart !== undefined && nextPastStart < pastWin.hi - 60_000 && !pastStarts.includes(nextPastStart)
   const pastBusy = earlier.isFetching || pastMore
+  // Earlier trips load only on a long pull down at the top (past the threshold, about 330px of finger travel). The list
+  // then rests PULL_HOLD px down with a loader above it until they arrive.
+  const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({
+    enabled: pastEnabled && selectedKey === undefined,
+    threshold: 100,
+    hold: PULL_HOLD,
+    loading: pastBusy,
+    onRelease: revealPast,
+  })
   useEffect(() => {
     if (!earlier.isFetching && pastMore) setPastStarts((st) => [...st, nextPastStart!])
   }, [earlier.isFetching, pastMore, nextPastStart])
@@ -314,23 +321,28 @@ export default function TripResults() {
           position="absolute"
           left={0}
           right={0}
-          top="-40px"
-          h="40px"
-          align="flex-end"
+          top={`-${PULL_HOLD}px`}
+          h={`${PULL_HOLD}px`}
+          align={pastBusy ? 'center' : 'flex-end'}
           justify="center"
-          pb={2}
+          pb={pastBusy ? 0 : 3}
           opacity={0}
           pointerEvents="none"
           fontSize="xs"
           color="fg.muted"
           aria-hidden
         >
-          {pastChunks >= MAX_PAST_CHUNKS ? (
+          {pastBusy ? (
+            <HStack gap={2}>
+              <Spinner size="sm" />
+              <Text>Loading earlier trips…</Text>
+            </HStack>
+          ) : pastChunks >= MAX_PAST_CHUNKS ? (
             'No more earlier trips'
           ) : (
             <>
               <Text as="span" css={{ '[data-armed=true] > &': { display: 'none' } }}>
-                Pull down for earlier trips
+                Pull down a long way for earlier trips
               </Text>
               <Text as="span" display="none" css={{ '[data-armed=true] > &': { display: 'inline' } }}>
                 Release to load earlier trips
@@ -367,13 +379,6 @@ export default function TripResults() {
             Nothing matches {fromName.split(',')[0]} to {toName.split(',')[0]} right now. Try another time, add more transport modes, or
             swap direction.
           </EmptyState>
-        )}
-        {pastFrom && pastBusy && (
-          // Shown only while loading; the list holds its place (useScrollAnchor).
-          <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
-            <Spinner size="xs" />
-            <Text>Loading earlier trips…</Text>
-          </HStack>
         )}
         {pastFrom && !pastBusy && past.length === 0 && (
           <Text fontSize="xs" color="fg.muted" textAlign="center">

@@ -10,6 +10,10 @@ interface Options {
   enabled: boolean
   /** Rubber-banded distance (px) at which letting go counts as a request. */
   threshold?: number
+  /** After a pull past the threshold the list rests this many px down while `loading`, instead of springing straight back. */
+  hold?: number
+  /** The request started by `onRelease` is still running: the list stays at `hold` until it ends. */
+  loading?: boolean
   onRelease: () => void
 }
 
@@ -22,12 +26,14 @@ interface Options {
  * `data-armed` attribute on the label lets CSS swap its text, so a long list below never re-renders mid-gesture. The
  * release callback waits for the spring-back to finish for the same reason.
  */
-export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
+export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false, onRelease }: Options) {
   const ref = useRef<HTMLDivElement>(null)
   const labelRef = useRef<HTMLDivElement>(null)
   const release = useRef(onRelease)
+  const loadingRef = useRef(loading)
   useEffect(() => {
     release.current = onRelease
+    loadingRef.current = loading
   })
 
   useEffect(() => {
@@ -41,14 +47,16 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
     let frame = 0
     let pending = 0
     let armed = false
+    let holding = false
+    let holdTimer = 0
     const SPRING = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
-    const paint = (d: number, animate: boolean) => {
+    const paint = (d: number, animate: boolean, keepLabel = false) => {
       el.style.transition = animate && !reduce ? SPRING : 'none'
       el.style.transform = d ? `translate3d(0, ${d}px, 0)` : ''
       const label = labelRef.current
       if (label) {
         label.style.transition = animate ? 'opacity 0.25s' : 'none'
-        label.style.opacity = String(Math.min(1, d / (threshold * 0.8)))
+        label.style.opacity = keepLabel ? '1' : String(Math.min(1, d / (threshold * 0.8)))
         const next = d >= threshold
         if (next !== armed) {
           armed = next
@@ -66,9 +74,16 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         })
       }
     }
+    const settle = (animate: boolean) => {
+      clearInterval(holdTimer)
+      holding = false
+      paint(0, animate)
+      el.style.pointerEvents = ''
+      setTimeout(() => (el.style.willChange = ''), animate && !reduce ? 560 : 0)
+    }
     const begin = (y: number, target: EventTarget | null, isMouse: boolean) => {
       const t = target as Element | null
-      if (window.scrollY > 0 || t?.closest?.('[data-no-drag], [role="dialog"], input, textarea, select')) return
+      if (holding || window.scrollY > 0 || t?.closest?.('[data-no-drag], [role="dialog"], input, textarea, select')) return
       startY = y
       mouse = isMouse
       dragging = false
@@ -113,19 +128,35 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         const fire = commit && distance >= threshold
         cancelAnimationFrame(frame)
         frame = 0
-        paint(0, true)
-        if (fire) haptic('medium') // confirm bump on successful release
-        // Spring back first, then load, so the animation is never competing with a render. The layer promotion (willChange)
-        // stays until the spring has finished: dropping it mid-spring made iOS repaint the list and cut the animation short.
-        setTimeout(() => {
-          if (fire) release.current()
-        }, reduce ? 0 : 320)
-        el.style.pointerEvents = ''
         document.documentElement.style.userSelect = ''
         document.documentElement.style.removeProperty('-webkit-user-select')
-        setTimeout(() => {
-          el.style.willChange = ''
-        }, reduce ? 0 : 560)
+        if (fire && hold > 0) {
+          // Rest at `hold` with the loader showing, then drop back when the request is done. The list is let go
+          // instantly then (the caller keeps its first trip in place, so nothing visibly moves).
+          paint(hold, true, true)
+          holding = true
+          haptic('medium')
+          setTimeout(() => release.current(), reduce ? 0 : 200)
+          const t0 = Date.now()
+          let saw = false
+          holdTimer = window.setInterval(() => {
+            if (loadingRef.current) saw = true
+            const done = saw ? !loadingRef.current : Date.now() - t0 > 1500
+            if (done || Date.now() - t0 > 20000) settle(!saw)
+          }, 100)
+        } else {
+          paint(0, true)
+          if (fire) haptic('medium') // confirm bump on successful release
+          // Spring back first, then load, so the animation is never competing with a render. The layer promotion (willChange)
+          // stays until the spring has finished: dropping it mid-spring made iOS repaint the list and cut the animation short.
+          setTimeout(() => {
+            if (fire) release.current()
+          }, reduce ? 0 : 320)
+          el.style.pointerEvents = ''
+          setTimeout(() => {
+            el.style.willChange = ''
+          }, reduce ? 0 : 560)
+        }
         // A mouse drag ends with a click on whatever is under the pointer; swallow it.
         if (mouse) {
           const stop = (ev: Event) => ev.stopPropagation()
@@ -173,6 +204,7 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
     document.addEventListener('visibilitychange', away)
     return () => {
       end(false)
+      if (holding) settle(false)
       window.removeEventListener('touchstart', ts)
       window.removeEventListener('touchmove', tm)
       window.removeEventListener('touchend', te)
@@ -188,7 +220,7 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
       document.removeEventListener('mouseleave', away)
       document.removeEventListener('visibilitychange', away)
     }
-  }, [enabled, threshold])
+  }, [enabled, threshold, hold])
 
   return { ref, labelRef }
 }
