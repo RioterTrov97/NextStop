@@ -137,7 +137,14 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
     const te = () => end(true)
     const tc = () => end(false)
     const md = (e: MouseEvent) => e.button === 0 && begin(e.clientY, e.target, true)
-    const mm = (e: MouseEvent) => mouse && move(e.clientY, e)
+    // A mouse button released outside the window or over devtools never reaches `mouseup`; without this the list kept
+    // following the pointer with no button held, stuck half pulled.
+    const mm = (e: MouseEvent) => {
+      if (!mouse) return
+      if (e.buttons === 0) end(false)
+      else move(e.clientY, e)
+    }
+    const away = () => end(false)
     const mu = () => mouse && end(true)
     const key = (e: KeyboardEvent) => e.key === 'Escape' && end(false)
 
@@ -149,6 +156,9 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
     window.addEventListener('mousemove', mm)
     window.addEventListener('mouseup', mu)
     window.addEventListener('keydown', key)
+    window.addEventListener('blur', away)
+    document.addEventListener('mouseleave', away)
+    document.addEventListener('visibilitychange', away)
     return () => {
       end(false)
       window.removeEventListener('touchstart', ts)
@@ -159,6 +169,9 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
       window.removeEventListener('mousemove', mm)
       window.removeEventListener('mouseup', mu)
       window.removeEventListener('keydown', key)
+      window.removeEventListener('blur', away)
+      document.removeEventListener('mouseleave', away)
+      document.removeEventListener('visibilitychange', away)
     }
   }, [enabled, threshold])
 
