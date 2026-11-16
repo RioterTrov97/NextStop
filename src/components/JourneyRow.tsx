@@ -30,7 +30,7 @@ interface Props {
 
 export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint, hideLoad }: Props) {
   const { walkPace } = useSettings()
-  const s = summarize(journey)
+  const s = summarize(journey, walkPace)
   const dep = s.depEstimated ?? s.depPlanned
   const arr = s.arrEstimated ?? s.arrPlanned
   const alerts = journeyAlerts(journey).filter((a) => a.priority === 'high' || a.priority === 'veryHigh')

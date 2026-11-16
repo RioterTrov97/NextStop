@@ -209,24 +209,31 @@ export interface JourneySummary {
   changes: number
 }
 
-export function summarize(j: Journey): JourneySummary {
+/**
+ * Times and totals for a card. Walks at either end count at the user's pace (from their distance), like the walk badges
+ * and the leave time, rather than at the planner's slower walking times, so leave time, arrival and total agree.
+ */
+export function summarize(j: Journey, pace: WalkPace = 'normal'): JourneySummary {
   const transit = j.legs.filter(isTransit)
   const firstTransit = transit[0]
   const last = j.legs[j.legs.length - 1]
   const dep = firstTransit?.origin ?? j.legs[0].origin
-  const tail = trailingWalk(j)
-  // Walking legs can lack their own times, so the arrival is the last ride's arrival plus the walk.
+  const tail = trailingWalk(j, pace)
+  const lead = leadingWalk(j, pace)
+  // The last ride's arrival plus the walk; walking legs can lack their own times anyway.
   const arrival = (t: 'arrivalTimeEstimated' | 'arrivalTimePlanned') => {
-    if (last.destination[t]) return last.destination[t]
     const lastRide = transit[transit.length - 1]?.destination[t]
-    return lastRide && tail ? new Date(new Date(lastRide).getTime() + tail.durationSec * 1000).toISOString() : lastRide
+    if (lastRide && tail) return new Date(new Date(lastRide).getTime() + tail.durationSec * 1000).toISOString()
+    return last.destination[t] ?? lastRide
   }
   const arrEstimated = arrival('arrivalTimeEstimated')
   const arrPlanned = arrival('arrivalTimePlanned')
   // Door-to-door time, so waits between legs count (summing leg durations would hide them).
-  const start = j.legs[0].origin.departureTimeEstimated ?? j.legs[0].origin.departureTimePlanned
-  const end = arrEstimated ?? arrPlanned
-  const elapsed = start && end ? (new Date(end).getTime() - new Date(start).getTime()) / 1000 : 0
+  const rideDep = dep.departureTimeEstimated ?? dep.departureTimePlanned
+  const start =
+    lead && rideDep ? Date.parse(rideDep) - lead.durationSec * 1000 : Date.parse(j.legs[0].origin.departureTimeEstimated ?? j.legs[0].origin.departureTimePlanned ?? '')
+  const end = Date.parse(arrEstimated ?? arrPlanned ?? '')
+  const elapsed = Number.isFinite(start) && Number.isFinite(end) ? (end - start) / 1000 : 0
   return {
     firstTransit,
     depPlanned: dep.departureTimePlanned,
@@ -248,7 +255,7 @@ const ARRIVE_BY_WINDOW_MIN = 5
  * Arrive by: arrivals closest to (and not after) the target time first, in 5-minute bands.
  * Leave now / depart at: earliest arrival first. Ties fall to total time, then changes, then stops.
  */
-export function journeyComparator(mode: 'dep' | 'arr', target?: Date) {
+export function journeyComparator(mode: 'dep' | 'arr', target?: Date, pace: WalkPace = 'normal') {
   const arrivalMs = (s: JourneySummary) => new Date(s.arrEstimated ?? s.arrPlanned ?? 0).getTime()
   const band = (s: JourneySummary) => {
     if (mode !== 'arr' || !target) return Math.floor(arrivalMs(s) / minute)
@@ -256,8 +263,8 @@ export function journeyComparator(mode: 'dep' | 'arr', target?: Date) {
     return gap < 0 ? 10_000 - gap : Math.floor(gap / ARRIVE_BY_WINDOW_MIN)
   }
   return (a: Journey, b: Journey): number => {
-    const sa = summarize(a)
-    const sb = summarize(b)
+    const sa = summarize(a, pace)
+    const sb = summarize(b, pace)
     return (
       band(sa) - band(sb) ||
       Math.round(sa.durationSec / 60) - Math.round(sb.durationSec / 60) ||
@@ -324,7 +331,7 @@ interface OptionStats {
 }
 
 function optionStats(j: Journey, pace: WalkPace): OptionStats {
-  const s = summarize(j)
+  const s = summarize(j, pace)
   const spare = transfers(j).map((t) => t.gapSec - t.walkSec)
   return {
     // Leaving the door later is what counts when trips start with different walks.
@@ -386,7 +393,7 @@ export function tripList(journeys: Journey[], o: TripListOptions) {
   const visible = bestOptions(
     upcoming.filter((j) => walkOk(j) && changeOk(j)),
     o.pace,
-  ).sort(journeyComparator(o.mode, o.when))
+  ).sort(journeyComparator(o.mode, o.when, o.pace))
   const shown = visible.map((j) => optionStats(j, o.pace))
   const hidden = bestOptions(
     upcoming.filter((j) => !walkOk(j) || !changeOk(j)),

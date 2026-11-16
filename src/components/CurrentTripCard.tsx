@@ -205,7 +205,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
     if (wantsOpen) navigate('.', { replace: true, state: null })
   }, [wantsOpen, navigate])
   const [dismissed, setDismissed] = useState<string>()
-  const { minTransfer } = useSettings()
+  const { minTransfer, walkPace } = useSettings()
 
   // One lookup per unfinished part of the trip (the original search, plus one per switch), all refreshed with the
   // other live data every 15 seconds. Each leg is then swapped for its live copy, so delays and platforms stay current.
@@ -276,7 +276,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
     />
   )
 
-  const s = summarize(journey)
+  const s = summarize(journey, walkPace)
   const dep = s.depEstimated ?? s.depPlanned
   const arr = s.arrEstimated ?? s.arrPlanned
   // A board-followed ride may have no arrival time; it then ends 90 minutes after leaving.

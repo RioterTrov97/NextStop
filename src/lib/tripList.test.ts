@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Journey, Leg } from '../api/types'
-import { bestOptions, leadingWalk, leaveAt, setOff, transferFits, transfers, tripList, walksAtPace } from './journey'
+import { bestOptions, leadingWalk, leaveAt, setOff, summarize, transferFits, transfers, tripList, walksAtPace } from './journey'
 import { loadCaption, rideLoad } from './rideLoad'
 
 const T = (hhmm: string) => `2026-10-30T${hhmm}:00Z`
@@ -125,6 +125,12 @@ describe('walk at the start', () => {
     expect(leadingWalk(fromHome)).toMatchObject({ durationSec: 576, distanceM: 800 })
     expect(leadingWalk(fromHome, 'slow')?.durationSec).toBe(720)
     expect(new Date(leaveAt(fromHome)).toISOString()).toBe('2026-10-30T07:50:24.000Z')
+  })
+
+  it('counts the total from the leave time, with the walk at the user pace, not the planner\'s', () => {
+    // The planner set off at 07:50 (a 10 min walk); at the normal pace it is 9:36, so 08:30 less 07:50:24.
+    expect(summarize(fromHome).durationSec).toBe(30 * 60 + 576)
+    expect(summarize(fromHome, 'slow').durationSec).toBe(30 * 60 + 720)
   })
 
   it('ignores trips from a station and walks under two minutes', () => {

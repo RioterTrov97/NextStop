@@ -110,7 +110,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
         </Text>
       )}
       {shown.map((j, i) => {
-        const s = summarize(j)
+        const s = summarize(j, walkPace)
         const dep = s.depEstimated ?? s.depPlanned
         const arr = s.arrEstimated ?? s.arrPlanned
         const transit = j.legs.filter(isTransit)
