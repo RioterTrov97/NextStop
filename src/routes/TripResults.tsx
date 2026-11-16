@@ -102,19 +102,8 @@ export default function TripResults() {
     setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
-  // Pulling the page down at the top loads them too, for the user who expects that gesture.
+  // Earlier trips load only on a pull down past the threshold at the top of the page (later trips load by scrolling).
   const { ref: pullRef, labelRef: pullLabelRef } = usePullDown({ enabled: pastEnabled && selectedKey === undefined, onRelease: revealPast })
-  // Earlier trips load by themselves, like later ones: once the user starts scrolling and the top of the list is near, the
-  // next hour above loads and the list stays put (a page just opened loads nothing until then).
-  const [pastArmed, setPastArmed] = useState(false)
-  useEffect(() => {
-    // Any scroll, wheel or touch drag: opening a search loads nothing extra until the user starts moving the list.
-    const arm = () => setPastArmed(true)
-    const events = ['scroll', 'wheel', 'touchmove'] as const
-    events.forEach((e) => window.addEventListener(e, arm, { passive: true, once: true }))
-    return () => events.forEach((e) => window.removeEventListener(e, arm))
-  }, [])
-  const pastTop = useRef<HTMLDivElement>(null)
 
   // Changing the route (swap, new modes) refetches live data now, even when a cached copy is still fresh.
   const qc = useQueryClient()
@@ -172,14 +161,6 @@ export default function TripResults() {
   const nextPastStart = inWindow.length ? Math.floor(Math.max(...inWindow) / 60_000) * 60_000 + 60_000 : undefined
   const pastMore = !!pastWin && nextPastStart !== undefined && nextPastStart < pastWin.hi - 60_000 && !pastStarts.includes(nextPastStart)
   const pastBusy = earlier.isFetching || pastMore
-  const pastReady = pastEnabled && pastArmed && !!data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && selectedKey === undefined
-  useEffect(() => {
-    if (!pastReady || !pastTop.current || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && revealPast(), { rootMargin: '150px' })
-    io.observe(pastTop.current)
-    return () => io.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pastReady, pastChunks])
   useEffect(() => {
     if (!earlier.isFetching && pastMore) setPastStarts((st) => [...st, nextPastStart!])
   }, [earlier.isFetching, pastMore, nextPastStart])
@@ -387,8 +368,6 @@ export default function TripResults() {
             swap direction.
           </EmptyState>
         )}
-        {/* Out of the flow: an empty row in the stack would add a 12px gap above the first trip. */}
-        <Box ref={pastTop} aria-hidden position="absolute" top={0} left={0} h="1px" w="1px" pointerEvents="none" />
         {pastFrom && pastBusy && (
           // Shown only while loading; the list holds its place (useScrollAnchor).
           <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
