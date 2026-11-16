@@ -101,13 +101,15 @@ export default function TripResults() {
     setPastStarts((st) => [...st, lo])
     setPastChunks((n) => n + 1)
   }
-  // Earlier trips load by themselves, like later ones: once the user has scrolled down and comes back up to the top of
-  // the list, the next hour above loads and the list stays put (a new page does not load them until then).
+  // Earlier trips load by themselves, like later ones: once the user starts scrolling and the top of the list is near, the
+  // next hour above loads and the list stays put (a page just opened loads nothing until then).
   const [pastArmed, setPastArmed] = useState(false)
   useEffect(() => {
-    const onScroll = () => window.scrollY > 300 && setPastArmed(true)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    // Any scroll, wheel or touch drag: opening a search loads nothing extra until the user starts moving the list.
+    const arm = () => setPastArmed(true)
+    const events = ['scroll', 'wheel', 'touchmove'] as const
+    events.forEach((e) => window.addEventListener(e, arm, { passive: true, once: true }))
+    return () => events.forEach((e) => window.removeEventListener(e, arm))
   }, [])
   const pastTop = useRef<HTMLDivElement>(null)
 
@@ -354,13 +356,8 @@ export default function TripResults() {
           </EmptyState>
         )}
         <div ref={pastTop} aria-hidden />
-        {pastEnabled && data && !pastBusy && pastChunks < MAX_PAST_CHUNKS && (
-          <Button variant="subtle" size="sm" borderRadius="xl" alignSelf="center" onClick={revealPast}>
-            {pastChunks === 0 ? 'Show earlier trips' : 'Show even earlier trips'}
-          </Button>
-        )}
         {pastFrom && pastBusy && (
-          // As tall as the "Show earlier trips" button it replaces, so the list doesn't shift up at the top of the page.
+          // Shown only while loading; the list holds its place (useScrollAnchor).
           <HStack justify="center" gap={2} color="fg.muted" fontSize="xs" h="9">
             <Spinner size="xs" />
             <Text>Loading earlier trips…</Text>
