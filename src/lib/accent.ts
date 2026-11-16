@@ -5,7 +5,7 @@
 // are also cached in localStorage, where the script in index.html applies them before the first paint, so the app
 // never flashes the default colour on launch.
 
-import { ACCENTS, makePalette, palette as defaultPalette, type AccentKey, type Palette } from '../../shared/brand'
+import { ACCENTS, FIXED_PALETTES, makePalette, palette as defaultPalette, type AccentKey, type Palette } from '../../shared/brand'
 import type { ColourMode } from './tint'
 
 export const CACHE_KEY = 'nextstop.accent.v1'
@@ -22,7 +22,7 @@ export function accentPalette(key: string | undefined): Palette {
   const accent = ACCENTS.find((a) => a.key === key)
   if (!accent || accent.key === ACCENTS[0].key) return defaultPalette
   let p = palettes.get(accent.key)
-  if (!p) palettes.set(accent.key, (p = makePalette(accent.hex)))
+  if (!p) palettes.set(accent.key, (p = FIXED_PALETTES[accent.key] ?? makePalette(accent.hex)))
   return p
 }
 

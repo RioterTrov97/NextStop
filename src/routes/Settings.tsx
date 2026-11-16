@@ -108,7 +108,7 @@ function Choices<T extends string | number | boolean>({
 /** The app colours as swatches, each in its own colour, with its name under it. */
 function AccentPicker({ value }: { value: string }) {
   return (
-    <SimpleGrid columns={4} gap={3}>
+    <SimpleGrid columns={3} gap={3}>
       {ACCENTS.map((a) => {
         const on = value === a.key
         const colour = accentPalette(a.key).brand[500]
@@ -247,7 +247,7 @@ export default function Settings() {
       <Stack gap={7} p={4} pb={8}>
         <Section id="appearance" title="Appearance">
           <Item title="Light or dark">
-            <Choices value={(theme ?? 'dark') as (typeof THEMES)[number][0]} options={THEMES} onPick={setTheme} />
+            <Choices value={(theme ?? 'system') as (typeof THEMES)[number][0]} options={THEMES} onPick={setTheme} />
           </Item>
           <Item title="App colour" hint="Buttons, tabs and highlights across the app. Line badges always keep their official colours.">
             <AccentPicker value={accent} />

@@ -49,7 +49,7 @@ repaintStatusBarArea()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" disableTransitionOnChange defaultTheme="dark">
+    <ThemeProvider attribute="class" disableTransitionOnChange defaultTheme="system" enableSystem>
       <ChakraProvider value={system}>
         <PersistQueryClientProvider
           client={queryClient}
