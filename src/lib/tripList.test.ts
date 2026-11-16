@@ -147,4 +147,12 @@ describe('walk at the start', () => {
     expect(out).toMatchObject({ hiddenByStartWalk: 1, hiddenByWalk: 0 })
     expect(tripList([fromHome, farther], base).visible).toHaveLength(2)
   })
+
+  it('compares the walk in the whole minutes the card shows', () => {
+    const base = { now: Date.parse(T('07:00')), mode: 'dep' as const, maxEndWalkMin: 5, minTransferMin: 3, pace: 'normal' as const }
+    // 1690m at 5 km/h is 20 min 17 s, shown as "20m": a 20 min limit keeps it, 15 min hides it.
+    const twenty = j(walkTo('AUB', 1690, '07:40'), ride('T2-a', 'AUB', 'WYN', '08:04', '08:20'))
+    expect(tripList([twenty], { ...base, maxStartWalkMin: 20 }).visible).toEqual([twenty])
+    expect(tripList([twenty], { ...base, maxStartWalkMin: 15 }).visible).toEqual([])
+  })
 })

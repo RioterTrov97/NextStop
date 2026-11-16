@@ -11,6 +11,9 @@ const MIN_TAIL_WALK_SEC = 120
 /** Walk time for a distance at the given pace. */
 export const walkSeconds = (metres: number, pace: WalkPace) => Math.round(metres / (WALK_SPEED_KMH[pace] / 3.6))
 
+/** A walk in whole minutes, as the walk badge shows it (at least 1 for any walk, 0 for none). */
+export const walkMinutes = (sec: number | undefined) => (sec ? Math.max(1, Math.round(sec / 60)) : 0)
+
 /** Kilometres with at most one decimal. */
 export const formatKm = (m: number) => `${Math.max(0.1, Number((m / 1000).toFixed(1)))}km`
 
@@ -315,8 +318,9 @@ export function tripList(journeys: Journey[], o: TripListOptions) {
     const s = summarize(j)
     return Date.parse(s.depEstimated ?? s.depPlanned ?? '') > o.now - 60_000
   })
-  const startOk = (j: Journey) => o.maxStartWalkMin === undefined || (leadingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxStartWalkMin * 60
-  const endOk = (j: Journey) => (trailingWalk(j, o.pace)?.durationSec ?? 0) <= o.maxEndWalkMin * 60
+  // Compared in the whole minutes the walk badge shows, so a walk shown as "20m" is never hidden by a 20 min limit.
+  const startOk = (j: Journey) => o.maxStartWalkMin === undefined || walkMinutes(leadingWalk(j, o.pace)?.durationSec) <= o.maxStartWalkMin
+  const endOk = (j: Journey) => walkMinutes(trailingWalk(j, o.pace)?.durationSec) <= o.maxEndWalkMin
   const walkOk = (j: Journey) => startOk(j) && endOk(j)
   const changeOk = (j: Journey) => transferFits(j, o.minTransferMin)
   const visible = bestOptions(

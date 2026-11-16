@@ -112,32 +112,34 @@ export function JourneyRow({ journey, now, vehicles, title, onClick, noLoadHint,
         </Flex>
       </Flex>
 
-      <Flex mt={2.5} align="center" gap={2} wrap="wrap">
-        <HStack gap={1.5} wrap="wrap">
-          {start.walk && <WalkBadge seconds={start.walk.durationSec} meters={start.walk.distanceM} size={tileSize} />}
-          {transit.map((l, i) => (
-            <LineBadge
-              key={i}
-              number={l.transportation?.number ?? l.transportation?.disassembledName}
-              cls={l.transportation?.product?.class}
-              size={tileSize}
-            />
-          ))}
-          {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size={tileSize} />}
-          <DelayBadge
-            planned={s.depPlanned}
-            estimated={s.depEstimated}
-            realtime={s.realtime}
-            cancelled={!!s.firstTransit && isCancelled(s.firstTransit)}
+      {/*
+        One wrapping row: badges, delay and alert flow onto the next line when they don't fit, and the load indicator
+        sits at the right end of the last line (or wraps after them), so a long trip never strands it on a line of its own.
+      */}
+      <Flex mt={2.5} align="center" columnGap={1.5} rowGap={2} wrap="wrap">
+        {start.walk && <WalkBadge seconds={start.walk.durationSec} meters={start.walk.distanceM} size={tileSize} />}
+        {transit.map((l, i) => (
+          <LineBadge
+            key={i}
+            number={l.transportation?.number ?? l.transportation?.disassembledName}
+            cls={l.transportation?.product?.class}
+            size={tileSize}
           />
-          {alerts.length > 0 && (
-            <Box color="orange.500" aria-label="Service alert">
-              <LuTriangleAlert />
-            </Box>
-          )}
-        </HStack>
+        ))}
+        {tailWalk && <WalkBadge seconds={tailWalk.durationSec} meters={tailWalk.distanceM} size={tileSize} />}
+        <DelayBadge
+          planned={s.depPlanned}
+          estimated={s.depEstimated}
+          realtime={s.realtime}
+          cancelled={!!s.firstTransit && isCancelled(s.firstTransit)}
+        />
+        {alerts.length > 0 && (
+          <Box color="orange.500" aria-label="Service alert">
+            <LuTriangleAlert />
+          </Box>
+        )}
         {railLeg && !hideLoad && (
-          <Box ml="auto">
+          <Box ml="auto" pl={1}>
             <LoadIndicator leg={railLeg} vehicle={tripId ? vehicles?.get(tripId) : undefined} noDataHint={noLoadHint} />
           </Box>
         )}
