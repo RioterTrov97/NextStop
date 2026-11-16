@@ -5,6 +5,8 @@ import { haptic } from './haptic'
 export const rubberBand = (x: number, dim = 160, c = 0.8) => (1 - 1 / ((x * c) / dim + 1)) * dim
 
 const ACTIVATE = 8
+/** At the top: high-density screens can leave a fraction of a pixel of scroll after a fling, which must still count. */
+const atTop = () => window.scrollY <= 1
 
 interface Options {
   enabled: boolean
@@ -83,7 +85,9 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
     }
     const begin = (y: number, target: EventTarget | null, isMouse: boolean) => {
       const t = target as Element | null
-      if (holding || window.scrollY > 0 || t?.closest?.('[data-no-drag], [role="dialog"], input, textarea, select')) return
+      if (!atTop() || t?.closest?.('[data-no-drag], [role="dialog"], input, textarea, select')) return
+      // A new touch while the list still rests on the loader springs it back first.
+      if (holding) settle(true)
       startY = y
       mouse = isMouse
       dragging = false
@@ -95,7 +99,7 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
       const dy = y - startY
       if (!dragging) {
         // Upwards or already scrolled: abandon and let the browser handle it normally.
-        if (dy < -4 || window.scrollY > 0) {
+        if (dy < -4 || !atTop()) {
           startY = undefined
           return
         }
@@ -135,6 +139,8 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
           // instantly then (the caller keeps its first trip in place, so nothing visibly moves).
           paint(hold, true, true)
           holding = true
+          // Taps and scrolling work again straight away; only the offset waits for the request.
+          el.style.pointerEvents = ''
           haptic('medium')
           setTimeout(() => release.current(), reduce ? 0 : 200)
           const t0 = Date.now()
@@ -142,7 +148,8 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
           holdTimer = window.setInterval(() => {
             if (loadingRef.current) saw = true
             const done = saw ? !loadingRef.current : Date.now() - t0 > 1500
-            if (done || Date.now() - t0 > 20000) settle(!saw)
+            // At the very top nothing can absorb the offset, so it springs back; scrolled (trips were added above) it goes at once.
+            if (done || Date.now() - t0 > 4000) settle(atTop())
           }, 100)
         } else {
           paint(0, true)
@@ -182,6 +189,8 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
       else move(e.clientY, e)
     }
     const away = () => end(false)
+    // Scrolling away while the loader shows: let the offset go, or it would ride along at the top of the list.
+    const onScroll = () => holding && !atTop() && settle(false)
     // The browser's touch emulation can lose `touchend` when the button is released outside the page; pointer events still say.
     const pup = () => end(true)
     const noDrag = (e: Event) => dragging && e.preventDefault()
@@ -197,6 +206,7 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
     window.addEventListener('mouseup', mu)
     window.addEventListener('keydown', key)
     window.addEventListener('blur', away)
+    window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('pointerup', pup)
     window.addEventListener('dragstart', noDrag)
     window.addEventListener('selectstart', noDrag)
@@ -214,6 +224,7 @@ export function usePullDown({ enabled, threshold = 72, hold = 0, loading = false
       window.removeEventListener('mouseup', mu)
       window.removeEventListener('keydown', key)
       window.removeEventListener('blur', away)
+      window.removeEventListener('scroll', onScroll)
       window.removeEventListener('pointerup', pup)
       window.removeEventListener('dragstart', noDrag)
       window.removeEventListener('selectstart', noDrag)
