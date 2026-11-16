@@ -6,7 +6,7 @@ import { refreshRealtime } from '../api/realtime'
 import { LuArrowLeftRight, LuEyeOff, LuTrainFront } from 'react-icons/lu'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { Journey } from '../api/types'
-import { useJourneyVehicles, useRunningForecasts, useTrips, useTripsMany } from '../api/hooks'
+import { VIA_MS, useJourneyVehicles, useRunningForecasts, useTrips, useTripsMany } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
 import { HiddenTripsNote } from '../components/HiddenTripsNote'
 import { JourneyRow } from '../components/JourneyRow'
@@ -29,6 +29,13 @@ import { currentTrip, tripKey, useCurrentTrip } from '../store/currentTrip'
 import { PageBody } from '../components/PageBody'
 
 const PAGE = 4
+// Later trips (departing) load like earlier ones, a stretch at a time: each search starts after the last trip shown and
+// returns about an hour of services, and the next one loads when the end of the list nears the screen.
+const LATER_COUNT = 12 // the planner answers with only about 20 minutes of services at a time, so a stretch is a few searches
+const MAX_LATER_CHUNKS = 40
+const LATER_SPAN_MS = 60 * 60_000
+const loadedLater = new Map<string, number[]>()
+const depMs = (j: Journey) => Date.parse(summarize(j).depEstimated ?? summarize(j).depPlanned ?? '')
 const PAST_CHUNK_MIN = 90
 // Phones pull down; devices without touch get a button instead.
 const canTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -65,6 +72,11 @@ export default function TripResults() {
     setCountState(n)
   }
   const [selectedKey, setSelectedKey] = useState<string>()
+  const [laterStarts, setLaterStartsState] = useState<number[]>(() => loadedLater.get(routeKey) ?? [])
+  const setLaterStarts = (next: number[]) => {
+    loadedLater.set(routeKey, next)
+    setLaterStartsState(next)
+  }
 
   // Earlier trips: loaded only when asked for (pull down or button), shown above the live list.
   // Each pull reaches another 90 minutes further back.
@@ -118,6 +130,8 @@ export default function TripResults() {
     pace: walkPace,
   })
 
+  const hiddenCount = hiddenByStartWalk + hiddenByWalk + hiddenByTransfer
+
   const pastQueries = useMemo(
     () =>
       Array.from({ length: pastBase === undefined ? 0 : pastChunks }, (_, k) => ({
@@ -142,6 +156,53 @@ export default function TripResults() {
         pace: walkPace,
       }).visible.filter((j) => Date.parse(summarize(j).depEstimated ?? summarize(j).depPlanned ?? '') <= now - 60_000)
     : []
+  // Later trips: one direct search per stretch, each starting a minute after the last trip shown so far, refreshed slowly.
+  const laterOn = mode === 'dep'
+  const laterQueries = useMemo(
+    () =>
+      laterStarts.map((t) => ({
+        from,
+        to,
+        mode: 'dep' as const,
+        when: new Date(t),
+        excluded: exclusionParams(modes),
+        count: LATER_COUNT,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [laterStarts, from, to, modes.join(',')],
+  )
+  const later = useTripsMany(laterQueries, true, false, VIA_MS)
+  const mainKeys = new Set((data ?? []).map(tripKey))
+  const laterAll = [...new Map(later.journeys.map((j) => [tripKey(j), j])).values()].filter((j) => !mainKeys.has(tripKey(j)))
+  const laterShown = laterOn
+    ? tripList(laterAll, { now, mode, maxEndWalkMin: maxEndWalk, maxStartWalkMin: maxStartWalk, minTransferMin: minTransfer, pace: walkPace }).visible
+    : []
+  const lastDep = Math.max(-Infinity, ...(data ?? []).map(depMs).filter(Number.isFinite), ...laterAll.map(depMs).filter(Number.isFinite))
+  const nextStart = Math.floor(lastDep / 60_000) * 60_000 + 60_000
+  // No new trips after the last search means the planner has nothing further.
+  const laterDone = laterStarts.length >= MAX_LATER_CHUNKS || laterStarts.includes(nextStart)
+  const addChunk = () => {
+    if (Number.isFinite(nextStart) && !laterDone) setLaterStarts([...laterStarts, nextStart])
+  }
+  // One stretch is an hour of services past the last trip shown: searches follow each other until it is covered.
+  const [laterTarget, setLaterTarget] = useState(0)
+  const loadLater = () => {
+    setLaterTarget(lastDep + LATER_SPAN_MS)
+    addChunk()
+  }
+  useEffect(() => {
+    if (laterTarget > 0 && laterStarts.length > 0 && !later.isFetching && !laterDone && lastDep < laterTarget) addChunk()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [laterTarget, later.isFetching, lastDep, laterDone])
+  const laterReady = laterOn && !!data && !isPlaceholderData && !laterDone && !later.isFetching && (visible.length > 0 || hiddenCount > 0)
+  const laterEnd = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!laterReady || !laterEnd.current || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && loadLater(), { rootMargin: '150px' })
+    io.observe(laterEnd.current)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [laterReady, nextStart])
   // Current results look up a running trip's forecast; earlier ones only once opened or followed (one call each).
   const [unlocked, setUnlocked] = useState<string[]>([])
   const unlock = (key: string) => setUnlocked((u) => (u.includes(key) ? u : [...u, key]))
@@ -149,7 +210,7 @@ export default function TripResults() {
   const shownVisible = useRunningForecasts(visible)
   const unlockedPast = useRunningForecasts(past.filter((j) => unlocked.includes(tripKey(j)) || tripKey(j) === currentKey))
   const shownPast = past.map((j) => unlockedPast.find((u) => tripKey(u) === tripKey(j)) ?? j)
-  const everything = [...shownPast, ...shownVisible]
+  const everything = [...shownPast, ...shownVisible, ...laterShown]
   firstShownKey.current = everything[0] && tripKey(everything[0])
 
   // Let go of the top trip shortly after the earlier ones have all landed (the timer restarts while any still load).
@@ -163,8 +224,7 @@ export default function TripResults() {
 
   // A short list means the planner has no further trips; a growing request keeps the button while loading.
   // With every trip hidden by the user's limits, later ones may still fit, so the button stays.
-  const hiddenCount = hiddenByStartWalk + hiddenByWalk + hiddenByTransfer
-  const canLoadMore = !!data && (visible.length > 0 || hiddenCount > 0) && (isPlaceholderData || data.length >= count)
+  const canLoadMore = !laterOn && !!data && (visible.length > 0 || hiddenCount > 0) && (isPlaceholderData || data.length >= count)
 
   // Cached trips may all be in the past; wait for the refetch instead of flashing "No trips found".
   const settling = !!data && visible.length === 0 && isFetching
@@ -328,6 +388,30 @@ export default function TripResults() {
             <Spinner size="xs" />
             <Text>Checking more routes through the city interchanges…</Text>
           </HStack>
+        )}
+        {laterShown.map((j, i) => (
+          <Box key={`later-${summarize(j).depPlanned}-${i}`} data-trip-key={tripKey(j)}>
+            <JourneyRow journey={j} now={now} vehicles={vehicles} onClick={() => setSelectedKey(tripKey(j))} />
+          </Box>
+        ))}
+        {laterOn && !!data && (visible.length > 0 || hiddenCount > 0) && (
+          <>
+            <div ref={laterEnd} aria-hidden />
+            {later.isFetching ? (
+              <HStack justify="center" gap={2} color="fg.muted" fontSize="sm" h="9">
+                <Spinner size="xs" />
+                <Text>Loading later trips…</Text>
+              </HStack>
+            ) : laterDone ? (
+              <Text fontSize="xs" color="fg.muted" textAlign="center">
+                No more later trips
+              </Text>
+            ) : (
+              <Button variant="subtle" size="sm" borderRadius="xl" alignSelf="center" h="9" onClick={loadLater}>
+                Show later trips
+              </Button>
+            )}
+          </>
         )}
         {canLoadMore && (
           <Button variant="subtle" borderRadius="xl" loading={isFetching && isPlaceholderData} onClick={() => setCount(count + PAGE)}>
