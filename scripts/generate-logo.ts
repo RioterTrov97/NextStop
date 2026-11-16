@@ -24,6 +24,6 @@ out(
 )
 
 // The full logo with the bus and tram, for dark backgrounds and for light ones.
-// One look on light and dark pages: the pin in the app colour with a white train, ring and vehicles edged in it.
-out('logo-mark.svg', markSvg({ pin: brand[600], ring: '#fff', train: '#fff', edge: brand[600], id: 'dark' }))
-out('logo-mark-light.svg', markSvg({ pin: brand[600], ring: '#fff', train: '#fff', edge: brand[600], id: 'light' }))
+// One look on light and dark pages: pin and ring in the app colour, with a white train and white vehicles edged in it.
+out('logo-mark.svg', markSvg({ pin: brand[600], ring: brand[600], train: '#fff', rider: '#fff', edge: brand[600], id: 'dark' }))
+out('logo-mark-light.svg', markSvg({ pin: brand[600], ring: brand[600], train: '#fff', rider: '#fff', edge: brand[600], id: 'light' }))

@@ -18,7 +18,9 @@ export interface MarkOptions extends MarkColours {
    * the background. Its windows and lights still show the pin.
    */
   train?: string
-  /** Outline the ring in this colour, see-through inside, and edge the vehicles with it, so the mark shows on any page. */
+  /** The vehicles' fill, when it differs from the ring (white riders on an accent ring). */
+  rider?: string
+  /** A thin edge around the vehicles, so white riders still show on a white page. */
   edge?: string
   /** Draw the ferry and tram on the orbit (the full logo); off for small sizes such as the app icon. */
   vehicles?: boolean
@@ -27,11 +29,10 @@ export interface MarkOptions extends MarkColours {
 }
 
 const PIN = 'M120 206C120 206 56 142 56 96A64 64 0 0 1 184 96C184 142 120 206 120 206Z'
-// The orbit, drawn in a frame turned 18 degrees anticlockwise: the back half over the top, the front half underneath.
+// The orbit, drawn in a frame turned 18 degrees anticlockwise. Its front half (underneath) passes over the pin.
 const TILT = 'rotate(-18 120 120)'
-const BACK = 'M15 120A105 34 0 0 1 225 120'
 const FRONT = 'M225 120A105 34 0 0 1 15 120'
-/** The whole orbit as one closed path, for the outlined ring (no joins where the halves meet). */
+/** The whole orbit as one closed path, so the ring has no joins where its halves would meet. */
 const ORBIT = 'M15 120A105 34 0 0 1 225 120A105 34 0 0 1 15 120Z'
 
 // The orbit ellipse in the tilted frame: centre (120, 120), radii 105 and 34. The front half runs t = 0 to pi.
@@ -219,26 +220,12 @@ function tram(t0: number, fill: string, edge?: string): string {
 }
 
 /** The mark's SVG elements (no <svg> wrapper), for embedding. */
-export function markBody({ pin, ring, train, edge, vehicles = true, id = 'ns' }: MarkOptions): string {
-  const ride = vehicles ? `${ferry(0.75 * Math.PI, ring, edge)}${tram(0.2 * Math.PI, ring, edge)}` : ''
-  // With an edge, the ring is an outline only (see-through inside), drawn as one closed ellipse so it has no joins; the
-  // `tube` mask keeps just its two edges. Without one, it is a solid line in two halves, behind and in front of the pin.
-  const ringBehind = edge
-    ? `<g mask="url(#${id}-back)"><rect width="240" height="240" fill="${edge}" mask="url(#${id}-tube)"/></g>`
-    : `<path d="${BACK}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round" mask="url(#${id}-back)"/>`
-  const ringFront = edge
-    ? `<g mask="url(#${id}-front)"><rect width="240" height="240" fill="${edge}" mask="url(#${id}-tube)"/></g>`
-    : `<path d="${FRONT}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round"/>`
-  const outline = edge
-    ? `
-    <mask id="${id}-tube" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
-      <path d="${ORBIT}" transform="${TILT}" fill="none" stroke="#fff" stroke-width="${LINE + 2.4}"/>
-      <path d="${ORBIT}" transform="${TILT}" fill="none" stroke="#000" stroke-width="${LINE}"/>
-    </mask>
-    <mask id="${id}-front" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
-      <path d="${FRONT}" transform="${TILT}" fill="none" stroke="#fff" stroke-width="${LINE + 8}"/>
-    </mask>`
-    : ''
+export function markBody({ pin, ring, train, rider = ring, edge, vehicles = true, id = 'ns' }: MarkOptions): string {
+  const ride = vehicles ? `${ferry(0.75 * Math.PI, rider, edge)}${tram(0.2 * Math.PI, rider, edge)}` : ''
+  // Behind the pin the whole orbit is drawn as one closed ellipse (no caps meeting at its ends); in front, the lower half.
+  // The mask goes on a wrapper: on the path itself it would turn with the path's tilt and hide a rotated pin.
+  const ringBehind = `<g mask="url(#${id}-back)"><path d="${ORBIT}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}"/></g>`
+  const ringFront = `<path d="${FRONT}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round"/>`
   return `<defs>
     <mask id="${id}-pin" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
       <path d="${PIN}" fill="#fff"/>
@@ -256,7 +243,7 @@ export function markBody({ pin, ring, train, edge, vehicles = true, id = 'ns' }:
     <mask id="${id}-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
       <rect width="240" height="240" fill="#fff"/>
       <path d="${PIN}" fill="#000"/>
-    </mask>${outline}
+    </mask>
   </defs>
   ${ringBehind}
   <path d="${PIN}" fill="${pin}" mask="url(#${id}-pin)"/>${
