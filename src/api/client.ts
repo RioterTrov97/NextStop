@@ -1,9 +1,9 @@
 import type { VehicleInfo, VehicleMode } from '../../shared/vehicles'
-import { loadNetwork, searchPlan } from '../lib/hubs'
+import { isAddressId, loadNetwork, searchPlan } from '../lib/hubs'
 import { isPlannable, rankPlaces } from '../lib/places'
 import { resolvePlaceId } from '../store/places'
 import type { HubOption } from '../lib/network'
-import { summarize } from '../lib/journey'
+import { summarize, walksAtPace } from '../lib/journey'
 import { stitchAtHub } from '../lib/split'
 import { toAddInfoDate, toItd } from '../lib/time'
 import type { Alert, Journey, Place, StopEvent } from './types'
@@ -178,7 +178,21 @@ export async function fetchTripsVia(
   const plan = searchPlan(await loadNetwork(), { ...q, from: resolvePlaceId(q.from), to: resolvePlaceId(q.to) }, minTransferMin, ends)
   const viaHub = (id: string) => planTrip(q, { type_via: 'any', name_via: id, maxChanges: '4' }, signal).catch(() => [] as Journey[])
   const split = (hub: HubOption) => fetchTripsSplit(q, hub, minTransferMin, signal).catch(() => [] as Journey[])
-  return (await Promise.all([...plan.split.map(split), ...plan.via.map(viaHub)])).flat()
+  // From or to an address, the planner leaves out stops it thinks too far to walk to at the user's pace, and its normal
+  // pace is slow (1.84km took it about 28 min): from 120A Bombay St, Lidcombe it offered only buses, never the train
+  // from Lidcombe Station 18 minutes away. Asking at the fast pace finds those; the walks are then stretched back to the
+  // user's pace, so the walk limits and change checks still hold.
+  const pace = q.walkPace ?? 'normal'
+  const wider =
+    pace !== 'fast' && (isAddressId(resolvePlaceId(q.from)) || isAddressId(resolvePlaceId(q.to)))
+      ? [
+          planTrip({ ...q, walkPace: 'fast' }, {}, signal).then(
+            (js) => js.map((j) => walksAtPace(j, pace)),
+            () => [] as Journey[],
+          ),
+        ]
+      : []
+  return (await Promise.all([...plan.split.map(split), ...plan.via.map(viaHub), ...wider])).flat()
 }
 
 /** Direct results plus via-hub results that aren't much slower than the best direct one, without duplicates. */

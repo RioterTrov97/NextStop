@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Journey, Leg } from '../api/types'
-import { bestOptions, leadingWalk, leaveAt, setOff, transferFits, transfers, tripList } from './journey'
+import { bestOptions, leadingWalk, leaveAt, setOff, transferFits, transfers, tripList, walksAtPace } from './journey'
 import { loadCaption, rideLoad } from './rideLoad'
 
 const T = (hhmm: string) => `2026-10-30T${hhmm}:00Z`
@@ -154,5 +154,36 @@ describe('walk at the start', () => {
     const twenty = j(walkTo('AUB', 1690, '07:40'), ride('T2-a', 'AUB', 'WYN', '08:04', '08:20'))
     expect(tripList([twenty], { ...base, maxStartWalkMin: 20 }).visible).toEqual([twenty])
     expect(tripList([twenty], { ...base, maxStartWalkMin: 15 }).visible).toEqual([])
+  })
+})
+
+describe('walksAtPace', () => {
+  // A trip the planner found at the fast pace: a 1.84km walk to the station, a change with a 60s platform walk.
+  const fast = j(
+    {
+      origin: { id: 'coord:home', departureTimePlanned: T('07:44') },
+      destination: { id: 'LID' },
+      transportation: { product: { class: 100 } },
+      distance: 1840,
+      duration: 960,
+    },
+    ride('T2-a', 'LID', 'STR', '08:00', '08:06', { footSec: 60 }),
+    ride('T9-a', 'STR', 'WYN', '08:08', '08:25'),
+  )
+
+  it('stretches walks to the user pace, so a change that only fits fast walking is caught', () => {
+    expect(transferFits(fast, 2)).toBe(true)
+    const normal = walksAtPace(fast, 'normal')
+    expect(transfers(normal)[0].walkSec).toBe(108)
+    expect(transferFits(normal, 2)).toBe(false)
+    expect(normal.legs[0].duration).toBe(1728)
+    expect(normal.legs[0].origin.departureTimePlanned).toBe('2026-10-30T07:31:12.000Z')
+    // The rides keep their times; the walk limit still comes from the distance.
+    expect(normal.legs[1].origin.departureTimePlanned).toBe(T('08:00'))
+    expect(leadingWalk(normal)?.durationSec).toBe(1325)
+  })
+
+  it('leaves fast trips alone at the fast pace', () => {
+    expect(walksAtPace(fast, 'fast')).toBe(fast)
   })
 })

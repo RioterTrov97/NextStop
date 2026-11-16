@@ -82,6 +82,66 @@ export function setOff(j: Journey, pace: WalkPace, now: number): SetOff {
 }
 
 /** A change must leave at least this long after the platform walk, even when the user allows very tight changes. */
+/**
+ * How much longer the planner's walks are at each pace than at "fast", measured on its answers (2026-11-16, Lidcombe):
+ * street walks of 424m and 533m took 240s and 360s fast, 420s and 660s normal, 600s and 1080s slow; in-station changes
+ * 60-180s fast, 120-300s normal.
+ */
+const PLANNER_WALK_FACTOR: Record<WalkPace, number> = { fast: 1, normal: 1.8, slow: 2.7 }
+
+const shiftIso = (iso: string | undefined, sec: number) => (iso ? new Date(Date.parse(iso) + sec * 1000).toISOString() : iso)
+
+/**
+ * A journey the planner worked out at the fast pace, with its walks stretched to `pace`: street walks, in-station
+ * footpaths (which decide whether a change fits), and the times at the two ends. The rides keep their times.
+ */
+export function walksAtPace(j: Journey, pace: WalkPace): Journey {
+  const factor = PLANNER_WALK_FACTOR[pace]
+  if (factor === 1) return j
+  const first = j.legs.findIndex(isTransit)
+  const last = j.legs.length - 1 - [...j.legs].reverse().findIndex(isTransit)
+  if (first < 0) return j
+  let lead = 0
+  let tail = 0
+  const legs = j.legs.map((l, i) => {
+    const out: Leg = { ...l }
+    if (Array.isArray(l.footPathInfo))
+      out.footPathInfo = (l.footPathInfo as { duration?: number }[]).map((f) =>
+        f?.duration ? { ...f, duration: Math.round(f.duration * factor) } : f,
+      )
+    if (!isTransit(l) && l.duration) {
+      out.duration = Math.round(l.duration * factor)
+      if (i < first) lead += out.duration - l.duration
+      if (i > last) tail += out.duration - l.duration
+    }
+    return out
+  })
+  if (lead) {
+    const o = legs[0].origin
+    legs[0] = {
+      ...legs[0],
+      origin: {
+        ...o,
+        departureTimePlanned: shiftIso(o.departureTimePlanned, -lead),
+        departureTimeEstimated: shiftIso(o.departureTimeEstimated, -lead),
+      },
+    }
+  }
+  if (tail) {
+    const end = legs.length - 1
+    const d = legs[end].destination
+    legs[end] = {
+      ...legs[end],
+      destination: {
+        ...d,
+        arrivalTimePlanned: shiftIso(d.arrivalTimePlanned, tail),
+        arrivalTimeEstimated: shiftIso(d.arrivalTimeEstimated, tail),
+      },
+    }
+  }
+  return { ...j, legs }
+}
+
 export const MIN_SPARE_SEC = 60
 
 export interface Transfer {

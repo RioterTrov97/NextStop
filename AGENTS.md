@@ -63,6 +63,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - Reverse lookup for "Current location": `type_sf=coord` with `name_sf=lon:lat:EPSG:4326` returns a `type: 'address'` entry whose `coord:` id the planner accepts.
 - On-demand vans (class 10) are excluded on every trip search (`exclMOT_10`); the planner otherwise offers them from addresses.
 - Home and Work are stored on the device (`src/store/places.ts`) and referenced by trips as the ids `home` and `work`, resolved to the address on each request; query keys carry the resolved id so changing Home refetches.
+- The planner leaves out stops it thinks too far to walk to, and walks slowly at `changeSpeed=normal` (1.84km about 28 min): from 120A Bombay St, Lidcombe it offered only buses, never Lidcombe Station 18-22 minutes away. So for address ends at the normal or slow pace, the extra searches add one planner call at `fast` and stretch its walks back to the user's pace (`walksAtPace`: street walks, platform footpaths and end times; factors measured from the planner). Walk limits then apply as usual.
 - Trips from an address start with a walk: cards show the leave time and count down to it (`setOff`), then to the train. Settings "Walking to the first stop" (`maxStartWalk`) hides longer ones.
 
 ### Departure monitor (`/v1/tp/departure_mon`)
