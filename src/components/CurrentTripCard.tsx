@@ -2,7 +2,7 @@ import { Badge, Box, Button, Flex, HStack, IconButton, Text } from '@chakra-ui/r
 import { useEffect, useMemo, useState } from 'react'
 import { LuFootprints, LuX } from 'react-icons/lu'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useDepartures, useJourneyVehicles, useTrips, useTripsMany } from '../api/hooks'
+import { FOLLOW_FAR_MS, GLANCE_MS, useDepartures, useJourneyVehicles, useTrips, useTripsMany } from '../api/hooks'
 import { stationIdOf, withRideAhead } from '../lib/ride'
 import { departureJourney } from '../lib/departure'
 import { exclusionParams, modeForClass } from '../lib/lines'
@@ -217,6 +217,9 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
     () => (trip.boardId ? exclusionParams([modeForClass(firstRide?.transportation?.product?.class).key]) : {}),
     [trip.boardId, firstRide],
   )
+  // A trip leaving within 10 minutes, or already under way, is refreshed every 30s; one further off every minute.
+  const startAt = Date.parse(summarize(trip.journey).depEstimated ?? summarize(trip.journey).depPlanned ?? '')
+  const every = startAt - now > 10 * 60_000 ? FOLLOW_FAR_MS : GLANCE_MS
   const { journeys: live } = useTripsMany(
     segments.map((seg) => ({
       from: seg.fromId,
@@ -229,10 +232,12 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
     // The extra via and split searches (3-5 requests a minute) are how a trip with changes gets found again, but a
     // single ride is just the planner's own answer: they would only re-read alternatives the trip doesn't use.
     trip.journey.legs.filter(isTransit).length <= 1,
+    false,
+    every,
   )
   // The station's departure board keeps a board-followed ride's time, platform and status live even when the
   // planner doesn't return that exact service.
-  const { data: board } = useDepartures(trip.boardId ?? '', !!trip.boardId)
+  const { data: board } = useDepartures(trip.boardId ?? '', !!trip.boardId, every)
   const boardLive = useMemo(() => (board ?? []).map(departureJourney), [board])
   const tracked = useMemo(() => withLiveLegs(trip.journey, [...live, ...boardLive]), [trip.journey, live, boardLive])
 
@@ -245,7 +250,7 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   const { data: alternatives } = useTrips(
     { from: point?.stopId ?? '', to: trip.toId, mode: 'dep', when: lookupAt, excluded: {}, count: 4 },
     !!point && point.readyAt - now < REPLAN_HORIZON_MS,
-    { keepPrevious: true },
+    { keepPrevious: true, every: FOLLOW_FAR_MS },
   )
   // The planner drops the user's own train from that lookup when something else from the same stop gets there as
   // soon (e.g. the train they would change to at the next interchange also calls there), so ask for the ride itself up
@@ -255,13 +260,13 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
   const { data: rideAhead } = useTrips(
     { from: point?.stopId ?? '', to: rideEnd, mode: 'dep', when: lookupAt, excluded: {}, count: 4 },
     !!rideEnd,
-    { keepPrevious: true, directOnly: rideEnd !== trip.toId },
+    { keepPrevious: true, directOnly: rideEnd !== trip.toId, every },
   )
   const journey = useMemo(() => {
     const ahead = [...live, ...(alternatives ?? []), ...(rideAhead ?? [])]
     return withRideAhead(withLiveLegs(tracked, alternatives ?? []), ahead)
   }, [tracked, live, alternatives, rideAhead])
-  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey])
+  const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles([journey], every)
 
   const replan = point && alternatives ? findReplan(journey, point, alternatives, minTransfer) : undefined
   const replanId =

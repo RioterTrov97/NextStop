@@ -22,7 +22,7 @@ import {
 } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { Link } from 'react-router-dom'
-import { REALTIME_MS, useTrips, useJourneyVehicles } from '../api/hooks'
+import { GLANCE_MS, useTrips, useJourneyVehicles } from '../api/hooks'
 import { BrandMark } from '../components/BrandMark'
 import { EmptyState } from '../components/EmptyState'
 import { JourneySheet } from '../components/JourneySheet'
@@ -66,7 +66,7 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
     to: trip.toId,
     mode: 'dep',
     excluded: exclusionParams(trip.modes),
-  })
+  }, true, { every: GLANCE_MS })
   const upcoming = tripList(data ?? [], {
     now,
     mode: 'dep',
@@ -76,12 +76,13 @@ function Upcoming({ trip, now }: { trip: SavedTrip; now: number }) {
     pace: walkPace,
   }).visible
   // Data restored from the persisted cache can be hours old, so every journey looks departed until the refetch lands.
-  const refreshingStale = isFetching && upcoming.length === 0 && now - dataUpdatedAt > REALTIME_MS
+  const refreshingStale = isFetching && upcoming.length === 0 && now - dataUpdatedAt > GLANCE_MS
   const selectedJourney = selected === undefined ? undefined : upcoming[selected]
   // Loads for the rows on show; rail comes from one shared feed query, so this adds no requests per card.
   const shown = upcoming.slice(0, 3)
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(
     selectedJourney && !shown.includes(selectedJourney) ? [...shown, selectedJourney] : shown,
+    GLANCE_MS,
   )
   // One load column per card, as wide as its widest icon, so the line badges get everything else.
   const loadWidth = Math.max(

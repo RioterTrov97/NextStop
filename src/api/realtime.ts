@@ -1,6 +1,6 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { REALTIME_MS, VEHICLES_MS, VIA_MS, isRealtimeKey, isTimetableKey } from './hooks'
+import { REALTIME_MS, VEHICLES_MS, isRealtimeKey, isTimetableKey } from './hooks'
 
 let nextAt = Date.now() + REALTIME_MS
 let nextVehiclesAt = Date.now() + VEHICLES_MS
@@ -18,24 +18,24 @@ const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => numb
   isRealtimeKey(q.queryKey) && q.getObserversCount() > 0 && !q.meta?.['past']
 
 /**
- * An extra via or split search refreshed within the last minute: the timer leaves it alone (see `VIA_MS`). The part is
- * at index 8 of the trips key (settings and address ends follow it), as the cache persister also reads it.
+ * A live query refreshed more recently than its own interval: the shared timer leaves it alone. Trips and departures
+ * default to the 15s cycle, vehicles to their 10s one; a query asks for a slower rate with `meta.every` (via and split
+ * searches, Home's saved-trip cards, a followed trip that is far off). The timer ticks every 15s, so slower queries
+ * refresh on the first tick after they are due.
  */
-const viaFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
-  q.queryKey[0] === 'trips' && q.queryKey[8] === 'via' && Date.now() - q.state.dataUpdatedAt < VIA_MS - 1000
-
-/** A vehicle feed refreshed on its own 10s cycle moments ago: the 15s refresh needn't read the same data again. */
-const vehiclesFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
-  q.queryKey[0] === 'vehicles' && Date.now() - q.state.dataUpdatedAt < VEHICLES_MS - 1500
+const notDue = (q: { queryKey: readonly unknown[]; meta?: Record<string, unknown>; state: { dataUpdatedAt: number } }) => {
+  const every = (q.meta?.['every'] as number | undefined) ?? (q.queryKey[0] === 'vehicles' ? VEHICLES_MS : REALTIME_MS)
+  return Date.now() - q.state.dataUpdatedAt < every - 1500
+}
 
 /**
  * Refetches every on-screen realtime query together and restarts the shared countdown. The timer's own refreshes
- * (`scheduled`) skip via-city searches that are under a minute old and vehicle feeds under about 8s old; the refresh button and route changes don't.
+ * (`scheduled`) skip queries that aren't yet due (`notDue`); the refresh button and route changes don't.
  */
 export function refreshRealtime(qc: QueryClient, { scheduled = false } = {}) {
   nextAt = Date.now() + REALTIME_MS
   nextVehiclesAt = Date.now() + VEHICLES_MS
-  return qc.refetchQueries({ predicate: (q) => isLive(q) && !(scheduled && (viaFresh(q) || vehiclesFresh(q))) }).finally(() => {
+  return qc.refetchQueries({ predicate: (q) => isLive(q) && !(scheduled && notDue(q)) }).finally(() => {
     nextAt = Date.now() + REALTIME_MS
   })
 }
@@ -60,7 +60,7 @@ export function useRealtimeScheduler() {
       else if (Date.now() >= nextVehiclesAt) {
         // Positions and carriage loads move faster than delays do, so they get an extra refresh between full ones.
         nextVehiclesAt = Date.now() + VEHICLES_MS
-        void qc.refetchQueries({ predicate: (q) => isLive(q) && q.queryKey[0] === 'vehicles' })
+        void qc.refetchQueries({ predicate: (q) => isLive(q) && q.queryKey[0] === 'vehicles' && !notDue(q) })
       }
     }
     // Any trip or departure query starting to fetch (new route, changed modes, ...) restarts the countdown. Vehicle
