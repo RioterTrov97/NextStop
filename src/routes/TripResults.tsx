@@ -8,6 +8,7 @@ import { useNavigate, useLocation, useParams, useSearchParams } from 'react-rout
 import type { Journey } from '../api/types'
 import { useJourneyVehicles, useRunningForecasts, useTrips, useTripsMany } from '../api/hooks'
 import { EmptyState } from '../components/EmptyState'
+import { HiddenTripsNote } from '../components/HiddenTripsNote'
 import { JourneyRow } from '../components/JourneyRow'
 import { JourneySheet } from '../components/JourneySheet'
 import { ModePicker } from '../components/ModePicker'
@@ -242,25 +243,22 @@ export default function TripResults() {
           size="xs"
           endWalk={savedTrip && { value: maxEndWalk, onChange: (n) => savedTrips.setEndWalk(savedTrip.id, n) }}
         />
-        {hiddenByStartWalk > 0 && (
-          <Text fontSize="xs" color="fg.muted">
-            {hiddenByStartWalk} {hiddenByStartWalk === 1 ? 'trip is' : 'trips are'} hidden because the walk to the first stop is over{' '}
-            {maxStartWalk} min. Change this in Settings under "Walking to the first stop".
-          </Text>
-        )}
-        {hiddenByWalk > 0 && (
-          <Text fontSize="xs" color="fg.muted">
-            {hiddenByWalk} {hiddenByWalk === 1 ? 'trip is' : 'trips are'} hidden because{' '}
-            {maxEndWalk === 0 ? 'they end with a walk' : `the walk at the end is over ${maxEndWalk} min`}. Tap the footprints icon to allow
-            longer walks.
-          </Text>
-        )}
-        {hiddenByTransfer > 0 && (
-          <Text fontSize="xs" color="fg.muted">
-            {hiddenByTransfer} {hiddenByTransfer === 1 ? 'trip is' : 'trips are'} hidden because a change leaves under {minTransfer} min, or
-            too little time to walk to the next platform. Tap the footprints icon to allow tighter changes.
-          </Text>
-        )}
+        <HiddenTripsNote
+          reasons={[
+            {
+              count: hiddenByStartWalk,
+              text: `${hiddenByStartWalk === 1 ? 'One has' : `${hiddenByStartWalk} have`} a walk to the first stop over ${maxStartWalk} min. Change this in Settings under "Walking to the first stop".`,
+            },
+            {
+              count: hiddenByWalk,
+              text: `${hiddenByWalk === 1 ? 'One ends' : `${hiddenByWalk} end`} ${maxEndWalk === 0 ? 'with a walk' : `with a walk over ${maxEndWalk} min`}. Tap the footprints icon to allow longer walks.`,
+            },
+            {
+              count: hiddenByTransfer,
+              text: `${hiddenByTransfer === 1 ? 'One has a change' : `${hiddenByTransfer} have a change`} under ${minTransfer} min, or too little time to walk to the next platform. Tap the footprints icon to allow tighter changes.`,
+            },
+          ]}
+        />
         {!data && fetchStatus === 'paused' && <NoConnection what="this trip" />}
         {(isLoading || settling) && [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
         {error && !data && (
