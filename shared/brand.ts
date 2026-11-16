@@ -99,6 +99,18 @@ const rgba = (hex: string, a: number) => {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
 }
 
+/** How much of the bright accent (brand.400) tints unselected chips and other subtle surfaces in dark mode, in percent (src/theme.ts). */
+export const DARK_WASH = 24
+
+/** `a` mixed into `b`, `t` of the way, as hex (what color-mix in srgb gives over an opaque background). */
+export const mixHex = (a: string, b: string, t: number) =>
+  '#' +
+  [1, 3, 5]
+    .map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * t + parseInt(b.slice(i, i + 2), 16) * (1 - t)))
+    .map((v) => v.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase()
+
 /** The whole palette from one colour. */
 export function makePalette(seed: string): Palette {
   const { h, s: seedS } = hexToHsl(seed)
@@ -126,7 +138,12 @@ export function makePalette(seed: string): Palette {
   }
   // Accent text and icons in dark mode: as vivid as possible while still reading on dark panels. Dark-mode buttons use
   // 600 with white text, like light mode, so the colour looks the same in both.
-  brand[400] = reach(h, s, 0.64, panel.dark, 4.6, 0.01)
+  // It must also read on unselected chips, which are a DARK_WASH of 400 itself over the panel: brighten until both read.
+  let l400 = 0.64
+  const reads = (c: string) =>
+    contrastRatio(c, panel.dark) >= 4.6 && contrastRatio(c, mixHex(c, panel.dark, DARK_WASH / 100)) >= 4.6
+  while (l400 < 0.95 && !reads(tone(l400))) l400 += 0.01
+  brand[400] = tone(l400)
 
   const gs = Math.min(s, 0.16)
   const gray: Scale = {

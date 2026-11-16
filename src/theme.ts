@@ -1,6 +1,9 @@
-import { brand, darkSurface, gray, ink, page, palette, panel } from '../shared/brand'
+import { brand, DARK_WASH, darkSurface, gray, ink, page, palette, panel } from '../shared/brand'
 import { appVars } from './lib/accent'
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
+
+/** The accent at a percentage over whatever is behind it, for dark-mode tinted surfaces. */
+const wash = (pct: number) => `color-mix(in srgb, var(--chakra-colors-brand-400) ${pct}%, transparent)`
 
 const scale = (s: Record<string | number, string>) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, { value: v }]))
 
@@ -126,15 +129,17 @@ const config = defineConfig({
           muted: { value: { _light: '{colors.gray.100}', _dark: darkSurface.borderMuted } },
         },
         // colorPalette="brand": buttons are the same vivid accent with white text in both modes; text in dark mode is the brighter 400.
+        // Tinted surfaces in dark mode are washes of the accent over whatever is behind, so unselected chips, banners and
+        // outlines stand out from the page instead of sinking into a near-black navy.
         brand: {
           solid: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.600}' } },
           contrast: { value: { _light: 'white', _dark: 'white' } },
           fg: { value: { _light: '{colors.brand.600}', _dark: '{colors.brand.400}' } },
-          muted: { value: { _light: '{colors.brand.200}', _dark: '{colors.brand.800}' } },
-          subtle: { value: { _light: '{colors.brand.100}', _dark: '{colors.brand.900}' } },
-          emphasized: { value: { _light: '{colors.brand.300}', _dark: '{colors.brand.700}' } },
+          muted: { value: { _light: '{colors.brand.200}', _dark: wash(40) } },
+          subtle: { value: { _light: '{colors.brand.100}', _dark: wash(DARK_WASH) } },
+          emphasized: { value: { _light: '{colors.brand.300}', _dark: wash(32) } },
           focusRing: { value: { _light: '{colors.brand.500}', _dark: '{colors.brand.400}' } },
-          border: { value: { _light: '{colors.brand.200}', _dark: '{colors.brand.800}' } },
+          border: { value: { _light: '{colors.brand.200}', _dark: wash(40) } },
         },
       },
     },

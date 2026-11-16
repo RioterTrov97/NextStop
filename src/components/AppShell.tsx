@@ -75,7 +75,12 @@ export function AppShell() {
                   borderRadius="full"
                   color={isActive ? 'brand.fg' : 'fg.muted'}
                   // The selected tab sits on a soft lens, as in iOS 26 tab bars.
-                  bg={isActive ? 'color-mix(in srgb, var(--chakra-colors-brand-solid) 16%, transparent)' : 'transparent'}
+                  // (In dark mode the same wash as unselected chips.)
+                  bg={
+                    isActive
+                      ? { base: 'color-mix(in srgb, var(--chakra-colors-brand-solid) 16%, transparent)', _dark: 'brand.subtle' }
+                      : 'transparent'
+                  }
                   transition="background-color 0.25s, color 0.25s"
                 >
                   <Icon size={22} />
