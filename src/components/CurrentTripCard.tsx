@@ -226,6 +226,9 @@ export function CurrentTripCard({ trip, now }: { trip: CurrentTrip; now: number 
       excluded,
       count: 4,
     })),
+    // The extra via and split searches (3-5 requests a minute) are how a trip with changes gets found again, but a
+    // single ride is just the planner's own answer: they would only re-read alternatives the trip doesn't use.
+    trip.journey.legs.filter(isTransit).length <= 1,
   )
   // The station's departure board keeps a board-followed ride's time, platform and status live even when the
   // planner doesn't return that exact service.

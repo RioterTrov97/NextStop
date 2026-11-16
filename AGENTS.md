@@ -36,6 +36,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - One shared scheduler (`src/api/realtime.ts`) refreshes all on-screen live queries together. It skips refreshes while the page is hidden or a sheet is being dragged.
 - Worker edge cache: trips 5s (via-city searches 55s), vehicles 5s. The refresh button sends `fresh=1` to bypass it.
 - The 15s refresh skips vehicle feeds that refreshed under about 8s ago (they have their own 10s cycle); without that a feed was read twice within 5s.
+- A followed trip with one ride tracks itself with the planner's direct answer only; the via and split searches (3-5 requests a minute) are kept for trips with changes, which need them to be found again.
 - The key is also capped at 60,000 requests/day. Via-city searches refresh once a minute (`VIA_MS`), not every 15s. Every TfNSW call goes through `upstream()` in the worker, which retries per-second refusals and logs one `{"event":"upstream"}` line per call. Limits, terms (no key rotation; caching allowed under CC BY 4.0), measured usage and the options for later are in [docs/api-usage.md](docs/api-usage.md).
 
 ### Trip planner (`/v1/tp/trip`)
