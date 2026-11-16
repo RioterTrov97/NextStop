@@ -9,10 +9,10 @@ interface Props extends Omit<BoxProps, 'children'> {
   vehicles?: boolean
 }
 
-/** The NextStop mark, inline so it follows the colour mode: the deep accent on light pages, the pale one on dark ones. */
+/** The NextStop mark, inline so it follows the app colour: the same in light and dark mode. */
 export function BrandMark({ size, vehicles = false, ...rest }: Props) {
   const id = `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  const body = useMemo(() => markBody({ pin: 'var(--ns-logo-pin)', ring: 'var(--ns-logo-ring)', vehicles, id }), [vehicles, id])
+  const body = useMemo(() => markBody({ pin: 'var(--ns-logo-pin)', ring: 'var(--ns-logo-pin)', train: '#fff', vehicles, id }), [vehicles, id])
   return (
     <Box
       as="span"
@@ -21,11 +21,9 @@ export function BrandMark({ size, vehicles = false, ...rest }: Props) {
       w={`${size}px`}
       h={`${size}px`}
       css={{
-        // The theme's variables, so the mark follows the app colour chosen in Settings. The pin is the primary accent
-        // (the same colour as solid buttons) in both modes; the ring is dark on light pages and pale on dark ones.
+        // The same in light and dark: the mark in the primary accent (the colour of solid buttons, following the app colour
+        // chosen in Settings) with a white train.
         '--ns-logo-pin': 'var(--chakra-colors-brand-solid)',
-        '--ns-logo-ring': 'var(--chakra-colors-brand-800)',
-        '.dark &': { '--ns-logo-ring': 'var(--chakra-colors-brand-100)' },
       }}
       {...rest}
     >

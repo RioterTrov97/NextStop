@@ -13,6 +13,11 @@ export interface MarkColours {
 }
 
 export interface MarkOptions extends MarkColours {
+  /**
+   * Fill the train front in this colour (e.g. white on the accent pin) instead of cutting it out of the pin to show
+   * the background. Its windows and lights still show the pin.
+   */
+  train?: string
   /** Draw the bus and tram on the orbit (the full logo); off for small sizes such as the app icon. */
   vehicles?: boolean
   /** Prefix for mask ids, unique per mark on a page. */
@@ -194,7 +199,7 @@ function tram(t0: number, fill: string): string {
 }
 
 /** The mark's SVG elements (no <svg> wrapper), for embedding. */
-export function markBody({ pin, ring, vehicles = true, id = 'ns' }: MarkOptions): string {
+export function markBody({ pin, ring, train, vehicles = true, id = 'ns' }: MarkOptions): string {
   const ride = vehicles ? `${bus(0.75 * Math.PI, ring)}${tram(0.2 * Math.PI, ring)}` : ''
   return `<defs>
     <mask id="${id}-pin" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
@@ -206,13 +211,25 @@ export function markBody({ pin, ring, vehicles = true, id = 'ns' }: MarkOptions)
       <path d="M104 124L98 134M136 124L142 134" stroke="#000" stroke-width="5" stroke-linecap="round"/>
       <path d="${FRONT}" transform="${TILT}" fill="none" stroke="#000" stroke-width="${LINE + 8}"/>
     </mask>
+    <mask id="${id}-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
+      <rect width="240" height="240" fill="#fff"/>
+      <path d="${FRONT}" transform="${TILT}" fill="none" stroke="#000" stroke-width="${LINE + 8}"/>
+    </mask>
     <mask id="${id}-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="240">
       <rect width="240" height="240" fill="#fff"/>
       <path d="${PIN}" fill="#000"/>
     </mask>
   </defs>
   <path d="${BACK}" transform="${TILT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round" mask="url(#${id}-back)"/>
-  <path d="${PIN}" fill="${pin}" mask="url(#${id}-pin)"/>
+  <path d="${PIN}" fill="${pin}" mask="url(#${id}-pin)"/>${
+    train
+      ? `
+  <g mask="url(#${id}-gap)">
+    <path fill="${train}" fill-rule="evenodd" d="M108 58H132A16 16 0 0 1 148 74V104A16 16 0 0 1 132 120H108A16 16 0 0 1 92 104V74A16 16 0 0 1 108 58ZM106 67A6 6 0 0 0 100 73V83A6 6 0 0 0 106 89H134A6 6 0 0 0 140 83V73A6 6 0 0 0 134 67ZM101 105A5 5 0 1 0 111 105A5 5 0 1 0 101 105ZM129 105A5 5 0 1 0 139 105A5 5 0 1 0 129 105Z"/>
+    <path d="M104 124L98 134M136 124L142 134" stroke="${train}" stroke-width="5" stroke-linecap="round"/>
+  </g>`
+      : ''
+  }
   <g transform="${TILT}">
     <path d="${FRONT}" fill="none" stroke="${ring}" stroke-width="${LINE}" stroke-linecap="round"/>
     ${ride}
