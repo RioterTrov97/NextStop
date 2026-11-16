@@ -35,6 +35,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - Measured feed update rates: train delays (trip updates) every 15s, train positions and loads every 10s, metro every 6s. So trips and departures refresh every 15s (`REALTIME_MS`) and vehicles every 10s (`VEHICLES_MS`). Polling faster only re-reads the same data and burns the quota.
 - One shared scheduler (`src/api/realtime.ts`) refreshes all on-screen live queries together. It skips refreshes while the page is hidden or a sheet is being dragged.
 - Worker edge cache: trips 5s (via-city searches 55s), vehicles 5s. The refresh button sends `fresh=1` to bypass it.
+- The 15s refresh skips vehicle feeds that refreshed under about 8s ago (they have their own 10s cycle); without that a feed was read twice within 5s.
 - The key is also capped at 60,000 requests/day. Via-city searches refresh once a minute (`VIA_MS`), not every 15s. Every TfNSW call goes through `upstream()` in the worker, which retries per-second refusals and logs one `{"event":"upstream"}` line per call. Limits, terms (no key rotation; caching allowed under CC BY 4.0), measured usage and the options for later are in [docs/api-usage.md](docs/api-usage.md).
 
 ### Trip planner (`/v1/tp/trip`)
@@ -139,6 +140,7 @@ Run test, typecheck, lint and build before calling work done. `src/components/Li
 - The query cache is persisted to IndexedDB by `src/lib/cachePersister.ts`: writes are batched (every 3s, and when the app is backgrounded), only trips (direct part), stop searches and the weekend check are kept, and map geometry is stripped. Never persist live positions, alerts or via results; the unbatched default wrote 7.6MB on every cache event and stalled the UI.
 - Keep values passed to the sheet stable: `useJourneyVehicles` memoises its map; sheet legs are `memo`ed. Pages re-render every second for countdowns, so anything expensive below them must not re-render with them.
 - Route chunks preload on idle (`preloadRoutes`), so tab switches don't wait on the network.
+- Station boards show 15 departures at a time ("Show more departures"): every card re-renders each second, and 50+ cards cost 34 long tasks and 104MB at 4x throttle (now 3 and 37MB).
 - Measure with a production build (`npm run build && npx vite preview`) and CPU throttling (4x) before and after performance changes. Development builds are several times slower and mislead.
 
 ## Testing conventions

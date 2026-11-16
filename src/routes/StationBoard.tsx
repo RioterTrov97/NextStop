@@ -1,4 +1,4 @@
-import { Box, Skeleton, Text } from '@chakra-ui/react'
+import { Box, Button, Skeleton, Text } from '@chakra-ui/react'
 import { useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useDepartureJourney, useDepartures, useJourneyVehicles } from '../api/hooks'
@@ -18,6 +18,8 @@ import { useTint } from '../lib/useTint'
 import { currentTrip, useCurrentTrip } from '../store/currentTrip'
 import { history } from '../store/history'
 import { PageBody } from '../components/PageBody'
+
+const BOARD_PAGE = 15
 
 const rideId = (j?: Journey) => j?.legs.find(isTransit)?.transportation?.properties?.RealtimeTripId
 
@@ -60,7 +62,10 @@ export default function StationBoard() {
   const tint = useTint(filter ? PLATFORM_KINDS[filter.kind].color : undefined)
   useHeaderTint(tint?.first)
 
-  const shown = items.filter(({ platform }) => !filter || (platform?.kind === filter.kind && (!filter.key || platform.key === filter.key)))
+  const matching = items.filter(({ platform }) => !filter || (platform?.kind === filter.kind && (!filter.key || platform.key === filter.key)))
+  // A busy station lists 50+ departures; every card re-renders each second for its countdown, so show the next ones first.
+  const [limit, setLimit] = useState(BOARD_PAGE)
+  const shown = matching.slice(0, limit)
   const { vehicles, isLoading: vehiclesLoading } = useJourneyVehicles(shown.map((i) => i.journey))
 
   const selected = items.find((i) => i.key === selectedKey)
@@ -91,7 +96,7 @@ export default function StationBoard() {
       )}
       <PageBody position="relative">
         {groups.length > 0 && (groups.length > 1 || groups[0][1].length > 1) && (
-          <PlatformFilter groups={groups} counts={counts} total={items.length} value={filter} onChange={setFilter} />
+          <PlatformFilter groups={groups} counts={counts} total={items.length} value={filter} onChange={(v) => { setFilter(v); setLimit(BOARD_PAGE) }} />
         )}
         {!data && fetchStatus === 'paused' && <NoConnection what="this station" />}
         {isLoading && [0, 1, 2, 3].map((i) => <Skeleton key={i} h="110px" borderRadius="2xl" />)}
@@ -111,6 +116,11 @@ export default function StationBoard() {
             onClick={() => setSelectedKey(key)}
           />
         ))}
+        {matching.length > shown.length && (
+          <Button variant="outline" onClick={() => setLimit((n) => n + BOARD_PAGE)}>
+            Show more departures
+          </Button>
+        )}
       </PageBody>
       <JourneySheet
         journey={detail}

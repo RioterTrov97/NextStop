@@ -24,14 +24,18 @@ const isLive = (q: { queryKey: readonly unknown[]; getObserversCount: () => numb
 const viaFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
   q.queryKey[0] === 'trips' && q.queryKey[8] === 'via' && Date.now() - q.state.dataUpdatedAt < VIA_MS - 1000
 
+/** A vehicle feed refreshed on its own 10s cycle moments ago: the 15s refresh needn't read the same data again. */
+const vehiclesFresh = (q: { queryKey: readonly unknown[]; state: { dataUpdatedAt: number } }) =>
+  q.queryKey[0] === 'vehicles' && Date.now() - q.state.dataUpdatedAt < VEHICLES_MS - 1500
+
 /**
  * Refetches every on-screen realtime query together and restarts the shared countdown. The timer's own refreshes
- * (`scheduled`) skip via-city searches that are under a minute old; the refresh button and route changes don't.
+ * (`scheduled`) skip via-city searches that are under a minute old and vehicle feeds under about 8s old; the refresh button and route changes don't.
  */
 export function refreshRealtime(qc: QueryClient, { scheduled = false } = {}) {
   nextAt = Date.now() + REALTIME_MS
   nextVehiclesAt = Date.now() + VEHICLES_MS
-  return qc.refetchQueries({ predicate: (q) => isLive(q) && !(scheduled && viaFresh(q)) }).finally(() => {
+  return qc.refetchQueries({ predicate: (q) => isLive(q) && !(scheduled && (viaFresh(q) || vehiclesFresh(q))) }).finally(() => {
     nextAt = Date.now() + REALTIME_MS
   })
 }
