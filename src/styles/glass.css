@@ -1,6 +1,7 @@
 /*
-  Glass, like iOS 26: for floating things only (tab bar, followed-trip card, sheets, dialogs, map buttons, sticky
-  filter rows). Never on the page header, which must stay opaque for the iPhone status bar, and never glass on glass.
+  Glass, like iOS 26: for small floating things only (tab bar, followed-trip card, menus, map buttons, sticky filter
+  rows). The trip sheet and dialogs are solid (.ns-solid below): they are mostly text, and glass behind it made small grey
+  text hard to read. Never on the page header, which must stay opaque for the iPhone status bar, and never glass on glass.
   A translucent fill, a blur that also lifts the colour behind it, a bright top edge and a soft shadow.
 
   --ns-glass-tint / --ns-glass-solid-tint let a tinted screen colour the glass (see src/lib/tint.ts).
@@ -8,7 +9,6 @@
 /* The glass colours (--ns-glass-bg, -solid, -edge, -shine, -shadow) are set in src/theme.ts from the palette. */
 
 .ns-glass,
-[data-scope='dialog'][data-part='content'],
 [data-scope='menu'][data-part='content'],
 [data-scope='popover'][data-part='content'] {
   background: var(--ns-glass-tint, var(--ns-glass-bg));
@@ -19,15 +19,9 @@
     inset 0 1px 0 var(--ns-glass-shine),
     var(--ns-glass-shadow);
 }
-/* The same material without the drop shadow, for glass that sits flush with something (sheets, sticky rows). */
-.ns-glass.ns-glass-flat {
-  box-shadow: inset 0 1px 0 var(--ns-glass-shine);
-}
-
 /* Solid fallbacks: the Settings switch, browsers without backdrop-filter, and the system contrast and transparency
    preferences where the browser passes them on. */
 html[data-solid] .ns-glass,
-html[data-solid] [data-scope='dialog'][data-part='content'],
 html[data-solid] [data-scope='menu'][data-part='content'],
 html[data-solid] [data-scope='popover'][data-part='content'] {
   background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
@@ -36,7 +30,6 @@ html[data-solid] [data-scope='popover'][data-part='content'] {
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .ns-glass,
-  [data-scope='dialog'][data-part='content'],
   [data-scope='menu'][data-part='content'],
   [data-scope='popover'][data-part='content'] {
     background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
@@ -44,7 +37,6 @@ html[data-solid] [data-scope='popover'][data-part='content'] {
 }
 @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
   .ns-glass,
-  [data-scope='dialog'][data-part='content'],
   [data-scope='menu'][data-part='content'],
   [data-scope='popover'][data-part='content'] {
     background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
@@ -55,20 +47,27 @@ html[data-solid] [data-scope='popover'][data-part='content'] {
 }
 
 /*
-  Panels inside a glass sheet or dialog: Chakra's solid surface colours become light veils, so the glass shows through
-  instead of opaque boxes sitting on it. Not when glass is turned off, where the panels stay solid.
+  Solid floating panels: the trip sheet and dialogs. Their own colour (or the trip's line tint, solid), the glass edge
+  and shine, no blur. In light mode the sheet is a soft grey so the white cards inside stand apart from it.
 */
-html:not([data-solid]) .ns-glass-surface,
-html:not([data-solid]) [data-scope='dialog'][data-part='content'] {
-  --chakra-colors-bg-panel: rgba(255, 255, 255, 0.62);
-  --chakra-colors-bg-subtle: rgba(255, 255, 255, 0.5);
-  --chakra-colors-bg-muted: rgba(16, 21, 28, 0.05);
+:root {
+  --ns-sheet-bg: var(--chakra-colors-gray-100);
 }
-html.dark:not([data-solid]) .ns-glass-surface,
-html.dark:not([data-solid]) [data-scope='dialog'][data-part='content'] {
-  --chakra-colors-bg-panel: rgba(255, 255, 255, 0.06);
-  --chakra-colors-bg-subtle: rgba(255, 255, 255, 0.045);
-  --chakra-colors-bg-muted: rgba(255, 255, 255, 0.07);
+html.dark {
+  --ns-sheet-bg: var(--ns-glass-solid);
+}
+.ns-solid,
+[data-scope='dialog'][data-part='content'] {
+  background: var(--ns-glass-solid-tint, var(--ns-glass-solid));
+  border: 0.5px solid var(--ns-glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ns-glass-shine),
+    var(--ns-glass-shadow);
+}
+.ns-solid.ns-sheet {
+  background: var(--ns-glass-solid-tint, var(--ns-sheet-bg));
+  /* Flat: the backdrop already sets it apart from the page. */
+  box-shadow: inset 0 1px 0 var(--ns-glass-shine);
 }
 
 /* Leaflet's zoom buttons as glass, to match the map's own buttons. */

@@ -9,7 +9,7 @@ behaviour is removed, and the layouts recorded in [AGENTS.md](../AGENTS.md) keep
   Neutrals lean slightly sage. The scale is in `shared/brand.ts`. Red (NSW Government) was considered and rejected: red
   already means delays and cancellations, it is near T9 and light rail, and red and white suggests the app is official.
 - **Font:** Inter, unchanged.
-- **Glass like iOS 26**, on floating things only: the tab bar, the followed-trip mini card, sheets, dialogs, map buttons
+- **Glass like iOS 26**, on floating things only: the tab bar, the followed-trip mini card, map buttons
   and sticky filter rows. Translucent fill, backdrop blur and saturation, a light top edge and a soft shadow. Never on
   the page header (iOS 27 blurs the status bar unless the top of the page is opaque), never on list cards, never glass
   on glass. Solid fallbacks: no `backdrop-filter` support, `prefers-contrast: more`, `prefers-reduced-transparency`, and

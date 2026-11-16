@@ -253,7 +253,7 @@ export default function Settings() {
           <Item title="App colour" hint="Buttons, tabs and highlights across the app. Line badges always keep their official colours.">
             <AccentPicker value={accent} />
           </Item>
-          <Item title="Glass" hint="The tab bar, trip details and other floating panels are see-through. Solid panels are easier to read.">
+          <Item title="Glass" hint="The tab bar, the trip you're following, menus and map buttons are see-through. Solid ones are easier to read.">
             <Choices
               value={reduceTransparency}
               options={[

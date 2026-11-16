@@ -268,8 +268,8 @@ export function JourneySheet({ journey, vehicles, vehiclesLoading, isCurrent, ba
           <Flex position="fixed" insetX={0} bottom={0} zIndex="modal" justify="center" pointerEvents="none">
             <ArkDrawer.Content asChild>
               <Flex
-                // Glass, like iOS 26 sheets. Flat: the backdrop already sets it apart from the page.
-                className="ns-sheet ns-glass ns-glass-flat ns-glass-surface"
+                // Solid, not glass: the sheet is mostly text, which the blurred page behind made hard to read.
+                className="ns-sheet ns-solid"
                 direction="column"
                 w="full"
                 maxW="640px"
