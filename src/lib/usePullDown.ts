@@ -109,14 +109,14 @@ export function usePullDown({ enabled, threshold = 72, onRelease }: Options) {
         frame = 0
         paint(0, true)
         if (fire) haptic('medium') // confirm bump on successful release
-        // Spring back first, then load, so the animation is never competing with a render.
-        setTimeout(
-          () => {
-            el.style.willChange = ''
-            if (fire) release.current()
-          },
-          reduce ? 0 : 320,
-        )
+        // Spring back first, then load, so the animation is never competing with a render. The layer promotion (willChange)
+        // stays until the spring has finished: dropping it mid-spring made iOS repaint the list and cut the animation short.
+        setTimeout(() => {
+          if (fire) release.current()
+        }, reduce ? 0 : 320)
+        setTimeout(() => {
+          el.style.willChange = ''
+        }, reduce ? 0 : 560)
         // A mouse drag ends with a click on whatever is under the pointer; swallow it.
         if (mouse) {
           const stop = (ev: Event) => ev.stopPropagation()
